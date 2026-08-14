@@ -1,13 +1,28 @@
 // frontend/src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Activity, Cpu, HardDrive, Zap, Wifi, 
-  Circle, Database, CheckCircle, 
-  Clock, Calendar, Cloud, ListTodo, StickyNote, Mail,
-  LayoutDashboard, Folder, Radio, BarChart3,
-  Server, Shield, Gauge, Network
+import {
+  Cpu, HardDrive, Circle, Database,
+  Calendar, ListTodo, Mail,
+  LayoutDashboard, Radio,
+  Server, Shield, Gauge,
 } from 'lucide-react';
 import { getStatus } from '../services/api';
+
+const colorMap: Record<string, string> = {
+  cyan: '#22d3ee',
+  blue: '#60a5fa',
+  green: '#4ade80',
+};
+const bgMap: Record<string, string> = {
+  cyan: 'rgba(6,182,212,0.08)',
+  blue: 'rgba(37,99,235,0.08)',
+  green: 'rgba(34,197,94,0.08)',
+};
+const borderMap: Record<string, string> = {
+  cyan: 'rgba(34,211,238,0.2)',
+  blue: 'rgba(96,165,250,0.2)',
+  green: 'rgba(74,222,128,0.2)',
+};
 
 const Dashboard: React.FC = () => {
   const [status, setStatus] = useState<{ status: string; modules: Record<string, boolean> } | null>(null);
@@ -19,12 +34,12 @@ const Dashboard: React.FC = () => {
   const modules = status?.modules || { notion: false, calendar: false, email: false, voice: false, data: false };
 
   const metrics = [
-    { icon: Server, label: 'SISTEMA', value: 'ONLINE', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-    { icon: Cpu, label: 'CPU', value: '62%', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { icon: HardDrive, label: 'MEMORIA', value: '74%', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { icon: Gauge, label: 'LATENCIA', value: '12ms', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-    { icon: Database, label: 'MÓDULOS', value: `${Object.values(modules).filter(Boolean).length}/6`, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { icon: Shield, label: 'TLS', value: 'ACTIVO', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+    { icon: Server, label: 'SISTEMA', value: 'ONLINE', c: 'cyan' },
+    { icon: Cpu, label: 'CPU', value: '62%', c: 'blue' },
+    { icon: HardDrive, label: 'MEMORIA', value: '74%', c: 'blue' },
+    { icon: Gauge, label: 'LATENCIA', value: '12ms', c: 'cyan' },
+    { icon: Database, label: 'MÓDULOS', value: `${Object.values(modules).filter(Boolean).length}/6`, c: 'blue' },
+    { icon: Shield, label: 'TLS', value: 'ACTIVO', c: 'green' },
   ];
 
   const moduleList = [
@@ -51,54 +66,57 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="w-full h-full bg-[#0a0e1a] text-white flex flex-col overflow-hidden">
-      {/* ===== HEADER ===== */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-blue-500/20 bg-[#0a0e1a]/80 backdrop-blur-sm flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <LayoutDashboard className="w-5 h-5 text-cyan-400" />
-          <span className="text-lg font-bold gradient-text tracking-[0.2em]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            DASHBOARD
-          </span>
-          <span className="text-[8px] text-blue-400/30">PANEL DE CONTROL</span>
+    <div className="page">
+      <header className="page-header">
+        <div className="page-header__title">
+          <LayoutDashboard size={18} color="#22d3ee" />
+          <h1 className="gradient-text">DASHBOARD</h1>
+          <span className="page-header__sub">PANEL DE CONTROL</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
-          <Circle className="w-2 h-2 text-cyan-400 animate-pulse" />
-          <span className="text-[8px] text-cyan-400/60 font-mono">SYSTEM READY</span>
+        <div className="badge badge-blue">
+          <Circle size={8} color="#22d3ee" fill="#22d3ee" />
+          <span>SYSTEM READY</span>
         </div>
       </header>
 
-      {/* ===== CONTENIDO ===== */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Métricas */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {metrics.map((item, i) => (
-              <div key={i} className={`glass p-4 rounded-xl ${item.bg} border ${item.border} hover:border-cyan-400/30 transition-all`}>
-                <div className="flex items-center gap-2">
-                  <item.icon className={`w-4 h-4 ${item.color}`} />
-                  <span className="text-[8px] text-blue-400/40">{item.label}</span>
+      <div className="page-body">
+        <div className="page-body__inner dash-stack">
+          <div className="metrics-grid">
+            {metrics.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={i}
+                  className="glass metric-card"
+                  style={{ background: bgMap[item.c], borderColor: borderMap[item.c] }}
+                >
+                  <div className="metric-card__top">
+                    <Icon size={15} color={colorMap[item.c]} />
+                    <span className="metric-card__label">{item.label}</span>
+                  </div>
+                  <div className="metric-card__value" style={{ color: colorMap[item.c] }}>
+                    {item.value}
+                  </div>
                 </div>
-                <div className={`text-lg font-bold font-mono mt-1 ${item.color}`}>{item.value}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Módulos */}
-            <div className="lg:col-span-1 glass rounded-xl p-5">
-              <div className="text-[10px] text-cyan-400/40 font-bold tracking-[0.1em] mb-4">MÓDULOS</div>
-              <div className="space-y-2">
+          <div className="dash-columns">
+            <div className="glass panel">
+              <div className="panel__title">MÓDULOS</div>
+              <div>
                 {moduleList.map((mod) => {
                   const Icon = mod.icon;
                   return (
-                    <div key={mod.key} className="flex items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/10 hover:border-cyan-400/20 transition-all">
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-4 h-4 ${mod.active ? 'text-cyan-400' : 'text-blue-400/20'}`} />
-                        <span className={`text-xs font-mono ${mod.active ? 'text-blue-200/70' : 'text-blue-400/20'}`}>
+                    <div key={mod.key} className="module-row">
+                      <div className="module-row__left">
+                        <Icon size={15} color={mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)'} />
+                        <span style={{ color: mod.active ? 'rgba(191,219,254,0.7)' : 'rgba(96,165,250,0.2)' }}>
                           {mod.name}
                         </span>
                       </div>
-                      <span className={`text-[8px] font-mono ${mod.active ? 'text-cyan-400' : 'text-blue-400/20'}`}>
+                      <span className="module-row__status" style={{ color: mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)' }}>
                         {mod.active ? 'ACTIVO' : 'INACTIVO'}
                       </span>
                     </div>
@@ -107,32 +125,30 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Comandos */}
-            <div className="lg:col-span-2 glass rounded-xl p-5">
-              <div className="text-[10px] text-cyan-400/40 font-bold tracking-[0.1em] mb-4">COMANDOS</div>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="glass panel">
+              <div className="panel__title">COMANDOS</div>
+              <div className="commands-grid">
                 {commands.map((item, i) => (
-                  <div key={i} className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10 hover:border-cyan-400/20 transition-all">
-                    <div className="text-[10px] font-mono text-cyan-400/60">{item.cmd}</div>
-                    <div className="text-[8px] text-blue-400/30">{item.desc}</div>
+                  <div key={i} className="command-card">
+                    <div className="command-card__cmd">{item.cmd}</div>
+                    <div className="command-card__desc">{item.desc}</div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Estado del sistema */}
-          <div className="glass rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-6 text-[10px] font-mono">
-              <span className="text-cyan-400">● ONLINE</span>
-              <span className="text-blue-400/20">|</span>
-              <span className="text-blue-400/40">TOKENS: 8,214/16,000</span>
-              <span className="text-blue-400/20">|</span>
-              <span className="text-blue-400/40">LATENCY: 12ms</span>
-              <span className="text-blue-400/20">|</span>
-              <span className="text-blue-400/40">UPTIME: 23h 41m</span>
+          <div className="glass status-strip">
+            <div className="status-strip__left">
+              <span style={{ color: '#22d3ee' }}>● ONLINE</span>
+              <span className="sep">|</span>
+              <span style={{ color: 'rgba(96,165,250,0.4)' }}>TOKENS: 8,214/16,000</span>
+              <span className="sep">|</span>
+              <span style={{ color: 'rgba(96,165,250,0.4)' }}>LATENCY: 12ms</span>
+              <span className="sep">|</span>
+              <span style={{ color: 'rgba(96,165,250,0.4)' }}>UPTIME: 23h 41m</span>
             </div>
-            <span className="text-[7px] text-blue-400/20">v3.1 · SECURE NODE 09F-ORION</span>
+            <span className="status-strip__right">v3.1 · SECURE NODE 09F-ORION</span>
           </div>
         </div>
       </div>
