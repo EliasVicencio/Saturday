@@ -206,8 +206,6 @@ class VoiceManager:
         except Exception as e:
             print(f"⚠️ Error convirtiendo audio: {e}")
             return None
-    
-    # modules/voice.py - Método recognize_audio_file corregido
 
     def recognize_audio_file(self, audio_path: str) -> Optional[str]:
         """
@@ -218,13 +216,13 @@ class VoiceManager:
             print("⚠️ No hay API key de Google")
             return None
         
+        wav_path = None
+        
         try:
-            # SIEMPRE intentar convertir a WAV con pydub si está disponible
-            wav_path = None
-            
+            # 1. SIEMPRE intentar convertir a WAV con pydub
             if PYDUB_AVAILABLE:
                 try:
-                    print(f"🔄 Forzando conversión de {audio_path} a WAV...")
+                    print(f"🔄 Convirtiendo {audio_path} a WAV...")
                     
                     # Cargar audio (auto-detectar formato)
                     audio = AudioSegment.from_file(audio_path)
@@ -232,7 +230,7 @@ class VoiceManager:
                     # Convertir a WAV (16kHz, mono, 16-bit)
                     audio = audio.set_frame_rate(16000)
                     audio = audio.set_channels(1)
-                    audio = audio.set_sample_width(2)  # 16-bit
+                    audio = audio.set_sample_width(2)
                     
                     # Guardar como WAV temporal
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
@@ -240,7 +238,6 @@ class VoiceManager:
                         audio.export(wav_path, format="wav")
                         print(f"✅ Convertido a WAV: {wav_path}")
                     
-                    # Usar el archivo convertido
                     audio_path_to_use = wav_path
                     
                 except Exception as e:
@@ -251,13 +248,14 @@ class VoiceManager:
                 print("⚠️ pydub no disponible, usando archivo original")
                 audio_path_to_use = audio_path
             
-            # Leer el archivo de audio
+            # 2. Leer el archivo de audio
             with open(audio_path_to_use, "rb") as f:
                 audio_data = f.read()
             
-            # Codificar en base64
+            # 3. Codificar en base64
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
             
+            # 4. Enviar a Google STT
             url = "https://speech.googleapis.com/v1/speech:recognize"
             headers = {
                 "X-Goog-Api-Key": self.api_key,
@@ -283,10 +281,9 @@ class VoiceManager:
             print(f"📤 Enviando a Google STT...")
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             
-            # Si falla, intentar con configuración automática
+            # 5. Si falla por sample rate, intentar sin especificar
             if response.status_code == 400 and "sample_rate_hertz" in response.text:
-                print("🔄 Intentando con configuración automática...")
-                # Quitar sampleRateHertz para que Google lo detecte automáticamente
+                print("🔄 Intentando sin sampleRateHertz...")
                 del payload["config"]["sampleRateHertz"]
                 response = requests.post(url, headers=headers, json=payload, timeout=30)
             
@@ -295,6 +292,7 @@ class VoiceManager:
                 print(f"   {response.text[:300]}")
                 return None
             
+            # 6. Procesar respuesta
             data = response.json()
             
             if "results" in data and data["results"]:
@@ -311,7 +309,7 @@ class VoiceManager:
         finally:
             # Limpiar archivos temporales
             try:
-                if wav_path and os.path.exists(wav_path) and wav_path != audio_path:
+                if wav_path and os.path.exists(wav_path):
                     os.unlink(wav_path)
             except:
                 pass

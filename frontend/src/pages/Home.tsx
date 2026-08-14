@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
-import { sendMessage, speakText, recognizeSpeech } from '../services/api';
+import { sendMessage, speakText } from '../services/api';
 
 interface MessageType {
   id: string;
@@ -52,11 +52,17 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         audio: {
           channelCount: 1,
           sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         } 
       });
       
-      // Crear MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream);
+      // Crear MediaRecorder con formato WEBM (compatible con el navegador)
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
+      
       const audioChunks: BlobPart[] = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -68,24 +74,32 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       mediaRecorder.onstop = async () => {
         setIsRecording(false);
         
-        // Crear blob de audio en formato WAV
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        
-        // Mostrar estado
-        setInput('🔍 Reconociendo voz...');
-        
         try {
-          // Enviar a Google STT
-          const text = await recognizeSpeech(audioBlob);
+          // Crear blob de audio en formato WEBM
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          
+          // Mostrar estado
+          setInput('🔍 Reconociendo voz...');
+          
+          // Crear FormData y enviar al backend
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          
+          const response = await fetch('http://localhost:5000/api/stt', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          const data = await response.json();
           
           // Detener el stream
           stream.getTracks().forEach(track => track.stop());
           
-          if (text) {
-            setInput(text);
+          if (data.success && data.text) {
+            setInput(data.text);
             // Enviar automáticamente después de un breve delay
             setTimeout(() => {
-              handleSend(text);
+              handleSend(data.text);
             }, 300);
           } else {
             setInput('');
@@ -113,7 +127,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       setIsRecording(true);
       setInput('🎤 Escuchando...');
       
-      // Guardar referencia para detener
       setRecognition({
         mediaRecorder,
         stream,
@@ -127,7 +140,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         }
       });
 
-      // Detener automáticamente después de 10 segundos (límite de frase)
+      // Detener automáticamente después de 10 segundos
       setTimeout(() => {
         if (mediaRecorder.state === 'recording') {
           mediaRecorder.stop();

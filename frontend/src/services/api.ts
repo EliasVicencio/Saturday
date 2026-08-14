@@ -34,6 +34,11 @@ export interface SpeakResponse {
   format: string;
 }
 
+export interface STTResponse {
+  text: string;
+  success: boolean;
+}
+
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
   return response.data;
@@ -44,27 +49,26 @@ export const getStatus = async (): Promise<StatusResponse> => {
   return response.data;
 };
 
-// ===== GOOGLE TTS VOZ (CHARON) =====
+// ===== VOZ (Google TTS via Backend) =====
 export const speakText = async (text: string): Promise<boolean> => {
   if (!text) return false;
 
-  console.log(`🎤 Generando voz Google Charon para: "${text.substring(0, 30)}..."`);
+  console.log(`🎤 Solicitando voz para: "${text.substring(0, 30)}..."`);
 
   try {
     const response = await api.post<SpeakResponse>('/speak', { text });
     const data = response.data;
 
     if (data.audio) {
-      console.log('✅ Audio recibido, reproduciendo...');
+      console.log('✅ Audio recibido del backend');
       
-      // Decodificar base64 y reproducir
+      // Decodificar base64 a audio
       const audioBytes = Uint8Array.from(atob(data.audio), (c) => c.charCodeAt(0));
       const audioBlob = new Blob([audioBytes], { type: 'audio/mp3' });
       const audioUrl = URL.createObjectURL(audioBlob);
       
       const audio = new Audio(audioUrl);
       
-      // Crear promesa para manejar la reproducción
       return new Promise((resolve) => {
         audio.onended = () => {
           URL.revokeObjectURL(audioUrl);
@@ -77,14 +81,13 @@ export const speakText = async (text: string): Promise<boolean> => {
           resolve(false);
         };
         
-        // Intentar reproducir
         audio.play().catch((err) => {
           console.warn('⚠️ Error al reproducir:', err);
           resolve(false);
         });
       });
     } else {
-      console.warn('⚠️ No se recibió audio');
+      console.warn('⚠️ No se recibió audio del backend');
       return false;
     }
   } catch (error) {
@@ -94,39 +97,16 @@ export const speakText = async (text: string): Promise<boolean> => {
 };
 
 // ===== STT (Speech-to-Text) con Google Cloud =====
-export interface STTResponse {
-  text: string;
-  success: boolean;
-}
-
 export const recognizeSpeech = async (audioBlob: Blob): Promise<string | null> => {
   try {
-    // Crear FormData para enviar el archivo
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'recording.wav');
+    formData.append('audio', audioBlob, 'recording.webm');
     
     const response = await api.post<STTResponse>('/stt', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    
-    if (response.data.success && response.data.text) {
-      return response.data.text;
-    } else {
-      console.warn('⚠️ No se reconoció texto:', response.data);
-      return null;
-    }
-  } catch (error) {
-    console.error('❌ Error en STT:', error);
-    return null;
-  }
-};
-
-// Versión con base64 (alternativa)
-export const recognizeSpeechBase64 = async (audioBase64: string): Promise<string | null> => {
-  try {
-    const response = await api.post<STTResponse>('/stt-base64', { audio: audioBase64 });
     
     if (response.data.success && response.data.text) {
       return response.data.text;

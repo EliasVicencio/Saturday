@@ -123,10 +123,6 @@ def health():
     """Health check para despliegue"""
     return jsonify({'status': 'ok'})
 
-# backend/app.py - Añadir al final de los endpoints
-
-# backend/app.py - Endpoint /api/stt actualizado
-
 @app.route('/api/stt', methods=['POST'])
 def stt():
     """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
@@ -141,37 +137,32 @@ def stt():
         import tempfile
         import os
         
-        # Guardar temporalmente el archivo (usar extensión .webm si el navegador la envía)
+        # Guardar el archivo temporalmente con la extensión original
         filename = audio_file.filename.lower()
         ext = os.path.splitext(filename)[1]
         
-        # Si la extensión es .wav pero el contenido es webm, forzar .webm
-        # También guardar con la extensión original
         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
             tmp_path = tmp_file.name
             audio_file.save(tmp_path)
         
         print(f"📁 Archivo guardado: {tmp_path} (ext: {ext})")
         
-        # Verificar si es realmente un archivo WAV o es WEBM con extensión falsa
-        import magic
-        try:
-            mime = magic.from_file(tmp_path, mime=True)
-            print(f"📋 MIME detectado: {mime}")
-            if 'webm' in mime or 'opus' in mime:
-                # Renombrar a .webm
-                new_path = tmp_path.replace(ext, '.webm')
-                os.rename(tmp_path, new_path)
-                tmp_path = new_path
-                print(f"📁 Renombrado a: {tmp_path}")
-        except:
-            print("⚠️ No se pudo detectar MIME, usando extensión original")
+        # Verificar si es WEBM y forzar conversión
+        is_webm = ext == '.webm' or 'webm' in filename
         
-        # Reconocer usando VoiceManager
-        if not saturday.voice:
-            return jsonify({'error': 'VoiceManager no disponible'}), 500
-        
-        text = saturday.voice.recognize_audio_file(tmp_path)
+        if is_webm:
+            print("🔄 Detectado formato WEBM, forzando conversión...")
+            # Usar VoiceManager que tiene pydub
+            if not saturday.voice:
+                return jsonify({'error': 'VoiceManager no disponible'}), 500
+            
+            text = saturday.voice.recognize_audio_file(tmp_path)
+        else:
+            # Para otros formatos, intentar directamente
+            if not saturday.voice:
+                return jsonify({'error': 'VoiceManager no disponible'}), 500
+            
+            text = saturday.voice.recognize_audio_file(tmp_path)
         
         # Limpiar archivo temporal
         try:
@@ -187,6 +178,8 @@ def stt():
             
     except Exception as e:
         print(f"❌ Error en /api/stt: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stt-base64', methods=['POST'])
