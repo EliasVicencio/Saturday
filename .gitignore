@@ -1,0 +1,279 @@
+# ============================================
+# SATURDAY - .gitignore
+# TODAS LAS CREDENCIALES Y DATOS SENSIBLES EXCLUIDOS
+# ============================================
+
+# ============================================
+# CREDENCIALES Y SECRETOS
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.example
+*.env
+!*.env.example
+credentials/
+**/credentials/
+*.json
+*.pickle
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.secret
+*.token
+*.credentials
+**/*credentials*
+**/*secret*
+**/*token*
+**/*key*
+**/*cert*
+**/*password*
+google_credentials.json
+service-account.json
+oauth2.json
+oauth2.pickle
+token_calendar.pickle
+token_email.pickle
+
+# ============================================
+# PYTHON
+# ============================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+*.egg-info/
+dist/
+build/
+*.whl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+coverage/
+htmlcov/
+
+# ============================================
+# NODE / FRONTEND
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/package-lock.json
+frontend/yarn.lock
+
+# ============================================
+# DATOS LOCALES Y BINARIOS
+# ============================================
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.m4a
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.dat
+*.pkl
+*.pickle
+*.cache
+*.state
+*.session
+*.lock
+*.pid
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.patch
+*.diff
+logs/
+tmp/
+temp/
+backup/
+backups/
+
+# ============================================
+# BACKEND
+# ============================================
+backend/__pycache__/
+backend/credentials/
+backend/.env
+backend/*.db
+backend/*.log
+backend/*.pickle
+backend/*.json
+!backend/package.json
+backend/*.pyc
+backend/*.pyo
+
+# ============================================
+# IDE / EDITORES
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+desktop.ini
+*.log
+*.tmp
+*.temp
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================
+# ARCHIVOS DE SISTEMA
+# ============================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.temp
+*.log
+*.pid
+*.lock
+*.swp
+*.swo
+
+# ============================================
+# ARCHIVOS COMPRIMIDOS
+# ============================================
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+*.deb
+*.rpm
+*.dmg
+*.pkg
+*.msi
+
+# ============================================
+# DOCKER
+# ============================================
+*.pid
+*.pid.lock
+docker-compose.override.yml
+.dockerignore
+Dockerfile
+*.container
+*.image
+
+# ============================================
+# SATURDAY - DATOS ESPECÍFICOS
+# ============================================
+knowledge_graph.json
+memory.json
+notes.json
+reminders.json
+stats.json
+saturday.db
+saturday.log
+saturday_voice.mp3
+test_*.mp3
+test_*.wav
+test_*.ogg
+temp_*.mp3
+temp_*.wav
+test_audio*.mp3
+
+# ============================================
+# TESTS
+# ============================================
+tests/__pycache__/
+tests/*.pyc
+*.test.log
+.pytest_cache/
+.tox/
+.coverage
+
+# ============================================
+# GIT
+# ============================================
+*.orig
+*.rej
+*.patch
+*.diff
+*.merge
+*.conflict
+
+# ============================================
+# OTROS
+# ============================================
+*.log
+*.tmp
+*.temp
+*.cache
+*.state
+*.session
+*.lock
+.DS_Store
+Thumbs.db
+*.pid
+*.pid.lock
+*.seed
+*.pid.lock
