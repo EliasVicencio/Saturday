@@ -4,9 +4,13 @@ import {
   Cpu, HardDrive, Circle, Database,
   Calendar, ListTodo, Mail,
   LayoutDashboard, Radio,
-  Server, Shield, Gauge,
+  Server, Shield, Gauge, ArrowLeft,
 } from 'lucide-react';
 import { getStatus } from '../services/api';
+
+interface DashboardProps {
+  onNavigate?: (view: 'home' | 'dashboard' | 'projects') => void;
+}
 
 const colorMap: Record<string, string> = {
   cyan: '#22d3ee',
@@ -24,7 +28,7 @@ const borderMap: Record<string, string> = {
   green: 'rgba(74,222,128,0.2)',
 };
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [status, setStatus] = useState<{ status: string; modules: Record<string, boolean> } | null>(null);
 
   useEffect(() => {
@@ -69,6 +73,12 @@ const Dashboard: React.FC = () => {
     <div className="page">
       <header className="page-header">
         <div className="page-header__title">
+          <button
+            onClick={() => onNavigate && onNavigate('home')}
+            className="back-btn"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <LayoutDashboard size={18} color="#22d3ee" />
           <h1 className="gradient-text">DASHBOARD</h1>
           <span className="page-header__sub">PANEL DE CONTROL</span>

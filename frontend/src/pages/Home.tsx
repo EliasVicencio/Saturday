@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
-import { sendMessage } from '../services/api';
+import { sendMessage, speakText } from '../services/api';
 
 interface MessageType {
   id: string;
@@ -10,11 +10,15 @@ interface MessageType {
   timestamp: Date;
 }
 
-const Home: React.FC = () => {
+interface HomeProps {
+  onNavigate?: (view: 'home' | 'dashboard' | 'projects') => void;
+}
+
+const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: '1',
-      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT',
+      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos" o "inicio" para navegar.',
       sender: 'saturday',
       timestamp: new Date(),
     },
@@ -33,6 +37,28 @@ const Home: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Detectar comandos de navegación
+  const detectNavigation = (text: string): boolean => {
+    const lower = text.toLowerCase().trim();
+    
+    if (lower === 'dashboard' || lower === 'ver dashboard' || lower === 'ir a dashboard') {
+      if (onNavigate) onNavigate('dashboard');
+      return true;
+    }
+    
+    if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos') {
+      if (onNavigate) onNavigate('projects');
+      return true;
+    }
+    
+    if (lower === 'inicio' || lower === 'home' || lower === 'atrás' || lower === 'volver') {
+      if (onNavigate) onNavigate('home');
+      return true;
+    }
+    
+    return false;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -43,20 +69,36 @@ const Home: React.FC = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
+    
+    const userText = input.trim();
     setInput('');
     setIsLoading(true);
 
+    // Verificar si es un comando de navegación
+    if (detectNavigation(userText)) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await sendMessage(userMessage.text);
+      const response = await sendMessage(userText);
+      const responseText = response.response || 'ERROR: COMMAND NOT RECOGNIZED';
+      
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
-          text: response.response || 'ERROR: COMMAND NOT RECOGNIZED',
+          text: responseText,
           sender: 'saturday',
           timestamp: new Date(),
         },
       ]);
+      
+      // 👇 REPRODUCIR VOZ DE GOOGLE CHARON
+      if (responseText) {
+        await speakText(responseText);
+      }
+      
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -79,7 +121,13 @@ const Home: React.FC = () => {
     }
   };
 
-  const suggestions = ['📋 Tareas', '📝 Nota', '📅 Evento', '🌤️ Clima', '🕐 Hora'];
+  const suggestions = [
+    { label: '📊 Dashboard', cmd: 'dashboard' },
+    { label: '📁 Proyectos', cmd: 'proyectos' },
+    { label: '📋 Tareas', cmd: 'tareas' },
+    { label: '🌤️ Clima', cmd: 'clima' },
+    { label: '🕐 Hora', cmd: 'hora' },
+  ];
 
   return (
     <div className="page">
@@ -158,7 +206,7 @@ const Home: React.FC = () => {
                   </div>
                 )}
                 <div className={`chat-bubble glass ${msg.sender === 'user' ? 'user' : 'bot'}`}>
-                  <div>{msg.text}</div>
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
                   <div className="chat-time">
                     {msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -182,7 +230,14 @@ const Home: React.FC = () => {
         <div className="composer__inner">
           <div className="composer__row">
             <button
-              onClick={() => setIsRecording(!isRecording)}
+              onClick={() => {
+                setIsRecording(!isRecording);
+                // Si se activa la grabación, simular entrada de voz
+                if (!isRecording) {
+                  // Aquí iría la lógica de reconocimiento de voz
+                  // Por ahora, solo es visual
+                }
+              }}
               className={`icon-btn glass ${isRecording ? 'recording' : ''}`}
             >
               {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
@@ -211,17 +266,16 @@ const Home: React.FC = () => {
           </div>
 
           <div className="suggestions">
-            {suggestions.map((label, i) => (
+            {suggestions.map((item, i) => (
               <button
                 key={i}
                 onClick={() => {
-                  const cmd = label.split(' ')[1].toLowerCase();
-                  setInput(cmd);
+                  setInput(item.cmd);
                   setTimeout(handleSend, 100);
                 }}
                 className="suggestion-chip"
               >
-                {label}
+                {item.label}
               </button>
             ))}
           </div>

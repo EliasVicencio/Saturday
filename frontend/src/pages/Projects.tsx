@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   Folder, FolderOpen, Plus, Trash2, Edit,
-  CheckCircle, XCircle, Clock,
+  CheckCircle, XCircle, Clock, ArrowLeft,
 } from 'lucide-react';
 
 interface ProjectType {
@@ -14,7 +14,11 @@ interface ProjectType {
   progress?: number;
 }
 
-const Projects: React.FC = () => {
+interface ProjectsProps {
+  onNavigate?: (view: 'home' | 'dashboard' | 'projects') => void;
+}
+
+const Projects: React.FC<ProjectsProps> = ({ onNavigate }) => {
   const [projects, setProjects] = useState<ProjectType[]>([
     {
       id: '1',
@@ -79,6 +83,12 @@ const Projects: React.FC = () => {
     <div className="page">
       <header className="page-header">
         <div className="page-header__title">
+          <button
+            onClick={() => onNavigate && onNavigate('home')}
+            className="back-btn"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <Folder size={18} color="#22d3ee" />
           <h1 className="gradient-text">PROYECTOS</h1>
           <span className="page-header__sub">GESTIÓN</span>

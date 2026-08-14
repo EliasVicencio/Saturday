@@ -67,7 +67,9 @@ class VoiceManager:
         return False
     
     def _synthesize_google_tts(self, text: str) -> Optional[bytes]:
+        """Sintetiza texto usando Google Cloud TTS API"""
         if not self.api_key:
+            print("⚠️ No hay API key de Google")
             return None
         
         url = "https://texttospeech.googleapis.com/v1/text:synthesize"
@@ -77,17 +79,38 @@ class VoiceManager:
         }
         payload = {
             "input": {"text": text},
-            "voice": {"languageCode": self.language_code, "name": self.voice_name},
-            "audioConfig": {"audioEncoding": "MP3", "speakingRate": 1.0}
+            "voice": {
+                "languageCode": self.language_code,
+                "name": self.voice_name
+            },
+            "audioConfig": {
+                "audioEncoding": "MP3",
+                "speakingRate": 0.9,
+                "pitch": 0,
+                "volumeGainDb": 0
+            }
         }
         
         try:
+            print(f"🎤 Generando voz con: {self.voice_name}")
             response = requests.post(url, headers=headers, json=payload, timeout=15)
+            
             if response.status_code != 200:
+                print(f"⚠️ Error en Google TTS: {response.status_code}")
+                print(f"   {response.text[:200]}")
                 return None
-            audio_content = response.json().get("audioContent")
+            
+            data = response.json()
+            audio_content = data.get("audioContent")
             if audio_content:
+                print(f"✅ Audio generado ({len(audio_content)} caracteres base64)")
                 return base64.b64decode(audio_content)
+            else:
+                print("⚠️ No se recibió contenido de audio")
+                return None
+                
+        except requests.exceptions.Timeout:
+            print("⚠️ Timeout en Google TTS")
             return None
         except Exception as e:
             print(f"⚠️ Error en Google TTS: {e}")

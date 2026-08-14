@@ -1,6 +1,6 @@
 // frontend/src/App.tsx
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Home, Folder } from 'lucide-react';
+import { LayoutDashboard, Home, Folder, Sparkles } from 'lucide-react';
 import HomePage from './pages/Home';
 import DashboardPage from './pages/Dashboard';
 import ProjectsPage from './pages/Projects';
@@ -11,61 +11,73 @@ type View = 'home' | 'dashboard' | 'projects';
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
   const [status, setStatus] = useState<{ status: string } | null>(null);
+  const [previousView, setPreviousView] = useState<View>('home');
 
   useEffect(() => {
     getStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
 
-  const renderView = () => {
-    switch (currentView) {
-      case 'home':
-        return <HomePage />;
-      case 'dashboard':
-        return <DashboardPage />;
-      case 'projects':
-        return <ProjectsPage />;
-      default:
-        return <HomePage />;
+  // Función para cambiar de vista (expuesta globalmente para Saturday)
+  const navigateTo = (view: View) => {
+    if (view !== currentView) {
+      setPreviousView(currentView);
+      setCurrentView(view);
     }
   };
 
-  const isOnline = status?.status === 'online';
+  // Exponer navegación globalmente para que Saturday pueda usarla
+  useEffect(() => {
+    (window as any).__saturdayNavigate = navigateTo;
+    return () => {
+      delete (window as any).__saturdayNavigate;
+    };
+  }, [currentView]);
 
-  const navItems: { view: View; icon: typeof Home; label: string }[] = [
-    { view: 'home', icon: Home, label: 'Inicio' },
-    { view: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { view: 'projects', icon: Folder, label: 'Proyectos' },
-  ];
+  // Escuchar comandos de navegación desde el chat
+  useEffect(() => {
+    const handleNavigation = (event: CustomEvent) => {
+      const { command } = event.detail;
+      if (command === 'dashboard') navigateTo('dashboard');
+      else if (command === 'proyectos' || command === 'projects') navigateTo('projects');
+      else if (command === 'inicio' || command === 'home' || command === 'atrás' || command === 'volver') navigateTo('home');
+    };
+
+    window.addEventListener('saturday-navigate' as any, handleNavigation);
+    return () => {
+      window.removeEventListener('saturday-navigate' as any, handleNavigation);
+    };
+  }, []);
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'home':
+        return <HomePage onNavigate={navigateTo} />;
+      case 'dashboard':
+        return <DashboardPage onNavigate={navigateTo} />;
+      case 'projects':
+        return <ProjectsPage onNavigate={navigateTo} />;
+      default:
+        return <HomePage onNavigate={navigateTo} />;
+    }
+  };
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative', background: '#0a0e1a', overflow: 'hidden' }}>
+    <div className="app-container">
       {renderView()}
 
-      <nav className="bottom-nav glass-strong">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = currentView === item.view;
-          return (
-            <button
-              key={item.view}
-              onClick={() => setCurrentView(item.view)}
-              className={`bottom-nav__item ${active ? 'active' : ''}`}
-            >
-              <Icon size={16} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* ===== INDICADOR DE VISTA ===== */}
+      <div className="view-indicator">
+        <span className="view-indicator__label">
+          {currentView === 'home' && '💬 CHAT'}
+          {currentView === 'dashboard' && '📊 DASHBOARD'}
+          {currentView === 'projects' && '📁 PROYECTOS'}
+        </span>
+      </div>
 
-      <div className="status-pill glass-strong">
-        <span
-          className="status-dot"
-          style={{ background: isOnline ? '#22d3ee' : '#facc15' }}
-        />
-        <span className="label">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
-        <span className="divider" />
-        <span className="label" style={{ opacity: 0.5 }}>v3.1</span>
+      {/* ===== INDICADOR DE ESTADO ===== */}
+      <div className="status-indicator">
+        <span className={`status-dot ${status?.status === 'online' ? 'online' : 'offline'}`} />
+        <span className="status-text">{status?.status === 'online' ? 'ONLINE' : 'OFFLINE'}</span>
       </div>
     </div>
   );

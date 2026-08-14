@@ -1,9 +1,11 @@
 # backend/app.py - API para Saturday
 import sys
 import os
-from flask import Flask, request, jsonify
+import base64
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
+import io
 
 # Cargar variables de entorno
 load_dotenv()
@@ -60,6 +62,38 @@ def chat():
             'action': result.get('action', False)
         })
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/speak', methods=['POST'])
+def speak():
+    """Genera audio a partir de texto usando Google TTS"""
+    data = request.json
+    text = data.get('text', '').strip()
+    
+    if not text:
+        return jsonify({'error': 'Texto vacío'}), 400
+    
+    try:
+        # Verificar que el voice manager esté disponible
+        if not saturday.voice:
+            return jsonify({'error': 'VoiceManager no disponible'}), 500
+        
+        # Generar audio usando Google TTS
+        audio_data = saturday.voice._synthesize_google_tts(text)
+        
+        if audio_data:
+            # Codificar en base64 para enviar al frontend
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            return jsonify({
+                'audio': audio_base64,
+                'format': 'mp3'
+            })
+        else:
+            return jsonify({'error': 'No se pudo generar el audio'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error en /api/speak: {e}")
         return jsonify({'error': str(e)}), 500
 
 
