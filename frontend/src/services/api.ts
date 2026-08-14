@@ -92,3 +92,50 @@ export const speakText = async (text: string): Promise<boolean> => {
     return false;
   }
 };
+
+// ===== STT (Speech-to-Text) con Google Cloud =====
+export interface STTResponse {
+  text: string;
+  success: boolean;
+}
+
+export const recognizeSpeech = async (audioBlob: Blob): Promise<string | null> => {
+  try {
+    // Crear FormData para enviar el archivo
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.wav');
+    
+    const response = await api.post<STTResponse>('/stt', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    if (response.data.success && response.data.text) {
+      return response.data.text;
+    } else {
+      console.warn('⚠️ No se reconoció texto:', response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error en STT:', error);
+    return null;
+  }
+};
+
+// Versión con base64 (alternativa)
+export const recognizeSpeechBase64 = async (audioBase64: string): Promise<string | null> => {
+  try {
+    const response = await api.post<STTResponse>('/stt-base64', { audio: audioBase64 });
+    
+    if (response.data.success && response.data.text) {
+      return response.data.text;
+    } else {
+      console.warn('⚠️ No se reconoció texto:', response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error en STT:', error);
+    return null;
+  }
+};

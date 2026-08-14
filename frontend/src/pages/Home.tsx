@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
-import { sendMessage, speakText } from '../services/api';
+import { sendMessage, speakText, recognizeSpeech } from '../services/api';
 
 interface MessageType {
   id: string;
@@ -18,7 +18,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: '1',
-      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos" o "inicio" para navegar.',
+      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos" o "inicio" para navegar.\n🎤 Haz clic en el micrófono para hablar.',
       sender: 'saturday',
       timestamp: new Date(),
     },
@@ -26,6 +26,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +38,125 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Detectar comandos de navegación
+  // ===== RECONOCIMIENTO DE VOZ CON GOOGLE STT =====
+  const startListening = async () => {
+    // Verificar soporte del navegador para grabar audio
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('⚠️ Tu navegador no soporta grabación de audio.');
+      return;
+    }
+
+    try {
+      // Obtener acceso al micrófono
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+        } 
+      });
+      
+      // Crear MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsRecording(false);
+        
+        // Crear blob de audio en formato WAV
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        
+        // Mostrar estado
+        setInput('🔍 Reconociendo voz...');
+        
+        try {
+          // Enviar a Google STT
+          const text = await recognizeSpeech(audioBlob);
+          
+          // Detener el stream
+          stream.getTracks().forEach(track => track.stop());
+          
+          if (text) {
+            setInput(text);
+            // Enviar automáticamente después de un breve delay
+            setTimeout(() => {
+              handleSend(text);
+            }, 300);
+          } else {
+            setInput('');
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(),
+              text: '⚠️ No pude entender lo que dijiste. ¿Puedes repetirlo?',
+              sender: 'saturday',
+              timestamp: new Date(),
+            }]);
+          }
+        } catch (error) {
+          console.error('❌ Error procesando audio:', error);
+          setInput('');
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: '⚠️ Error procesando el audio. Intenta de nuevo.',
+            sender: 'saturday',
+            timestamp: new Date(),
+          }]);
+        }
+      };
+
+      // Iniciar grabación
+      mediaRecorder.start();
+      setIsRecording(true);
+      setInput('🎤 Escuchando...');
+      
+      // Guardar referencia para detener
+      setRecognition({
+        mediaRecorder,
+        stream,
+        stop: () => {
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+          stream.getTracks().forEach(track => track.stop());
+          setIsRecording(false);
+          setInput('');
+        }
+      });
+
+      // Detener automáticamente después de 10 segundos (límite de frase)
+      setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }, 10000);
+
+    } catch (error) {
+      console.error('❌ Error accediendo al micrófono:', error);
+      alert('⚠️ No se pudo acceder al micrófono. Verifica los permisos.');
+    }
+  };
+
+  const stopListening = () => {
+    if (recognition && recognition.stop) {
+      recognition.stop();
+    }
+    setIsRecording(false);
+    setInput('');
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  // ===== DETECTAR NAVEGACIÓN =====
   const detectNavigation = (text: string): boolean => {
     const lower = text.toLowerCase().trim();
     
@@ -46,7 +165,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       return true;
     }
     
-    if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos') {
+    if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos' || lower === 'projects') {
       if (onNavigate) onNavigate('projects');
       return true;
     }
@@ -59,18 +178,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     return false;
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // ===== ENVIAR MENSAJE =====
+  const handleSend = async (text?: string) => {
+    const messageToSend = text || input;
+    if (!messageToSend.trim() || isLoading) return;
 
     const userMessage: MessageType = {
       id: Date.now().toString(),
-      text: input.trim(),
+      text: messageToSend.trim(),
       sender: 'user',
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
     
-    const userText = input.trim();
+    const userText = messageToSend.trim();
     setInput('');
     setIsLoading(true);
 
@@ -229,16 +350,11 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       <div className="composer">
         <div className="composer__inner">
           <div className="composer__row">
+            {/* 👇 BOTÓN DE MICRÓFONO CON RECONOCIMIENTO DE VOZ */}
             <button
-              onClick={() => {
-                setIsRecording(!isRecording);
-                // Si se activa la grabación, simular entrada de voz
-                if (!isRecording) {
-                  // Aquí iría la lógica de reconocimiento de voz
-                  // Por ahora, solo es visual
-                }
-              }}
+              onClick={toggleRecording}
               className={`icon-btn glass ${isRecording ? 'recording' : ''}`}
+              title={isRecording ? 'Detener grabación' : 'Hablar con Saturday'}
             >
               {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
@@ -250,14 +366,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isRecording ? '🎤 ESCUCHANDO...' : 'Escribe un mensaje...'}
+                placeholder={isRecording ? '🎤 ESCUCHANDO...' : 'Escribe o habla...'}
                 className="composer__input"
                 disabled={isLoading}
               />
+              {isRecording && (
+                <div className="recording-indicator">
+                  <span className="recording-dot animate-pulse-soft" />
+                  <span className="recording-text">Grabando...</span>
+                </div>
+              )}
             </div>
 
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={isLoading || !input.trim()}
               className="icon-btn gradient-btn"
             >
@@ -271,7 +393,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 key={i}
                 onClick={() => {
                   setInput(item.cmd);
-                  setTimeout(handleSend, 100);
+                  setTimeout(() => handleSend(), 100);
                 }}
                 className="suggestion-chip"
               >
@@ -281,6 +403,34 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .recording-indicator {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(239, 68, 68, 0.1);
+          padding: 4px 12px;
+          border-radius: 9999px;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          pointer-events: none;
+        }
+        .recording-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #ef4444;
+        }
+        .recording-text {
+          font-size: 8px;
+          color: #ef4444;
+          font-family: 'JetBrains Mono', monospace;
+        }
+      `}</style>
     </div>
   );
 };

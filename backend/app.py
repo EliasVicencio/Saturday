@@ -123,6 +123,121 @@ def health():
     """Health check para despliegue"""
     return jsonify({'status': 'ok'})
 
+# backend/app.py - Añadir al final de los endpoints
+
+# backend/app.py - Endpoint /api/stt actualizado
+
+@app.route('/api/stt', methods=['POST'])
+def stt():
+    """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No se envió archivo de audio'}), 400
+        
+        audio_file = request.files['audio']
+        if audio_file.filename == '':
+            return jsonify({'error': 'Archivo vacío'}), 400
+        
+        import tempfile
+        import os
+        
+        # Guardar temporalmente el archivo (usar extensión .webm si el navegador la envía)
+        filename = audio_file.filename.lower()
+        ext = os.path.splitext(filename)[1]
+        
+        # Si la extensión es .wav pero el contenido es webm, forzar .webm
+        # También guardar con la extensión original
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+            tmp_path = tmp_file.name
+            audio_file.save(tmp_path)
+        
+        print(f"📁 Archivo guardado: {tmp_path} (ext: {ext})")
+        
+        # Verificar si es realmente un archivo WAV o es WEBM con extensión falsa
+        import magic
+        try:
+            mime = magic.from_file(tmp_path, mime=True)
+            print(f"📋 MIME detectado: {mime}")
+            if 'webm' in mime or 'opus' in mime:
+                # Renombrar a .webm
+                new_path = tmp_path.replace(ext, '.webm')
+                os.rename(tmp_path, new_path)
+                tmp_path = new_path
+                print(f"📁 Renombrado a: {tmp_path}")
+        except:
+            print("⚠️ No se pudo detectar MIME, usando extensión original")
+        
+        # Reconocer usando VoiceManager
+        if not saturday.voice:
+            return jsonify({'error': 'VoiceManager no disponible'}), 500
+        
+        text = saturday.voice.recognize_audio_file(tmp_path)
+        
+        # Limpiar archivo temporal
+        try:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except:
+            pass
+        
+        if text:
+            return jsonify({'text': text, 'success': True})
+        else:
+            return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
+            
+    except Exception as e:
+        print(f"❌ Error en /api/stt: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stt-base64', methods=['POST'])
+def stt_base64():
+    """
+    Reconoce voz desde audio en base64 usando Google Cloud STT
+    """
+    data = request.json
+    audio_base64 = data.get('audio', '')
+    
+    if not audio_base64:
+        return jsonify({'error': 'No se envió audio'}), 400
+    
+    try:
+        # Decodificar base64
+        audio_data = base64.b64decode(audio_base64)
+        
+        # Guardar temporalmente
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+            tmp_path = tmp_file.name
+            tmp_file.write(audio_data)
+        
+        # Reconocer con Google STT
+        if not saturday.voice:
+            return jsonify({'error': 'VoiceManager no disponible'}), 500
+        
+        text = saturday.voice.recognize_audio_file(tmp_path)
+        
+        # Limpiar archivo temporal
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+        
+        if text:
+            return jsonify({
+                'text': text,
+                'success': True
+            })
+        else:
+            return jsonify({
+                'error': 'No se pudo reconocer el audio',
+                'success': False
+            }), 400
+            
+    except Exception as e:
+        print(f"❌ Error en /api/stt-base64: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
