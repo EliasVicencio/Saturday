@@ -1,122 +1,75 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+// frontend/src/App.tsx
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, Home, Folder, Sparkles, Circle } from 'lucide-react';
+import HomePage from './pages/Home';
+import DashboardPage from './pages/Dashboard';
+import ProjectsPage from './pages/Projects';
+import { getStatus } from './services/api';
+
+type View = 'home' | 'dashboard' | 'projects';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentView, setCurrentView] = useState<View>('home');
+  const [status, setStatus] = useState<{ status: string } | null>(null);
+
+  useEffect(() => {
+    getStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'home':
+        return <HomePage />;
+      case 'dashboard':
+        return <DashboardPage />;
+      case 'projects':
+        return <ProjectsPage />;
+      default:
+        return <HomePage />;
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="w-full h-screen bg-[#0a0e1a] relative overflow-hidden">
+      {renderView()}
 
-      <div className="ticks"></div>
+      {/* ===== NAVEGACIÓN INFERIOR CON BRILLO ===== */}
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2 py-2 rounded-2xl glass-strong border border-blue-500/20 shadow-2xl shadow-blue-500/5">
+        {[
+          { view: 'home', icon: Home, label: 'Inicio' },
+          { view: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+          { view: 'projects', icon: Folder, label: 'Proyectos' },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = currentView === item.view;
+          return (
+            <button
+              key={item.view}
+              onClick={() => setCurrentView(item.view as View)}
+              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all ${
+                isActive
+                  ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-cyan-400 border border-cyan-400/20'
+                  : 'text-blue-400/30 hover:text-blue-400/60 hover:bg-blue-500/5'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : ''}`} />
+              <span className={`text-[7px] font-mono ${isActive ? 'text-cyan-400/60' : ''}`}>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* ===== INDICADOR DE ESTADO ===== */}
+      <div className="fixed top-4 right-6 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full glass-strong border border-blue-500/20">
+        <span className={`w-1.5 h-1.5 rounded-full ${status?.status === 'online' ? 'bg-cyan-400 animate-pulse' : 'bg-yellow-400'}`} />
+        <span className="text-[7px] text-blue-400/40 font-mono">
+          {status?.status === 'online' ? 'ONLINE' : 'OFFLINE'}
+        </span>
+        <span className="w-px h-3 bg-blue-500/20" />
+        <span className="text-[7px] text-blue-400/20 font-mono">v3.1</span>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;

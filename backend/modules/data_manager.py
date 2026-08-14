@@ -1,11 +1,11 @@
-# modules/data_manager.py - Gestor de datos locales
+# modules/data_manager.py - Versión MVP
 import os
 import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 class DataManager:
-    """Gestor de datos locales para Saturday"""
+    """Gestor de datos locales para Saturday - MVP"""
     
     def __init__(self, data_dir: str = "data"):
         self.data_dir = data_dir
@@ -24,6 +24,7 @@ class DataManager:
     def create_note(self, text: str) -> str:
         if not text:
             return "¿Qué nota quieres guardar?"
+        
         notes = self._get_notes()
         notes.append({
             "id": len(notes) + 1,
@@ -31,33 +32,37 @@ class DataManager:
             "created": datetime.now().isoformat()
         })
         self._save_notes(notes)
-        return f"✅ Nota guardada: '{text[:50]}...'"
+        return f"✅ Nota guardada"
     
     def get_notes(self) -> str:
         notes = self._get_notes()
         if not notes:
             return "No tienes notas guardadas"
-        result = ["📝 NOTAS GUARDADAS:"]
-        for i, note in enumerate(notes[-10:][::-1], 1):
-            result.append(f"  {i}. {note['text'][:100]}")
-        return "\n".join(result)
+        
+        lines = ["📝 NOTAS:"]
+        for i, note in enumerate(notes[-5:][::-1], 1):
+            lines.append(f"  {i}. {note['text'][:60]}...")
+        return "\n".join(lines)
     
     def search_notes(self, query: str) -> str:
         if not query:
             return "¿Qué quieres buscar?"
+        
         notes = self._get_notes()
         results = [n for n in notes if query.lower() in n['text'].lower()]
         if not results:
             return f"No encontré notas con '{query}'"
-        result = [f"🔍 Resultados para '{query}':"]
+        
+        lines = [f"🔍 Resultados para '{query}':"]
         for i, note in enumerate(results[:5], 1):
-            result.append(f"  {i}. {note['text'][:80]}")
-        return "\n".join(result)
+            lines.append(f"  {i}. {note['text'][:60]}")
+        return "\n".join(lines)
     
     def create_reminder(self, text: str) -> str:
         if not text:
             return "¿Qué recordatorio quieres crear?"
-        # Extraer hora
+        
+        # Extraer hora simple
         import re
         time_match = re.search(r'a las\s*(\d{1,2}):?(\d{2})?', text)
         if time_match:
@@ -76,16 +81,17 @@ class DataManager:
             "created": datetime.now().isoformat()
         })
         self._save_reminders(reminders)
-        return f"✅ Recordatorio creado: '{text}' a las {time_str}"
+        return f"✅ Recordatorio: '{text}' a las {time_str}"
     
     def get_reminders(self) -> str:
         reminders = self._get_reminders()
         if not reminders:
             return "No tienes recordatorios"
-        result = ["⏰ RECORDATORIOS:"]
-        for i, r in enumerate(reminders[-10:][::-1], 1):
-            result.append(f"  {i}. {r['text']} - {r['time']}")
-        return "\n".join(result)
+        
+        lines = ["⏰ RECORDATORIOS:"]
+        for i, r in enumerate(reminders[-5:][::-1], 1):
+            lines.append(f"  {i}. {r['text']} - {r['time']}")
+        return "\n".join(lines)
     
     def get_reminders_today(self) -> str:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -93,10 +99,11 @@ class DataManager:
         today_reminders = [r for r in reminders if r['created'].startswith(today)]
         if not today_reminders:
             return "No tienes recordatorios para hoy"
-        result = ["⏰ RECORDATORIOS DE HOY:"]
+        
+        lines = ["⏰ RECORDATORIOS DE HOY:"]
         for i, r in enumerate(today_reminders, 1):
-            result.append(f"  {i}. {r['text']} - {r['time']}")
-        return "\n".join(result)
+            lines.append(f"  {i}. {r['text']} - {r['time']}")
+        return "\n".join(lines)
     
     def get_stats(self) -> str:
         try:
@@ -106,13 +113,13 @@ class DataManager:
             stats = {}
         
         if not stats:
-            return "No hay estadísticas disponibles"
+            return "No hay estadísticas"
         
-        result = ["📊 ESTADÍSTICAS:"]
-        result.append(f"  📝 Comandos: {stats.get('total_commands', 0)}")
-        result.append(f"  📌 Notas: {stats.get('notes_count', 0)}")
-        result.append(f"  ⏰ Recordatorios: {stats.get('reminders_count', 0)}")
-        return "\n".join(result)
+        lines = ["📊 ESTADÍSTICAS:"]
+        lines.append(f"  📝 Comandos: {stats.get('total_commands', 0)}")
+        lines.append(f"  📌 Notas: {stats.get('notes_count', 0)}")
+        lines.append(f"  ⏰ Recordatorios: {stats.get('reminders_count', 0)}")
+        return "\n".join(lines)
     
     def _get_notes(self) -> List[Dict]:
         try:
