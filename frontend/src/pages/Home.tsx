@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
 import { sendMessage, speakText } from '../services/api';
+import '../styles/Home.css';
 
 interface MessageType {
   id: string;
@@ -18,7 +19,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: '1',
-      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos" o "inicio" para navegar.\n🎤 Haz clic en el micrófono para hablar.',
+      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT',
       sender: 'saturday',
       timestamp: new Date(),
     },
@@ -26,9 +27,15 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [transcript, setTranscript] = useState('');
+  const [isSaturdaySpeaking, setIsSaturdaySpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -38,95 +45,175 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ===== RECONOCIMIENTO DE VOZ CON GOOGLE STT =====
-  const startListening = async () => {
-    // Verificar soporte del navegador para grabar audio
+  // ===== SOBRESCRIBIR speakText =====
+  const speakTextWithIndicator = async (text: string) => {
+    setIsSaturdaySpeaking(true);
+    try {
+      await speakText(text);
+    } finally {
+      setIsSaturdaySpeaking(false);
+    }
+  };
+
+  // ===== GRABACIÓN DE AUDIO =====
+  const startRecording = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('⚠️ Tu navegador no soporta grabación de audio.');
       return;
     }
 
     try {
-      // Obtener acceso al micrófono
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
           sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
-        } 
+          autoGainControl: true,
+        },
       });
-      
-      // Crear MediaRecorder con formato WEBM (compatible con el navegador)
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
       });
-      
-      const audioChunks: BlobPart[] = [];
+
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = mediaRecorder;
+      streamRef.current = stream;
+
+      let audioContext: AudioContext | null = null;
+      let analyser: AnalyserNode | null = null;
+      let silenceStartTime: number | null = null;
+      const SILENCE_THRESHOLD = 0.01;
+      const SILENCE_DURATION = 1500;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunks.push(event.data);
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstart = () => {
+        setIsRecording(true);
+        setIsProcessing(false);
+        setTranscript('🎤 Escuchando...');
+        silenceStartTime = null;
+
+        try {
+          audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(stream);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 512;
+          source.connect(analyser);
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          const checkSilence = () => {
+            if (!analyser || !mediaRecorder || mediaRecorder.state !== 'recording') return;
+
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            const normalized = average / 255;
+
+            if (normalized < SILENCE_THRESHOLD) {
+              if (silenceStartTime === null) {
+                silenceStartTime = Date.now();
+              } else if (Date.now() - silenceStartTime > SILENCE_DURATION) {
+                console.log('🔇 Silencio detectado, deteniendo grabación...');
+                if (mediaRecorder.state === 'recording') {
+                  mediaRecorder.stop();
+                }
+                return;
+              }
+            } else {
+              silenceStartTime = null;
+            }
+
+            requestAnimationFrame(checkSilence);
+          };
+
+          checkSilence();
+        } catch (error) {
+          console.warn('⚠️ No se pudo detectar silencio:', error);
+          setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+            }
+          }, 10000);
         }
       };
 
       mediaRecorder.onstop = async () => {
         setIsRecording(false);
-        
+        setIsProcessing(true);
+        setTranscript('🔍 Procesando...');
+
+        if (audioContext) {
+          try {
+            await audioContext.close();
+          } catch (e) {}
+        }
+
+        if (audioChunksRef.current.length === 0) {
+          setTranscript('');
+          setIsProcessing(false);
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+
+        if (audioBlob.size < 1000) {
+          setTranscript('⚠️ No detecté voz');
+          setTimeout(() => {
+            setTranscript('');
+            setIsProcessing(false);
+          }, 1500);
+          return;
+        }
+
         try {
-          // Crear blob de audio en formato WEBM
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          
-          // Mostrar estado
-          setInput('🔍 Reconociendo voz...');
-          
-          // Crear FormData y enviar al backend
           const formData = new FormData();
           formData.append('audio', audioBlob, 'recording.webm');
-          
+
           const response = await fetch('http://localhost:5000/api/stt', {
             method: 'POST',
             body: formData,
           });
-          
+
           const data = await response.json();
-          
-          // Detener el stream
-          stream.getTracks().forEach(track => track.stop());
-          
+
           if (data.success && data.text) {
-            setInput(data.text);
-            // Enviar automáticamente después de un breve delay
+            setTranscript(`"${data.text}"`);
             setTimeout(() => {
+              setTranscript('');
+              setIsProcessing(false);
               handleSend(data.text);
-            }, 300);
+            }, 500);
           } else {
-            setInput('');
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(),
-              text: '⚠️ No pude entender lo que dijiste. ¿Puedes repetirlo?',
-              sender: 'saturday',
-              timestamp: new Date(),
-            }]);
+            setTranscript('⚠️ No entendí');
+            setTimeout(() => {
+              setTranscript('');
+              setIsProcessing(false);
+            }, 1500);
           }
         } catch (error) {
           console.error('❌ Error procesando audio:', error);
-          setInput('');
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            text: '⚠️ Error procesando el audio. Intenta de nuevo.',
-            sender: 'saturday',
-            timestamp: new Date(),
-          }]);
+          setTranscript('⚠️ Error');
+          setIsProcessing(false);
+          setTimeout(() => setTranscript(''), 1500);
         }
       };
 
-      // Iniciar grabación
       mediaRecorder.start();
-      setIsRecording(true);
-      setInput('🎤 Escuchando...');
-      
+
       setRecognition({
         mediaRecorder,
         stream,
@@ -134,60 +221,56 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
-          stream.getTracks().forEach(track => track.stop());
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
           setIsRecording(false);
-          setInput('');
-        }
+          setIsProcessing(false);
+          setTranscript('');
+        },
       });
-
-      // Detener automáticamente después de 10 segundos
-      setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-        }
-      }, 10000);
-
     } catch (error) {
       console.error('❌ Error accediendo al micrófono:', error);
       alert('⚠️ No se pudo acceder al micrófono. Verifica los permisos.');
     }
   };
 
-  const stopListening = () => {
+  const stopRecording = () => {
     if (recognition && recognition.stop) {
       recognition.stop();
     }
     setIsRecording(false);
-    setInput('');
+    setIsProcessing(false);
+    setTranscript('');
   };
 
   const toggleRecording = () => {
     if (isRecording) {
-      stopListening();
+      stopRecording();
     } else {
-      startListening();
+      startRecording();
     }
   };
 
   // ===== DETECTAR NAVEGACIÓN =====
   const detectNavigation = (text: string): boolean => {
     const lower = text.toLowerCase().trim();
-    
+
     if (lower === 'dashboard' || lower === 'ver dashboard' || lower === 'ir a dashboard') {
       if (onNavigate) onNavigate('dashboard');
       return true;
     }
-    
+
     if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos' || lower === 'projects') {
       if (onNavigate) onNavigate('projects');
       return true;
     }
-    
+
     if (lower === 'inicio' || lower === 'home' || lower === 'atrás' || lower === 'volver') {
       if (onNavigate) onNavigate('home');
       return true;
     }
-    
+
     return false;
   };
 
@@ -203,12 +286,11 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    
+
     const userText = messageToSend.trim();
     setInput('');
     setIsLoading(true);
 
-    // Verificar si es un comando de navegación
     if (detectNavigation(userText)) {
       setIsLoading(false);
       return;
@@ -217,7 +299,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     try {
       const response = await sendMessage(userText);
       const responseText = response.response || 'ERROR: COMMAND NOT RECOGNIZED';
-      
+
       setMessages((prev) => [
         ...prev,
         {
@@ -227,12 +309,10 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           timestamp: new Date(),
         },
       ]);
-      
-      // 👇 REPRODUCIR VOZ DE GOOGLE CHARON
+
       if (responseText) {
-        await speakText(responseText);
+        await speakTextWithIndicator(responseText);
       }
-      
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -263,20 +343,43 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     { label: '🕐 Hora', cmd: 'hora' },
   ];
 
+  // ===== ESTADO DEL HOLOGRAMA =====
+  const getHologramState = () => {
+    if (isSaturdaySpeaking) return 'active';
+    if (isRecording) return 'recording';
+    if (isProcessing) return 'processing';
+    return 'idle';
+  };
+
+  const hologramState = getHologramState();
+
   return (
     <div className="page">
       <div className="ambient-bg">
         <div
           className="ambient-glow"
-          style={{ top: '20%', left: '20%', width: 400, height: 400, background: 'rgba(37,99,235,0.06)' }}
+          style={{
+            top: '20%',
+            left: '20%',
+            width: 400,
+            height: 400,
+            background: 'rgba(37,99,235,0.06)',
+          }}
         />
         <div
           className="ambient-glow"
-          style={{ bottom: '20%', right: '20%', width: 300, height: 300, background: 'rgba(6,182,212,0.06)', animationDelay: '1s' }}
+          style={{
+            bottom: '20%',
+            right: '20%',
+            width: 300,
+            height: 300,
+            background: 'rgba(6,182,212,0.06)',
+            animationDelay: '1s',
+          }}
         />
-        <div className="ambient-scan animate-scan" />
       </div>
 
+      {/* ===== HEADER ===== */}
       <header className="page-header">
         <div className="page-header__title">
           <div style={{ position: 'relative' }}>
@@ -286,7 +389,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 width: 40,
                 height: 40,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(6,182,212,0.2))',
+                background:
+                  'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(6,182,212,0.2))',
                 border: '1px solid rgba(96,165,250,0.3)',
                 display: 'flex',
                 alignItems: 'center',
@@ -309,87 +413,115 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             />
           </div>
           <div>
-            <h1 className="gradient-text">SATURDAY</h1>
+            <h1 className="gradient-text" style={{ fontSize: 24 }}>
+              SATURDAY
+            </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-              <span style={{ fontSize: 8, color: 'rgba(147,197,253,0.5)', letterSpacing: '0.1em' }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(147,197,253,0.5)',
+                  letterSpacing: '0.1em',
+                }}
+              >
                 AI ASSISTANT · v3.1
               </span>
-              <span className="status-pill__divider" style={{ width: 1, height: 12, background: 'rgba(37,99,235,0.2)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, color: 'rgba(34,211,238,0.6)' }}>
-                <span className="status-dot animate-pulse-soft" />
-                <span>ONLINE</span>
-              </div>
+              <span
+                className="status-pill__divider"
+                style={{ width: 1, height: 12, background: 'rgba(37,99,235,0.2)' }}
+              />
+              <span style={{ fontSize: 9, color: '#22d3ee' }}>● ONLINE</span>
             </div>
           </div>
         </div>
-        <div className="badge badge-blue">
-          <Zap size={12} color="#22d3ee" />
-          <span>12ms</span>
-        </div>
       </header>
 
-      <div className="chat-scroll">
-        <div className="chat-scroll__inner">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`chat-row ${msg.sender === 'user' ? 'user' : 'bot'} fade-in`}>
-              <div className={`chat-bubble-wrap ${msg.sender === 'user' ? 'user' : ''}`}>
-                {msg.sender === 'saturday' && (
-                  <div className="chat-prompt-line">
-                    <span>SATURDAY@CORE:~$</span>
-                    <span className="chat-caret animate-pulse-soft" />
-                  </div>
-                )}
-                <div className={`chat-bubble glass ${msg.sender === 'user' ? 'user' : 'bot'}`}>
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
-                  <div className="chat-time">
-                    {msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="typing-row">
-              <span className="typing-dot animate-bounce-dot" />
-              <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.15s' }} />
-              <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.3s' }} />
-              <span className="typing-label">PROCESSING...</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+      {/* ===== CONTENIDO PRINCIPAL ===== */}
+      <div className="main-content">
+        {/* ===== HOLOGRAMA ===== */}
+        <div
+          className={`hologram-container ${hologramState}`}
+          data-state={hologramState}
+        >
+          {/* Base del holograma (anillos) */}
+          <div className="hologram-base">
+            <div className="hologram-ring ring-1" />
+            <div className="hologram-ring ring-2" />
+            <div className="hologram-ring ring-3" />
+          </div>
+
+          {/* Línea de escaneo */}
+          <div className="hologram-scan">
+            <div className="scan-line" />
+          </div>
+
+          {/* Partículas */}
+          <div className="hologram-particles">
+            <div className="particle p1" />
+            <div className="particle p2" />
+            <div className="particle p3" />
+            <div className="particle p4" />
+            <div className="particle p5" />
+            <div className="particle p6" />
+            <div className="particle p7" />
+            <div className="particle p8" />
+          </div>
+
+          {/* Núcleo (botón) */}
+          <div className="hologram-core">
+            <button
+              onClick={toggleRecording}
+              className="hologram-button"
+              disabled={isLoading || isProcessing || isSaturdaySpeaking}
+            >
+              {isRecording ? (
+                <MicOff size={36} color="#ef4444" />
+              ) : isProcessing ? (
+                <span style={{ fontSize: 28, color: '#f59e0b' }}>⏳</span>
+              ) : (
+                <Mic size={36} color="#22d3ee" />
+              )}
+            </button>
+          </div>
+
+          {/* Texto holográfico */}
+          <div className="hologram-text">
+            {isSaturdaySpeaking && (
+              <span className="holo-text speaking">🔊 SATURDAY HABLANDO</span>
+            )}
+            {isRecording && <span className="holo-text listening">🎤 ESCUCHANDO...</span>}
+            {isProcessing && <span className="holo-text processing">⏳ PROCESANDO...</span>}
+            {!isRecording && !isProcessing && !isSaturdaySpeaking && (
+              <span className="holo-text idle">🎙️ TOCA PARA HABLAR</span>
+            )}
+          </div>
+
+          {/* Distorsión holográfica */}
+          <div className="hologram-distortion" />
         </div>
+
+        {/* ===== TRANSCRIPCIÓN ===== */}
+        {transcript && (
+          <div className="transcript-display">
+            <span className="transcript-text">{transcript}</span>
+          </div>
+        )}
       </div>
 
+      {/* ===== INPUT DE TEXTO ===== */}
       <div className="composer">
         <div className="composer__inner">
           <div className="composer__row">
-            {/* 👇 BOTÓN DE MICRÓFONO CON RECONOCIMIENTO DE VOZ */}
-            <button
-              onClick={toggleRecording}
-              className={`icon-btn glass ${isRecording ? 'recording' : ''}`}
-              title={isRecording ? 'Detener grabación' : 'Hablar con Saturday'}
-            >
-              {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-
-            <div className="composer__input-wrap">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isRecording ? '🎤 ESCUCHANDO...' : 'Escribe o habla...'}
-                className="composer__input"
-                disabled={isLoading}
-              />
-              {isRecording && (
-                <div className="recording-indicator">
-                  <span className="recording-dot animate-pulse-soft" />
-                  <span className="recording-text">Grabando...</span>
-                </div>
-              )}
-            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribe un mensaje..."
+              className="composer__input"
+              disabled={isLoading}
+            />
 
             <button
               onClick={() => handleSend()}
@@ -401,9 +533,9 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </div>
 
           <div className="suggestions">
-            {suggestions.map((item, i) => (
+            {suggestions.map((item) => (
               <button
-                key={i}
+                key={item.cmd}
                 onClick={() => {
                   setInput(item.cmd);
                   setTimeout(() => handleSend(), 100);
@@ -417,33 +549,51 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      <style>{`
-        .recording-indicator {
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(239, 68, 68, 0.1);
-          padding: 4px 12px;
-          border-radius: 9999px;
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          pointer-events: none;
-        }
-        .recording-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #ef4444;
-        }
-        .recording-text {
-          font-size: 8px;
-          color: #ef4444;
-          font-family: 'JetBrains Mono', monospace;
-        }
-      `}</style>
+      {/* ===== CHAT FLOTANTE ===== */}
+      <div className="chat-container">
+        <div className="chat-scroll">
+          <div className="chat-scroll__inner">
+            {messages.slice(-4).map((msg) => (
+              <div key={msg.id} className={`chat-row ${msg.sender === 'user' ? 'user' : 'bot'} fade-in`}>
+                <div className={`chat-bubble-wrap ${msg.sender === 'user' ? 'user' : ''}`}>
+                  {msg.sender === 'saturday' && (
+                    <div className="chat-prompt-line">
+                      <span>SATURDAY@CORE:~$</span>
+                      <span className="chat-caret animate-pulse-soft" />
+                    </div>
+                  )}
+                  <div className={`chat-bubble glass ${msg.sender === 'user' ? 'user' : 'bot'}`}>
+                    <div className="whitespace-pre-wrap" style={{ fontSize: 12 }}>
+                      {msg.text}
+                    </div>
+                    <div className="chat-time" style={{ fontSize: 8 }}>
+                      {msg.timestamp.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="typing-row">
+                <span className="typing-dot animate-bounce-dot" />
+                <span
+                  className="typing-dot animate-bounce-dot"
+                  style={{ animationDelay: '0.15s' }}
+                />
+                <span
+                  className="typing-dot animate-bounce-dot"
+                  style={{ animationDelay: '0.3s' }}
+                />
+                <span className="typing-label">PROCESSING...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

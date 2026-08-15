@@ -1,4 +1,4 @@
-# backend/app.py - API para Saturday
+# backend/app.py - API para Saturday COMPLETA
 import sys
 import os
 import base64
@@ -41,6 +41,9 @@ def status():
             'email': saturday.email is not None,
             'voice': saturday.voice is not None,
             'data': saturday.data is not None,
+            'telegram': saturday.telegram is not None,
+            'communication': saturday.communication is not None,
+            'scheduler': saturday.scheduler is not None,
         }
     })
 
@@ -75,15 +78,12 @@ def speak():
         return jsonify({'error': 'Texto vacío'}), 400
     
     try:
-        # Verificar que el voice manager esté disponible
         if not saturday.voice:
             return jsonify({'error': 'VoiceManager no disponible'}), 500
         
-        # Generar audio usando Google TTS
         audio_data = saturday.voice._synthesize_google_tts(text)
         
         if audio_data:
-            # Codificar en base64 para enviar al frontend
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
             return jsonify({
                 'audio': audio_base64,
@@ -94,6 +94,52 @@ def speak():
             
     except Exception as e:
         print(f"❌ Error en /api/speak: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/stt', methods=['POST'])
+def stt():
+    """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No se envió archivo de audio'}), 400
+        
+        audio_file = request.files['audio']
+        if audio_file.filename == '':
+            return jsonify({'error': 'Archivo vacío'}), 400
+        
+        import tempfile
+        import os
+        
+        filename = audio_file.filename.lower()
+        ext = os.path.splitext(filename)[1]
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+            tmp_path = tmp_file.name
+            audio_file.save(tmp_path)
+        
+        print(f"📁 Archivo guardado: {tmp_path} (ext: {ext})")
+        
+        if not saturday.voice:
+            return jsonify({'error': 'VoiceManager no disponible'}), 500
+        
+        text = saturday.voice.recognize_audio_file(tmp_path)
+        
+        try:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except:
+            pass
+        
+        if text:
+            return jsonify({'text': text, 'success': True})
+        else:
+            return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
+            
+    except Exception as e:
+        print(f"❌ Error en /api/stt: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -118,122 +164,113 @@ def get_notes():
     return jsonify({'response': result['response']})
 
 
+@app.route('/api/whatsapp', methods=['POST'])
+def send_whatsapp():
+    """Envía mensaje por WhatsApp"""
+    data = request.json
+    message = data.get('message', 'Hola desde Saturday')
+    
+    if not saturday.communication:
+        return jsonify({'error': 'CommunicationManager no disponible'}), 500
+    
+    result = saturday.communication.send_whatsapp_message(message)
+    
+    if result.get('success'):
+        return jsonify({'success': True, 'message': 'WhatsApp enviado'})
+    else:
+        return jsonify({'success': False, 'error': result.get('error')}), 500
+
+
+@app.route('/api/whatsapp/voice', methods=['POST'])
+def send_whatsapp_voice():
+    """Envía mensaje de voz por WhatsApp"""
+    data = request.json
+    message = data.get('message', 'Hola desde Saturday')
+    
+    if not saturday.communication:
+        return jsonify({'error': 'CommunicationManager no disponible'}), 500
+    
+    result = saturday.communication.send_whatsapp_voice(message)
+    
+    if result.get('success'):
+        return jsonify({'success': True, 'message': 'WhatsApp con voz enviado'})
+    else:
+        return jsonify({'success': False, 'error': result.get('error')}), 500
+
+
+@app.route('/api/summary', methods=['POST'])
+def send_summary():
+    """Envía el resumen del día por WhatsApp"""
+    if not saturday.daily_summary:
+        return jsonify({'error': 'DailySummary no disponible'}), 500
+    
+    result = saturday.daily_summary.send(via="whatsapp")
+    
+    if result.get('success'):
+        return jsonify({'success': True, 'message': 'Resumen enviado'})
+    else:
+        return jsonify({'success': False, 'error': result.get('error')}), 500
+
+
+@app.route('/api/scheduler/start', methods=['POST'])
+def start_scheduler():
+    """Inicia el scheduler"""
+    if not saturday.scheduler:
+        return jsonify({'error': 'Scheduler no disponible'}), 500
+    
+    saturday.scheduler.start()
+    return jsonify({'success': True, 'message': 'Scheduler iniciado'})
+
+
+@app.route('/api/scheduler/stop', methods=['POST'])
+def stop_scheduler():
+    """Detiene el scheduler"""
+    if not saturday.scheduler:
+        return jsonify({'error': 'Scheduler no disponible'}), 500
+    
+    saturday.scheduler.stop()
+    return jsonify({'success': True, 'message': 'Scheduler detenido'})
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check para despliegue"""
     return jsonify({'status': 'ok'})
 
-@app.route('/api/stt', methods=['POST'])
-def stt():
-    """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
-    try:
-        if 'audio' not in request.files:
-            return jsonify({'error': 'No se envió archivo de audio'}), 400
-        
-        audio_file = request.files['audio']
-        if audio_file.filename == '':
-            return jsonify({'error': 'Archivo vacío'}), 400
-        
-        import tempfile
-        import os
-        
-        # Guardar el archivo temporalmente con la extensión original
-        filename = audio_file.filename.lower()
-        ext = os.path.splitext(filename)[1]
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
-            tmp_path = tmp_file.name
-            audio_file.save(tmp_path)
-        
-        print(f"📁 Archivo guardado: {tmp_path} (ext: {ext})")
-        
-        # Verificar si es WEBM y forzar conversión
-        is_webm = ext == '.webm' or 'webm' in filename
-        
-        if is_webm:
-            print("🔄 Detectado formato WEBM, forzando conversión...")
-            # Usar VoiceManager que tiene pydub
-            if not saturday.voice:
-                return jsonify({'error': 'VoiceManager no disponible'}), 500
-            
-            text = saturday.voice.recognize_audio_file(tmp_path)
-        else:
-            # Para otros formatos, intentar directamente
-            if not saturday.voice:
-                return jsonify({'error': 'VoiceManager no disponible'}), 500
-            
-            text = saturday.voice.recognize_audio_file(tmp_path)
-        
-        # Limpiar archivo temporal
-        try:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
-        except:
-            pass
-        
-        if text:
-            return jsonify({'text': text, 'success': True})
-        else:
-            return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
-            
-    except Exception as e:
-        print(f"❌ Error en /api/stt: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/stt-base64', methods=['POST'])
-def stt_base64():
-    """
-    Reconoce voz desde audio en base64 usando Google Cloud STT
-    """
-    data = request.json
-    audio_base64 = data.get('audio', '')
-    
-    if not audio_base64:
-        return jsonify({'error': 'No se envió audio'}), 400
-    
-    try:
-        # Decodificar base64
-        audio_data = base64.b64decode(audio_base64)
-        
-        # Guardar temporalmente
-        import tempfile
-        import os
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_path = tmp_file.name
-            tmp_file.write(audio_data)
-        
-        # Reconocer con Google STT
-        if not saturday.voice:
-            return jsonify({'error': 'VoiceManager no disponible'}), 500
-        
-        text = saturday.voice.recognize_audio_file(tmp_path)
-        
-        # Limpiar archivo temporal
-        try:
-            os.unlink(tmp_path)
-        except:
-            pass
-        
-        if text:
-            return jsonify({
-                'text': text,
-                'success': True
-            })
-        else:
-            return jsonify({
-                'error': 'No se pudo reconocer el audio',
-                'success': False
-            }), 400
-            
-    except Exception as e:
-        print(f"❌ Error en /api/stt-base64: {e}")
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
-    print(f"🚀 Servidor API iniciado en http://localhost:{port}")
-    print("   Presiona Ctrl+C para detener")
+    
+    # Iniciar scheduler automáticamente
+    if saturday.scheduler:
+        saturday.scheduler.start()
+        hour = int(os.getenv('SUMMARY_HOUR', 20))
+        minute = int(os.getenv('SUMMARY_MINUTE', 0))
+        saturday.scheduler.schedule_daily_summary(hour, minute)
+        print(f"📋 Resumen diario programado para las {hour:02d}:{minute:02d}")
+    
+    print("\n" + "=" * 50)
+    print("🚀 SATURDAY API INICIADA")
+    print("=" * 50)
+    print(f"📡 Puerto: {port}")
+    print(f"📱 WhatsApp: {'✅ Activado' if saturday.communication and saturday.communication.whatsapp_enabled else '❌ Inactivo'}")
+    print(f"⏰ Scheduler: {'✅ Activo' if saturday.scheduler else '❌ Inactivo'}")
+    print(f"📋 Resumen diario: {'✅ Programado' if saturday.scheduler else '❌ No programado'}")
+    print("=" * 50)
+    print("\n📋 Endpoints disponibles:")
+    print("  GET  /api/status      - Estado del sistema")
+    print("  POST /api/chat        - Enviar mensaje")
+    print("  POST /api/speak       - Generar voz")
+    print("  POST /api/stt         - Reconocer voz")
+    print("  POST /api/whatsapp    - Enviar WhatsApp")
+    print("  POST /api/whatsapp/voice - Enviar voz WhatsApp")
+    print("  POST /api/summary     - Enviar resumen diario")
+    print("  POST /api/scheduler/start - Iniciar scheduler")
+    print("  POST /api/scheduler/stop  - Detener scheduler")
+    print("  GET  /api/tasks       - Tareas de Notion")
+    print("  GET  /api/events      - Eventos del calendario")
+    print("  GET  /api/notes       - Notas guardadas")
+    print("  GET  /api/health      - Health check")
+    print("=" * 50)
+    
     app.run(host='0.0.0.0', port=port, debug=True)
