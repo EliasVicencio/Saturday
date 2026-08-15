@@ -6,6 +6,9 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 import io
+import threading
+import time
+from datetime import datetime
 
 # Cargar variables de entorno
 load_dotenv()
@@ -19,7 +22,48 @@ from modules.core import SaturdayCore
 app = Flask(__name__)
 CORS(app)
 
-# Inicializar Saturday (una sola vez)
+# ===== FUNCIÓN DE SALUDO CON VOZ =====
+def welcome_with_voice(core):
+    """Saluda con voz al iniciar el sistema"""
+    try:
+        # Esperar 2 segundos para que todo cargue
+        time.sleep(2)
+        
+        if core.voice:
+            hora = datetime.now().hour
+            if hora < 12:
+                saludo = "Buenos días"
+            elif hora < 19:
+                saludo = "Buenas tardes"
+            else:
+                saludo = "Buenas noches"
+            
+            # Intentar obtener el clima para el saludo
+            clima_info = ""
+            try:
+                import requests
+                api_key = os.getenv("WEATHER_API_KEY")
+                city = os.getenv("SATURDAY_CITY", "Santiago")
+                if api_key:
+                    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200:
+                        data = response.json()
+                        temp = data['main']['temp']
+                        desc = data['weather'][0]['description']
+                        clima_info = f" Hoy en {city} hace {temp}°C con {desc}."
+            except:
+                pass
+            
+            mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
+            core.voice.speak(mensaje)
+            print(f"🗣️ Saturday saluda: {mensaje}")
+        else:
+            print("⚠️ VoiceManager no disponible para el saludo")
+    except Exception as e:
+        print(f"⚠️ Error en saludo de voz: {e}")
+
+# ===== INICIALIZAR SATURDAY =====
 print("=" * 50)
 print("🟣 SATURDAY - Backend API")
 print("=" * 50)
@@ -28,6 +72,11 @@ saturday = SaturdayCore()
 print("✅ Saturday Core inicializado correctamente")
 print("=" * 50)
 
+# ===== INICIAR SALUDO EN HILO SEPARADO =====
+saludo_thread = threading.Thread(target=welcome_with_voice, args=(saturday,), daemon=True)
+saludo_thread.start()
+
+# ===== ENDPOINTS =====
 
 @app.route('/api/status', methods=['GET'])
 def status():
@@ -44,6 +93,8 @@ def status():
             'telegram': saturday.telegram is not None,
             'communication': saturday.communication is not None,
             'scheduler': saturday.scheduler is not None,
+            'spotify': saturday.spotify is not None,
+            'news': saturday.news is not None,
         }
     })
 

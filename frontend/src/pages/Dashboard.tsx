@@ -1,40 +1,22 @@
 // frontend/src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
-import {
-  Cpu, HardDrive, Circle, Database,
-  Calendar, ListTodo, Mail,
-  LayoutDashboard, Radio,
-  Server, Shield, Gauge, ArrowLeft,
-} from 'lucide-react';
+import { Cpu, HardDrive, Circle, Database, Calendar, ListTodo, Mail, LayoutDashboard, Radio, Server, Shield, Gauge } from 'lucide-react';
 import { getStatus } from '../services/api';
+import '../styles/Dashboard.css';
 
 interface DashboardProps {
-  onNavigate?: (view: 'home' | 'dashboard' | 'projects') => void;
+  onNavigate?: (view: 'home' | 'dashboard' | 'projects' | 'news') => void;
 }
 
-const colorMap: Record<string, string> = {
-  cyan: '#22d3ee',
-  blue: '#60a5fa',
-  green: '#4ade80',
-};
-const bgMap: Record<string, string> = {
-  cyan: 'rgba(6,182,212,0.08)',
-  blue: 'rgba(37,99,235,0.08)',
-  green: 'rgba(34,197,94,0.08)',
-};
-const borderMap: Record<string, string> = {
-  cyan: 'rgba(34,211,238,0.2)',
-  blue: 'rgba(96,165,250,0.2)',
-  green: 'rgba(74,222,128,0.2)',
-};
+const colorMap: Record<string, string> = { cyan: '#22d3ee', blue: '#60a5fa', green: '#4ade80' };
+const bgMap: Record<string, string> = { cyan: 'rgba(6,182,212,0.08)', blue: 'rgba(37,99,235,0.08)', green: 'rgba(34,197,94,0.08)' };
+const borderMap: Record<string, string> = { cyan: 'rgba(34,211,238,0.2)', blue: 'rgba(96,165,250,0.2)', green: 'rgba(74,222,128,0.2)' };
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = () => {
   const [status, setStatus] = useState<{ status: string; modules: Record<string, boolean> } | null>(null);
-
   useEffect(() => {
     getStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
-
   const modules = status?.modules || { notion: false, calendar: false, email: false, voice: false, data: false };
 
   const metrics = [
@@ -73,12 +55,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     <div className="page">
       <header className="page-header">
         <div className="page-header__title">
-          <button
-            onClick={() => onNavigate && onNavigate('home')}
-            className="back-btn"
-          >
-            <ArrowLeft size={16} />
-          </button>
           <LayoutDashboard size={18} color="#22d3ee" />
           <h1 className="gradient-text">DASHBOARD</h1>
           <span className="page-header__sub">PANEL DE CONTROL</span>
@@ -88,53 +64,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <span>SYSTEM READY</span>
         </div>
       </header>
-
       <div className="page-body">
         <div className="page-body__inner dash-stack">
           <div className="metrics-grid">
             {metrics.map((item, i) => {
               const Icon = item.icon;
               return (
-                <div
-                  key={i}
-                  className="glass metric-card"
-                  style={{ background: bgMap[item.c], borderColor: borderMap[item.c] }}
-                >
-                  <div className="metric-card__top">
-                    <Icon size={15} color={colorMap[item.c]} />
-                    <span className="metric-card__label">{item.label}</span>
-                  </div>
-                  <div className="metric-card__value" style={{ color: colorMap[item.c] }}>
-                    {item.value}
-                  </div>
+                <div key={i} className="glass metric-card" style={{ background: bgMap[item.c], borderColor: borderMap[item.c] }}>
+                  <div className="metric-card__top"><Icon size={15} color={colorMap[item.c]} /><span className="metric-card__label">{item.label}</span></div>
+                  <div className="metric-card__value" style={{ color: colorMap[item.c] }}>{item.value}</div>
                 </div>
               );
             })}
           </div>
-
           <div className="dash-columns">
             <div className="glass panel">
               <div className="panel__title">MÓDULOS</div>
-              <div>
-                {moduleList.map((mod) => {
-                  const Icon = mod.icon;
-                  return (
-                    <div key={mod.key} className="module-row">
-                      <div className="module-row__left">
-                        <Icon size={15} color={mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)'} />
-                        <span style={{ color: mod.active ? 'rgba(191,219,254,0.7)' : 'rgba(96,165,250,0.2)' }}>
-                          {mod.name}
-                        </span>
-                      </div>
-                      <span className="module-row__status" style={{ color: mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)' }}>
-                        {mod.active ? 'ACTIVO' : 'INACTIVO'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              {moduleList.map((mod) => {
+                const Icon = mod.icon;
+                return (
+                  <div key={mod.key} className="module-row">
+                    <div className="module-row__left"><Icon size={15} color={mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)'} /><span style={{ color: mod.active ? 'rgba(191,219,254,0.7)' : 'rgba(96,165,250,0.2)' }}>{mod.name}</span></div>
+                    <span className="module-row__status" style={{ color: mod.active ? '#22d3ee' : 'rgba(96,165,250,0.2)' }}>{mod.active ? 'ACTIVO' : 'INACTIVO'}</span>
+                  </div>
+                );
+              })}
             </div>
-
             <div className="glass panel">
               <div className="panel__title">COMANDOS</div>
               <div className="commands-grid">
@@ -147,7 +102,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
             </div>
           </div>
-
           <div className="glass status-strip">
             <div className="status-strip__left">
               <span style={{ color: '#22d3ee' }}>● ONLINE</span>

@@ -1,0 +1,239 @@
+/* frontend/src/styles/Projects.css */
+
+/* ===== PROJECTS GRID ===== */
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ===== PROJECT CARD ===== */
+.project-card {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.project-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.project-card__id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(6, 182, 212, 0.2));
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-card__name {
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(191, 219, 254, 0.8);
+}
+
+.project-card__desc {
+  font-size: 8px;
+  color: rgba(96, 165, 250, 0.4);
+}
+
+.project-card__actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.project-card:hover .project-card__actions {
+  opacity: 1;
+}
+
+.project-card__actions button {
+  padding: 4px;
+  border-radius: 6px;
+  color: rgba(96, 165, 250, 0.3);
+  transition: color 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.project-card__actions button:hover {
+  color: #22d3ee;
+}
+
+.project-card__actions button.danger:hover {
+  color: #f87171;
+}
+
+.project-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(96, 165, 250, 0.05);
+}
+
+.project-card__footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 7px;
+  color: rgba(96, 165, 250, 0.2);
+}
+
+.project-card__footer-left .sep {
+  color: rgba(96, 165, 250, 0.05);
+}
+
+.project-card__footer-left .item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-card__id-tag {
+  font-size: 7px;
+  color: rgba(96, 165, 250, 0.1);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ===== PROGRESS ===== */
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: rgba(96, 165, 250, 0.3);
+  margin: 8px 0 4px;
+}
+
+.progress-row .pct {
+  color: #22d3ee;
+}
+
+.progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(96, 165, 250, 0.1);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  transition: width 0.5s ease;
+}
+
+/* ===== TASK LIST ===== */
+.task-list {
+  margin-top: 8px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(96, 165, 250, 0.5);
+}
+
+.task-row:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.task-row.done {
+  color: rgba(96, 165, 250, 0.2);
+  text-decoration: line-through;
+}
+
+/* ===== NEW PROJECT FORM ===== */
+.new-project-form {
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.new-project-form__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.new-project-form__head span {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #22d3ee;
+}
+
+.new-project-form__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.text-input {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(191, 219, 254, 0.8);
+  outline: none;
+}
+
+.text-input:focus {
+  border-color: rgba(6, 182, 212, 0.5);
+}
+
+.text-input::placeholder {
+  color: rgba(96, 165, 250, 0.25);
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.empty-state p {
+  color: rgba(96, 165, 250, 0.2);
+  font-size: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 16px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .project-card__name {
+    font-size: 12px;
+  }
+  .task-row {
+    font-size: 8px;
+  }
+}

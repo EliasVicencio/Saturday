@@ -1,0 +1,123 @@
+/* frontend/src/styles/App.css */
+.app-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #0a0e1a;
+}
+
+/* ===== NAVEGACIÓN LATERAL ===== */
+.nav-side {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px;
+  background: rgba(10, 14, 26, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(34, 211, 238, 0.06);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.nav-side-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  color: rgba(148, 163, 184, 0.25);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'JetBrains Mono', monospace;
+  position: relative;
+  min-width: 48px;
+}
+
+.nav-side-btn:hover {
+  color: rgba(191, 219, 254, 0.5);
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.nav-side-btn.active {
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.nav-side-btn.active::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, #22d3ee, transparent);
+  border-radius: 4px;
+}
+
+.nav-side-label {
+  font-size: 6px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.nav-side-btn.active .nav-side-label {
+  opacity: 1;
+  color: #22d3ee;
+}
+
+.nav-side-btn svg {
+  flex-shrink: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .nav-side {
+    right: 12px;
+    padding: 8px 6px;
+    gap: 4px;
+    border-radius: 12px;
+  }
+  .nav-side-btn {
+    padding: 6px 8px;
+    min-width: 36px;
+  }
+  .nav-side-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .nav-side-label {
+    font-size: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-side {
+    right: 8px;
+    padding: 6px 4px;
+    gap: 2px;
+    border-radius: 10px;
+  }
+  .nav-side-btn {
+    padding: 4px 6px;
+    min-width: 30px;
+  }
+  .nav-side-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .nav-side-label {
+    font-size: 4px;
+  }
+}

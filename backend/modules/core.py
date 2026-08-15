@@ -74,6 +74,13 @@ except ImportError:
     SPOTIFY_AVAILABLE = False
     print("⚠️ SpotifyManager no disponible")
     
+try:
+    from modules.news_manager import NewsManager
+    NEWS_AVAILABLE = True
+except ImportError:
+    NEWS_AVAILABLE = False
+    print("⚠️ NewsManager no disponible")
+    
 class SaturdayCore:
     """Núcleo de inteligencia de Saturday"""
     
@@ -175,10 +182,19 @@ class SaturdayCore:
                 print("✅ SpotifyManager inicializado")
             except Exception as e:
                 print(f"⚠️ Error inicializando SpotifyManager: {e}")
+                
+        self.news = None
+        if NEWS_AVAILABLE:
+            try:
+                self.news = NewsManager()
+                print("✅ NewsManager inicializado")
+            except Exception as e:
+                print(f"⚠️ Error inicializando NewsManager: {e}")
         
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
+        self.say_welcome()
         
         print("✅ Núcleo inicializado correctamente")
     
@@ -240,6 +256,11 @@ class SaturdayCore:
             "siguiente_cancion": self.next_track,
             "anterior_cancion": self.previous_track,
             "cancion_actual": self.current_track,
+            
+            # Noticias
+            "noticias": self.get_news,
+            "buscar_noticias": self.search_news,
+            "noticias_resumen": self.get_news_summary,
         }
         
         for name, func in actions.items():
@@ -371,6 +392,16 @@ class SaturdayCore:
             # ============================================================
             ("estadisticas", "estadisticas"),
             
+            # =============================================================
+            # NOTICIAS
+            # =============================================================
+            ("noticias", "noticias"),
+            ("noticias de", "noticias"),
+            ("noticias del día", "noticias"),
+            ("buscar noticias", "buscar_noticias"),
+            ("buscar noticia", "buscar_noticias"),
+            ("noticias resumen", "noticias_resumen"),
+            ("resumen noticias", "noticias_resumen"),
             # ============================================================
             # OTROS
             # ============================================================
@@ -481,6 +512,12 @@ class SaturdayCore:
   • hora - Hora actual
   • fecha - Fecha actual
   • clima - Clima
+  
+📰 NOTICIAS:
+  • noticias - Noticias principales
+  • noticias de [categoría] - Filtrar por categoría
+  • buscar noticias [tema] - Buscar por tema
+  • noticias resumen - Enviar resumen por WhatsApp
 
 💬 OTROS:
   • hola - Saludo
@@ -740,3 +777,85 @@ class SaturdayCore:
         if not self.spotify:
             return "❌ Spotify no disponible"
         return self.spotify.get_current_track()
+    
+    def get_news(self, text: str = None, **kwargs) -> str:
+        """Obtiene noticias principales"""
+        if not self.news or not self.news.is_available():
+            return "❌ Noticias no disponible. Verifica NEWS_API_KEY."
+        
+        # Detectar categoría
+        category = None
+        if text:
+            categories = ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology']
+            for cat in categories:
+                if cat in text.lower():
+                    category = cat
+                    break
+        
+        articles = self.news.get_top_headlines(category=category, limit=7)
+        return self.news.format_news(articles)
+
+    def search_news(self, text: str = None, **kwargs) -> str:
+        """Busca noticias por tema"""
+        if not self.news or not self.news.is_available():
+            return "❌ Noticias no disponible. Verifica NEWS_API_KEY."
+        
+        if not text:
+            text = kwargs.get("text", "")
+        
+        # Limpiar el comando
+        for word in ["buscar noticias", "buscar noticia", "noticias de", "noticias sobre", "buscar"]:
+            if text:
+                text = text.replace(word, "").strip()
+        
+        if not text:
+            return "¿Qué tema quieres buscar? Dime: 'buscar noticias [tema]'"
+        
+        articles = self.news.search_news(text, limit=5)
+        return self.news.format_news(articles)
+
+    def get_news_summary(self, **kwargs) -> str:
+        """Envía un resumen de noticias por WhatsApp"""
+        if not self.news or not self.news.is_available():
+            return "❌ Noticias no disponible. Verifica NEWS_API_KEY."
+        
+        articles = self.news.get_top_headlines(limit=5)
+        
+        if not self.communication or not self.communication.whatsapp_enabled:
+            return self.news.format_news(articles)
+        
+        # Enviar por WhatsApp
+        message = self.news.format_news_for_whatsapp(articles)
+        result = self.communication.send_whatsapp_message(message)
+        
+        if result.get('success'):
+            return "📰 Resumen de noticias enviado por WhatsApp"
+        else:
+            return self.news.format_news(articles)
+        
+    def say_welcome(self):
+        """Saluda con voz al iniciar el sistema"""
+        try:
+            import time
+            # Esperar 1 segundo para que todo esté listo
+            time.sleep(1)
+            
+            hora = datetime.now().hour
+            if hora < 12:
+                saludo = "Buenos días"
+            elif hora < 19:
+                saludo = "Buenas tardes"
+            else:
+                saludo = "Buenas noches"
+            
+            mensaje = f"{saludo}! Soy Saturday, tu asistente personal. Estoy listo para ayudarte."
+            
+            # Hablar con Google TTS
+            if self.voice:
+                self.voice.speak(mensaje)
+                print(f"🗣️ Saturday: {mensaje}")
+            else:
+                print(f"📝 Saturday: {mensaje}")
+                
+        except Exception as e:
+            print(f"⚠️ Error en saludo de voz: {e}")

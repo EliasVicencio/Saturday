@@ -74,15 +74,17 @@ class VoiceManager:
         if not text:
             return False
         
-        print(f"🗣️ Speaking: {text[:50]}...")
+        print(f"🗣️ Saturday: {text}")
         
-        # Google TTS
+        # Intentar con Google TTS
         if self.use_google:
             try:
                 audio_data = self._synthesize_google_tts(text)
                 if audio_data:
                     self._play_audio(audio_data)
                     return True
+                else:
+                    print("⚠️ Google TTS no generó audio, usando fallback local")
             except Exception as e:
                 print(f"⚠️ Error en Google TTS: {e}")
         
@@ -96,6 +98,7 @@ class VoiceManager:
                 print(f"❌ Error en TTS local: {e}")
                 return False
         
+        # Último recurso: solo imprimir
         print(f"📝 Saturday (texto): {text}")
         return False
     

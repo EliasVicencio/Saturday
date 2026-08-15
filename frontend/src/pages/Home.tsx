@@ -12,14 +12,21 @@ interface MessageType {
 }
 
 interface HomeProps {
-  onNavigate?: (view: 'home' | 'dashboard' | 'projects') => void;
+  onNavigate?: (view: 'home' | 'dashboard' | 'projects' | 'news') => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
 }
 
 const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: '1',
-      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT',
+      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos", "noticias" o "inicio" para navegar.\n🎤 Haz clic en el micrófono y habla (se detendrá automáticamente).',
       sender: 'saturday',
       timestamp: new Date(),
     },
@@ -27,8 +34,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isSaturdaySpeaking, setIsSaturdaySpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,7 +52,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ===== SOBRESCRIBIR speakText =====
   const speakTextWithIndicator = async (text: string) => {
     setIsSaturdaySpeaking(true);
     try {
@@ -55,7 +61,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     }
   };
 
-  // ===== GRABACIÓN DE AUDIO =====
   const startRecording = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('⚠️ Tu navegador no soporta grabación de audio.');
@@ -110,7 +115,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
           const checkSilence = () => {
             if (!analyser || !mediaRecorder || mediaRecorder.state !== 'recording') return;
-
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) {
@@ -132,10 +136,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             } else {
               silenceStartTime = null;
             }
-
             requestAnimationFrame(checkSilence);
           };
-
           checkSilence();
         } catch (error) {
           console.warn('⚠️ No se pudo detectar silencio:', error);
@@ -182,12 +184,10 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         try {
           const formData = new FormData();
           formData.append('audio', audioBlob, 'recording.webm');
-
           const response = await fetch('http://localhost:5000/api/stt', {
             method: 'POST',
             body: formData,
           });
-
           const data = await response.json();
 
           if (data.success && data.text) {
@@ -213,7 +213,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       };
 
       mediaRecorder.start();
-
       setRecognition({
         mediaRecorder,
         stream,
@@ -252,29 +251,27 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     }
   };
 
-  // ===== DETECTAR NAVEGACIÓN =====
   const detectNavigation = (text: string): boolean => {
     const lower = text.toLowerCase().trim();
-
     if (lower === 'dashboard' || lower === 'ver dashboard' || lower === 'ir a dashboard') {
       if (onNavigate) onNavigate('dashboard');
       return true;
     }
-
     if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos' || lower === 'projects') {
       if (onNavigate) onNavigate('projects');
       return true;
     }
-
+    if (lower === 'noticias' || lower === 'ver noticias' || lower === 'ir a noticias' || lower === 'news') {
+      if (onNavigate) onNavigate('news');
+      return true;
+    }
     if (lower === 'inicio' || lower === 'home' || lower === 'atrás' || lower === 'volver') {
       if (onNavigate) onNavigate('home');
       return true;
     }
-
     return false;
   };
 
-  // ===== ENVIAR MENSAJE =====
   const handleSend = async (text?: string) => {
     const messageToSend = text || input;
     if (!messageToSend.trim() || isLoading) return;
@@ -299,7 +296,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     try {
       const response = await sendMessage(userText);
       const responseText = response.response || 'ERROR: COMMAND NOT RECOGNIZED';
-
       setMessages((prev) => [
         ...prev,
         {
@@ -309,7 +305,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           timestamp: new Date(),
         },
       ]);
-
       if (responseText) {
         await speakTextWithIndicator(responseText);
       }
@@ -338,12 +333,12 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const suggestions = [
     { label: '📊 Dashboard', cmd: 'dashboard' },
     { label: '📁 Proyectos', cmd: 'proyectos' },
+    { label: '📰 Noticias', cmd: 'noticias' },
     { label: '📋 Tareas', cmd: 'tareas' },
     { label: '🌤️ Clima', cmd: 'clima' },
     { label: '🕐 Hora', cmd: 'hora' },
   ];
 
-  // ===== ESTADO DEL HOLOGRAMA =====
   const getHologramState = () => {
     if (isSaturdaySpeaking) return 'active';
     if (isRecording) return 'recording';
@@ -356,151 +351,56 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   return (
     <div className="page">
       <div className="ambient-bg">
-        <div
-          className="ambient-glow"
-          style={{
-            top: '20%',
-            left: '20%',
-            width: 400,
-            height: 400,
-            background: 'rgba(37,99,235,0.06)',
-          }}
-        />
-        <div
-          className="ambient-glow"
-          style={{
-            bottom: '20%',
-            right: '20%',
-            width: 300,
-            height: 300,
-            background: 'rgba(6,182,212,0.06)',
-            animationDelay: '1s',
-          }}
-        />
+        <div className="ambient-glow" style={{ top: '20%', left: '20%', width: 400, height: 400, background: 'rgba(37,99,235,0.06)' }} />
+        <div className="ambient-glow" style={{ bottom: '20%', right: '20%', width: 300, height: 300, background: 'rgba(6,182,212,0.06)', animationDelay: '1s' }} />
       </div>
 
-      {/* ===== HEADER ===== */}
       <header className="page-header">
         <div className="page-header__title">
           <div style={{ position: 'relative' }}>
-            <div
-              className="animate-pulse-ring"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background:
-                  'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(6,182,212,0.2))',
-                border: '1px solid rgba(96,165,250,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
+            <div className="animate-pulse-ring" style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(6,182,212,0.2))', border: '1px solid rgba(96,165,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={18} color="#22d3ee" />
             </div>
-            <span
-              className="animate-pulse-soft"
-              style={{
-                position: 'absolute',
-                bottom: -1,
-                right: -1,
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#22d3ee',
-              }}
-            />
+            <span className="animate-pulse-soft" style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#22d3ee' }} />
           </div>
           <div>
-            <h1 className="gradient-text" style={{ fontSize: 24 }}>
-              SATURDAY
-            </h1>
+            <h1 className="gradient-text" style={{ fontSize: 24 }}>SATURDAY</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: 'rgba(147,197,253,0.5)',
-                  letterSpacing: '0.1em',
-                }}
-              >
-                AI ASSISTANT · v3.1
-              </span>
-              <span
-                className="status-pill__divider"
-                style={{ width: 1, height: 12, background: 'rgba(37,99,235,0.2)' }}
-              />
+              <span style={{ fontSize: 10, color: 'rgba(147,197,253,0.5)', letterSpacing: '0.1em' }}>AI ASSISTANT · v3.1</span>
+              <span className="status-pill__divider" style={{ width: 1, height: 12, background: 'rgba(37,99,235,0.2)' }} />
               <span style={{ fontSize: 9, color: '#22d3ee' }}>● ONLINE</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* ===== CONTENIDO PRINCIPAL ===== */}
       <div className="main-content">
-        {/* ===== HOLOGRAMA ===== */}
-        <div
-          className={`hologram-container ${hologramState}`}
-          data-state={hologramState}
-        >
-          {/* Base del holograma (anillos) */}
+        <div className={`hologram-container ${hologramState}`} data-state={hologramState}>
           <div className="hologram-base">
             <div className="hologram-ring ring-1" />
             <div className="hologram-ring ring-2" />
             <div className="hologram-ring ring-3" />
           </div>
-
-          {/* Línea de escaneo */}
-          <div className="hologram-scan">
-            <div className="scan-line" />
-          </div>
-
-          {/* Partículas */}
+          <div className="hologram-scan"><div className="scan-line" /></div>
           <div className="hologram-particles">
-            <div className="particle p1" />
-            <div className="particle p2" />
-            <div className="particle p3" />
-            <div className="particle p4" />
-            <div className="particle p5" />
-            <div className="particle p6" />
-            <div className="particle p7" />
-            <div className="particle p8" />
+            <div className="particle p1" /><div className="particle p2" />
+            <div className="particle p3" /><div className="particle p4" />
+            <div className="particle p5" /><div className="particle p6" />
+            <div className="particle p7" /><div className="particle p8" />
           </div>
-
-          {/* Núcleo (botón) */}
           <div className="hologram-core">
-            <button
-              onClick={toggleRecording}
-              className="hologram-button"
-              disabled={isLoading || isProcessing || isSaturdaySpeaking}
-            >
-              {isRecording ? (
-                <MicOff size={36} color="#ef4444" />
-              ) : isProcessing ? (
-                <span style={{ fontSize: 28, color: '#f59e0b' }}>⏳</span>
-              ) : (
-                <Mic size={36} color="#22d3ee" />
-              )}
+            <button onClick={toggleRecording} className="hologram-button" disabled={isLoading || isProcessing || isSaturdaySpeaking}>
+              {isRecording ? <MicOff size={36} color="#ef4444" /> : isProcessing ? <span style={{ fontSize: 28, color: '#f59e0b' }}>⏳</span> : <Mic size={36} color="#22d3ee" />}
             </button>
           </div>
-
-          {/* Texto holográfico */}
           <div className="hologram-text">
-            {isSaturdaySpeaking && (
-              <span className="holo-text speaking">🔊 SATURDAY HABLANDO</span>
-            )}
+            {isSaturdaySpeaking && <span className="holo-text speaking">🔊 SATURDAY HABLANDO</span>}
             {isRecording && <span className="holo-text listening">🎤 ESCUCHANDO...</span>}
             {isProcessing && <span className="holo-text processing">⏳ PROCESANDO...</span>}
-            {!isRecording && !isProcessing && !isSaturdaySpeaking && (
-              <span className="holo-text idle">🎙️ TOCA PARA HABLAR</span>
-            )}
+            {!isRecording && !isProcessing && !isSaturdaySpeaking && <span className="holo-text idle">🎙️ TOCA PARA HABLAR</span>}
           </div>
-
-          {/* Distorsión holográfica */}
           <div className="hologram-distortion" />
         </div>
-
-        {/* ===== TRANSCRIPCIÓN ===== */}
         {transcript && (
           <div className="transcript-display">
             <span className="transcript-text">{transcript}</span>
@@ -508,48 +408,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* ===== INPUT DE TEXTO ===== */}
       <div className="composer">
         <div className="composer__inner">
           <div className="composer__row">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Escribe un mensaje..."
-              className="composer__input"
-              disabled={isLoading}
-            />
-
-            <button
-              onClick={() => handleSend()}
-              disabled={isLoading || !input.trim()}
-              className="icon-btn gradient-btn"
-            >
-              <Send size={18} />
-            </button>
+            <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Escribe un mensaje..." className="composer__input" disabled={isLoading} />
+            <button onClick={() => handleSend()} disabled={isLoading || !input.trim()} className="icon-btn gradient-btn"><Send size={18} /></button>
           </div>
-
           <div className="suggestions">
             {suggestions.map((item) => (
-              <button
-                key={item.cmd}
-                onClick={() => {
-                  setInput(item.cmd);
-                  setTimeout(() => handleSend(), 100);
-                }}
-                className="suggestion-chip"
-              >
-                {item.label}
-              </button>
+              <button key={item.cmd} onClick={() => { setInput(item.cmd); setTimeout(() => handleSend(), 100); }} className="suggestion-chip">{item.label}</button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ===== CHAT FLOTANTE ===== */}
       <div className="chat-container">
         <div className="chat-scroll">
           <div className="chat-scroll__inner">
@@ -563,14 +435,9 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                     </div>
                   )}
                   <div className={`chat-bubble glass ${msg.sender === 'user' ? 'user' : 'bot'}`}>
-                    <div className="whitespace-pre-wrap" style={{ fontSize: 12 }}>
-                      {msg.text}
-                    </div>
+                    <div className="whitespace-pre-wrap" style={{ fontSize: 12 }}>{msg.text}</div>
                     <div className="chat-time" style={{ fontSize: 8 }}>
-                      {msg.timestamp.toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
@@ -579,14 +446,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             {isLoading && (
               <div className="typing-row">
                 <span className="typing-dot animate-bounce-dot" />
-                <span
-                  className="typing-dot animate-bounce-dot"
-                  style={{ animationDelay: '0.15s' }}
-                />
-                <span
-                  className="typing-dot animate-bounce-dot"
-                  style={{ animationDelay: '0.3s' }}
-                />
+                <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.15s' }} />
+                <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.3s' }} />
                 <span className="typing-label">PROCESSING...</span>
               </div>
             )}

@@ -1,0 +1,149 @@
+/* frontend/src/styles/Dashboard.css */
+
+/* ===== METRICS GRID ===== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.metric-card__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-card__label {
+  font-size: 8px;
+  color: rgba(148, 163, 184, 0.4);
+}
+
+.metric-card__value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 4px;
+}
+
+/* ===== DASHBOARD COLUMNS ===== */
+.dash-columns {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.panel__title {
+  font-size: 10px;
+  color: rgba(34, 211, 238, 0.4);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+/* ===== MODULE ROW ===== */
+.module-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(96, 165, 250, 0.1);
+  margin-bottom: 4px;
+}
+
+.module-row__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.module-row__status {
+  font-size: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ===== COMMANDS GRID ===== */
+.commands-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.command-card {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(96, 165, 250, 0.05);
+}
+
+.command-card__cmd {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(34, 211, 238, 0.6);
+}
+
+.command-card__desc {
+  font-size: 8px;
+  color: rgba(96, 165, 250, 0.3);
+}
+
+/* ===== STATUS STRIP ===== */
+.status-strip {
+  padding: 12px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-strip__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.status-strip__left .sep {
+  color: rgba(96, 165, 250, 0.1);
+}
+
+.status-strip__right {
+  font-size: 7px;
+  color: rgba(96, 165, 250, 0.15);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dash-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .commands-grid {
+    grid-template-columns: 1fr;
+  }
+}
