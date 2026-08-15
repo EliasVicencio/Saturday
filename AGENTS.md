@@ -50,3 +50,6 @@ Este proyecto es un sistema de IA que integra múltiples servicios y APIs. El ob
 1.  Estabilidad y robustez del sistema.
 2.  Claridad y mantenibilidad del código.
 3.  Eficiencia en el uso de recursos (especialmente llamadas a API externas).
+
+## Regla de respuesta
+- El agente debe dar una sola respuesta por pregunta, sin repeticiones ni análisis extensos. Si la pregunta es específica, la respuesta debe ser específica y directa.
