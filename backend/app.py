@@ -22,46 +22,47 @@ from modules.core import SaturdayCore
 app = Flask(__name__)
 CORS(app)
 
-# ===== FUNCIÓN DE SALUDO CON VOZ =====
-def welcome_with_voice(core):
-    """Saluda con voz al iniciar el sistema"""
+# ===== SALUDO DE BIENVENIDA =====
+# Guardamos el mensaje aquí; el FRONTEND lo pide vía /api/greeting y lo
+# reproduce en el navegador (a través de /api/speak), igual que cualquier
+# otra respuesta. Antes esto se reproducía en el propio servidor con
+# subprocess/mpg123 y dejaba un .mp3 temporal en el disco del backend,
+# lo cual no tiene relación con el navegador del usuario.
+_greeting_message = {"text": None, "ready": False}
+
+def build_welcome_message(core):
+    """Arma el texto de saludo (clima incluido) sin reproducir audio en el servidor."""
     try:
-        # Esperar 2 segundos para que todo cargue
-        time.sleep(2)
-        
-        if core.voice:
-            hora = datetime.now().hour
-            if hora < 12:
-                saludo = "Buenos días"
-            elif hora < 19:
-                saludo = "Buenas tardes"
-            else:
-                saludo = "Buenas noches"
-            
-            # Intentar obtener el clima para el saludo
-            clima_info = ""
-            try:
-                import requests
-                api_key = os.getenv("WEATHER_API_KEY")
-                city = os.getenv("SATURDAY_CITY", "Santiago")
-                if api_key:
-                    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
-                    response = requests.get(url, timeout=5)
-                    if response.status_code == 200:
-                        data = response.json()
-                        temp = data['main']['temp']
-                        desc = data['weather'][0]['description']
-                        clima_info = f" Hoy en {city} hace {temp}°C con {desc}."
-            except:
-                pass
-            
-            mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
-            core.voice.speak(mensaje)
-            print(f"🗣️ Saturday saluda: {mensaje}")
+        hora = datetime.now().hour
+        if hora < 12:
+            saludo = "Buenos días"
+        elif hora < 19:
+            saludo = "Buenas tardes"
         else:
-            print("⚠️ VoiceManager no disponible para el saludo")
+            saludo = "Buenas noches"
+
+        clima_info = ""
+        try:
+            import requests
+            api_key = os.getenv("WEATHER_API_KEY")
+            city = os.getenv("SATURDAY_CITY", "Santiago")
+            if api_key:
+                url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    temp = data['main']['temp']
+                    desc = data['weather'][0]['description']
+                    clima_info = f" Hoy en {city} hace {temp}°C con {desc}."
+        except:
+            pass
+
+        mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
+        _greeting_message["text"] = mensaje
+        _greeting_message["ready"] = True
+        print(f"🗣️ Saludo listo para el frontend: {mensaje}")
     except Exception as e:
-        print(f"⚠️ Error en saludo de voz: {e}")
+        print(f"⚠️ Error preparando saludo: {e}")
 
 # ===== INICIALIZAR SATURDAY =====
 print("=" * 50)
@@ -72,9 +73,20 @@ saturday = SaturdayCore()
 print("✅ Saturday Core inicializado correctamente")
 print("=" * 50)
 
-# ===== INICIAR SALUDO EN HILO SEPARADO =====
-saludo_thread = threading.Thread(target=welcome_with_voice, args=(saturday,), daemon=True)
+# ===== PREPARAR SALUDO (sin tocar el audio del servidor) =====
+saludo_thread = threading.Thread(target=build_welcome_message, args=(saturday,), daemon=True)
 saludo_thread.start()
+
+
+@app.route('/api/greeting', methods=['GET'])
+def greeting():
+    """Devuelve el texto de saludo para que el FRONTEND lo pida y lo hable
+    en el navegador del usuario (usando /api/speak), en vez de sonar en el
+    servidor."""
+    return jsonify({
+        'ready': _greeting_message['ready'],
+        'text': _greeting_message['text'],
+    })
 
 # ===== ENDPOINTS =====
 
@@ -310,6 +322,7 @@ if __name__ == '__main__':
     print("=" * 50)
     print("\n📋 Endpoints disponibles:")
     print("  GET  /api/status      - Estado del sistema")
+    print("  GET  /api/greeting    - Texto de saludo (lo habla el frontend)")
     print("  POST /api/chat        - Enviar mensaje")
     print("  POST /api/speak       - Generar voz")
     print("  POST /api/stt         - Reconocer voz")

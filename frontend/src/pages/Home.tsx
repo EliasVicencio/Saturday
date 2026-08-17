@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
-import { sendMessage, speakText } from '../services/api';
+import { sendMessage, speakText, getGreeting, API_BASE_URL } from '../services/api';
 import '../styles/Home.css';
 
 interface MessageType {
@@ -44,6 +44,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const greetedRef = useRef(false);
+
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -51,6 +53,39 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Saludo de bienvenida: se pide al backend (que ya NO lo reproduce
+  // localmente en el servidor) y se habla acá, en el navegador del
+  // usuario, igual que cualquier otra respuesta de Saturday.
+  useEffect(() => {
+    if (greetedRef.current) return;
+    greetedRef.current = true;
+
+    let cancelled = false;
+    const tryGreet = async (attempt = 0) => {
+      if (cancelled) return;
+      try {
+        const { ready, text } = await getGreeting();
+        if (ready && text) {
+          await speakTextWithIndicator(text);
+          return;
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo obtener el saludo:', e);
+      }
+      // El saludo se arma en un hilo aparte al iniciar el backend,
+      // así que puede no estar listo de inmediato: reintenta un poco.
+      if (attempt < 5 && !cancelled) {
+        setTimeout(() => tryGreet(attempt + 1), 1000);
+      }
+    };
+    tryGreet();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const speakTextWithIndicator = async (text: string) => {
     setIsSaturdaySpeaking(true);
@@ -78,9 +113,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         },
       });
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
+      // Elegimos el mejor formato que el navegador realmente soporte.
+      // Antes se forzaba 'audio/webm;codecs=opus' sin verificar soporte:
+      // en navegadores que no lo soportan (ej. Safari/iOS) esto lanza un
+      // error inmediato y el botón de micrófono "no hace nada".
+      const preferredMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+      ];
+      const supportedMimeType = preferredMimeTypes.find(
+        (type) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)
+      );
+
+      const mediaRecorder = supportedMimeType
+        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+        : new MediaRecorder(stream); // último recurso: dejar que el navegador decida
 
       audioChunksRef.current = [];
       mediaRecorderRef.current = mediaRecorder;
@@ -166,7 +215,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           return;
         }
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
 
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
@@ -182,9 +232,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         }
 
         try {
+          // La extensión debe coincidir con el formato real grabado, porque
+          // el backend elige la config de Google STT según la extensión.
+          const extension = actualMimeType.includes('ogg')
+            ? 'ogg'
+            : actualMimeType.includes('mp4')
+            ? 'mp4'
+            : 'webm';
+
           const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
-          const response = await fetch('http://localhost:5000/api/stt', {
+          formData.append('audio', audioBlob, `recording.${extension}`);
+          // Usamos la misma URL configurable que el resto de la app
+          // (VITE_API_URL) en vez de un 'localhost:5000' hardcodeado, que
+          // fallaba si la app se abría desde otro host/IP (ej. celular).
+          const response = await fetch(`${API_BASE_URL}/stt`, {
             method: 'POST',
             body: formData,
           });

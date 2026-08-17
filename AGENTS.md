@@ -53,3 +53,7 @@ Este proyecto es un sistema de IA que integra múltiples servicios y APIs. El ob
 
 ## Regla de respuesta
 - El agente debe dar una sola respuesta por pregunta, sin repeticiones ni análisis extensos. Si la pregunta es específica, la respuesta debe ser específica y directa.
+
+# Instrucciones globales para el agente
+- **Idioma**: Siempre debes responder en español, independientemente del idioma en que se te pregunte.
+- **Tono**: Responde de forma clara, directa y útil.

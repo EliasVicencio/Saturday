@@ -3,6 +3,12 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Exportado para que cualquier parte de la app (ej. la grabación con
+// fetch/FormData en Home.tsx) use siempre la misma URL configurable,
+// en vez de hardcodear 'localhost' (lo cual rompe si abres la app desde
+// otro host/IP, por ejemplo desde el celular en la misma red).
+export const API_BASE_URL = API_URL;
+
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,
@@ -46,6 +52,20 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
 
 export const getStatus = async (): Promise<StatusResponse> => {
   const response = await api.get('/status');
+  return response.data;
+};
+
+export interface GreetingResponse {
+  ready: boolean;
+  text: string | null;
+}
+
+// Pide el texto de saludo al backend. El backend ya NO reproduce audio
+// localmente (antes usaba subprocess/mpg123 y generaba un .mp3 temporal
+// en el servidor); ahora el navegador es quien lo pide y lo reproduce
+// con speakText, igual que cualquier otra respuesta de Saturday.
+export const getGreeting = async (): Promise<GreetingResponse> => {
+  const response = await api.get<GreetingResponse>('/greeting');
   return response.data;
 };
 

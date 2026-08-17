@@ -22,6 +22,70 @@ except ImportError:
     PYDUB_AVAILABLE = False
     print("⚠️ pydub no disponible (instalar: pip install pydub)")
 
+
+def _configure_ffmpeg_path():
+    """
+    Busca ffmpeg/ffprobe y se los indica a pydub explícitamente, sin
+    depender de que el PATH del proceso de Python (que puede venir
+    'cacheado' de una terminal vieja, VS Code, un launcher, etc.) esté
+    actualizado. Si no encuentra nada, no hace nada (pydub seguirá
+    intentando 'ffmpeg' a secas, como antes).
+    """
+    if not PYDUB_AVAILABLE:
+        return
+
+    import shutil
+
+    # 1. Permitir que el usuario fije la ruta manualmente en el .env
+    #    si por algún motivo la auto-detección no funciona.
+    manual_dir = os.getenv("FFMPEG_DIR")
+
+    candidates_dirs = []
+    if manual_dir:
+        candidates_dirs.append(manual_dir)
+
+    # 2. Rutas típicas donde queda instalado ffmpeg en Windows/Linux/Mac
+    #    cuando se sigue la guía de instalación manual (zip descomprimido).
+    candidates_dirs += [
+        r"C:\ffmpeg\bin",
+        r"C:\Program Files\ffmpeg\bin",
+        r"C:\Program Files (x86)\ffmpeg\bin",
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+    ]
+
+    ffmpeg_path = shutil.which("ffmpeg")
+    ffprobe_path = shutil.which("ffprobe")
+
+    if not ffmpeg_path or not ffprobe_path:
+        for d in candidates_dirs:
+            exe = ".exe" if platform.system() == "Windows" else ""
+            candidate_ffmpeg = os.path.join(d, f"ffmpeg{exe}")
+            candidate_ffprobe = os.path.join(d, f"ffprobe{exe}")
+            if not ffmpeg_path and os.path.isfile(candidate_ffmpeg):
+                ffmpeg_path = candidate_ffmpeg
+            if not ffprobe_path and os.path.isfile(candidate_ffprobe):
+                ffprobe_path = candidate_ffprobe
+            if ffmpeg_path and ffprobe_path:
+                break
+
+    if ffmpeg_path:
+        AudioSegment.converter = ffmpeg_path
+        print(f"🎬 ffmpeg encontrado en: {ffmpeg_path}")
+    else:
+        print("⚠️ No se encontró ffmpeg (ni en PATH ni en rutas típicas). "
+              "Si ya lo instalaste, poné la carpeta 'bin' en la variable "
+              "FFMPEG_DIR del .env, ej: FFMPEG_DIR=C:\\ffmpeg\\bin")
+
+    if ffprobe_path:
+        AudioSegment.ffprobe = ffprobe_path
+        print(f"🔎 ffprobe encontrado en: {ffprobe_path}")
+    else:
+        print("⚠️ No se encontró ffprobe (ni en PATH ni en rutas típicas).")
+
+
+_configure_ffmpeg_path()
+
 class VoiceManager:
     """Gestor de voz para Saturday (TTS + STT)"""
     
@@ -210,107 +274,211 @@ class VoiceManager:
             print(f"⚠️ Error convirtiendo audio: {e}")
             return None
 
+    def _build_stt_config(self, audio_path: str, converted_to_wav: bool, use_enhanced: bool = False) -> dict:
+        """Arma el bloque 'config' de Google STT según el formato real del archivo."""
+        ext = os.path.splitext(audio_path)[1].lower()
+
+        base_config = {
+            "languageCode": self.language_code,
+            "enableAutomaticPunctuation": True,
+            # "command_and_search" está pensado para frases cortas de comando
+            # (justo lo que dice un asistente de voz), a diferencia de
+            # "latest_long" que es para audio largo tipo discurso/video.
+            "model": "command_and_search",
+            "audioChannelCount": 1,
+            # Vocabulario esperado del asistente: ayuda a Google a inclinarse
+            # hacia estas palabras cuando hay ambigüedad.
+            "speechContexts": [{
+                "phrases": [
+                    "dashboard", "proyectos", "noticias", "inicio", "tareas",
+                    "clima", "hora", "Saturday", "recordatorio", "calendario",
+                    "correo", "Notion", "Spotify",
+                ],
+                "boost": 15,
+            }],
+        }
+
+        # useEnhanced pide un modelo "enhanced" que puede no estar habilitado
+        # en el proyecto de Google Cloud; si no está disponible, Google no
+        # tira error, simplemente devuelve resultados vacíos. Lo dejamos
+        # apagado por defecto y solo se prueba explícitamente si se pide.
+        if use_enhanced:
+            base_config["useEnhanced"] = True
+
+        if converted_to_wav or ext == ".wav":
+            # Ya viene como WAV 16kHz/16-bit mono (convertido por pydub)
+            base_config["encoding"] = "LINEAR16"
+            base_config["sampleRateHertz"] = 16000
+        elif ext == ".webm":
+            # Audio del navegador (MediaRecorder) sin convertir: Opus dentro de WebM.
+            # No hace falta ffmpeg/pydub para esto, Google lo soporta nativo.
+            # La cabecera del propio archivo WebM ya indica 48000Hz.
+            base_config["encoding"] = "WEBM_OPUS"
+            base_config["sampleRateHertz"] = 48000
+        elif ext in (".ogg", ".oga"):
+            base_config["encoding"] = "OGG_OPUS"
+            base_config["sampleRateHertz"] = 48000
+        elif ext == ".flac":
+            base_config["encoding"] = "FLAC"
+        else:
+            # Formato desconocido: dejar que Google intente detectar por cabecera
+            base_config["encoding"] = "ENCODING_UNSPECIFIED"
+
+        return base_config
+
     def recognize_audio_file(self, audio_path: str) -> Optional[str]:
         """
-        Reconoce voz desde un archivo de audio
-        Soporta: WAV, WEBM, MP3, OGG, etc.
+        Reconoce voz desde un archivo de audio.
+        Soporta WEBM/OGG (Opus, nativo del navegador) sin necesitar ffmpeg,
+        y WAV/FLAC directamente. Solo convierte con pydub como último recurso
+        para formatos que Google no soporta de forma nativa.
         """
         if not self.api_key:
             print("⚠️ No hay API key de Google")
             return None
-        
+
         wav_path = None
-        
+        audio_path_to_use = audio_path
+        converted_to_wav = False
+
+        ext = os.path.splitext(audio_path)[1].lower()
+        NATIVE_FORMATS = (".webm", ".ogg", ".oga", ".wav", ".flac")
+
         try:
-            # 1. SIEMPRE intentar convertir a WAV con pydub
-            if PYDUB_AVAILABLE:
+            # 1. Solo convertir si el formato no es soportado nativamente por Google STT
+            if ext not in NATIVE_FORMATS and PYDUB_AVAILABLE:
                 try:
-                    print(f"🔄 Convirtiendo {audio_path} a WAV...")
-                    
-                    # Cargar audio (auto-detectar formato)
+                    print(f"🔄 Formato '{ext}' no nativo, convirtiendo a WAV con pydub...")
                     audio = AudioSegment.from_file(audio_path)
-                    
-                    # Convertir a WAV (16kHz, mono, 16-bit)
                     audio = audio.set_frame_rate(16000)
                     audio = audio.set_channels(1)
                     audio = audio.set_sample_width(2)
-                    
-                    # Guardar como WAV temporal
+
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
                         wav_path = tmp_wav.name
                         audio.export(wav_path, format="wav")
                         print(f"✅ Convertido a WAV: {wav_path}")
-                    
+
                     audio_path_to_use = wav_path
-                    
+                    converted_to_wav = True
                 except Exception as e:
-                    print(f"⚠️ Error en conversión: {e}")
-                    print("   Intentando con el archivo original...")
+                    print(f"⚠️ Error en conversión (¿falta ffmpeg?): {e}")
+                    print("   Se intentará mandar el archivo original tal cual.")
                     audio_path_to_use = audio_path
-            else:
-                print("⚠️ pydub no disponible, usando archivo original")
-                audio_path_to_use = audio_path
-            
+
             # 2. Leer el archivo de audio
             with open(audio_path_to_use, "rb") as f:
                 audio_data = f.read()
-            
+
             # 3. Codificar en base64
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-            
-            # 4. Enviar a Google STT
+
+            # DEBUG: tamaño real del audio que se manda. Un archivo webm
+            # de una frase hablada normal suele pesar varias decenas de KB;
+            # si esto da muy pocos bytes (ej. <3-5 KB), es señal de que el
+            # clip capturado es casi vacío aunque al reproducirlo "suene"
+            # a algo (Opus comprime muchísimo el silencio/ruido de fondo).
+            print(f"📏 Tamaño del audio: {len(audio_data)} bytes ({len(audio_data)/1024:.1f} KB), "
+                  f"base64: {len(audio_base64)} chars")
+
+            # 4. Enviar a Google STT con la config correcta para el formato real.
+            # Ya confirmamos que el sample rate (48000 para WEBM_OPUS del
+            # navegador) NO es el problema: con la tasa correcta Google
+            # respondía 200 OK pero sin resultados. Ahora probamos variantes
+            # de MODELO en vez de sample rate.
             url = "https://speech.googleapis.com/v1/speech:recognize"
             headers = {
                 "X-Goog-Api-Key": self.api_key,
                 "Content-Type": "application/json"
             }
-            
-            # Configuración para WAV (LINEAR16)
-            payload = {
-                "config": {
-                    "encoding": "LINEAR16",
-                    "sampleRateHertz": 16000,
-                    "languageCode": self.language_code,
-                    "enableAutomaticPunctuation": True,
-                    "model": "latest_long",
-                    "useEnhanced": True,
-                    "audioChannelCount": 1
-                },
-                "audio": {
-                    "content": audio_base64
-                }
-            }
-            
-            print(f"📤 Enviando a Google STT...")
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            
-            # 5. Si falla por sample rate, intentar sin especificar
-            if response.status_code == 400 and "sample_rate_hertz" in response.text:
-                print("🔄 Intentando sin sampleRateHertz...")
-                del payload["config"]["sampleRateHertz"]
+
+            # Variantes a probar en orden: primero el modelo pensado para
+            # comandos cortos (lo normal para un asistente de voz), después
+            # sin modelo específico (deja que Google elija el default), y
+            # por último con el modelo "enhanced" por si el proyecto sí lo
+            # tiene habilitado.
+            attempts = [
+                {"model": "command_and_search", "use_enhanced": False},
+                {"model": None, "use_enhanced": False},
+                {"model": "latest_long", "use_enhanced": True},
+            ]
+
+            last_response = None
+            for attempt in attempts:
+                config = self._build_stt_config(
+                    audio_path_to_use, converted_to_wav,
+                    use_enhanced=attempt["use_enhanced"],
+                )
+                if attempt["model"] is None:
+                    config.pop("model", None)
+                else:
+                    config["model"] = attempt["model"]
+
+                payload = {"config": config, "audio": {"content": audio_base64}}
+                print(f"📤 Enviando a Google STT (model={attempt['model']}, useEnhanced={attempt['use_enhanced']})...")
                 response = requests.post(url, headers=headers, json=payload, timeout=30)
-            
-            if response.status_code != 200:
-                print(f"⚠️ Error en Google STT: {response.status_code}")
-                print(f"   {response.text[:300]}")
-                return None
-            
-            # 6. Procesar respuesta
-            data = response.json()
-            
-            if "results" in data and data["results"]:
-                transcript = data["results"][0].get("alternatives", [{}])[0].get("transcript", "")
-                print(f"📝 Texto reconocido: '{transcript}'")
-                return transcript.strip()
-            
-            print("⚠️ No se reconoció texto")
+                last_response = response
+
+                if response.status_code != 200:
+                    print(f"⚠️ Error en Google STT: {response.status_code}")
+                    print(f"   {response.text[:300]}")
+                    continue
+
+                data = response.json()
+                if "results" in data and data["results"]:
+                    transcript = data["results"][0].get("alternatives", [{}])[0].get("transcript", "")
+                    print(f"✅ Reconocido con model={attempt['model']}: '{transcript}'")
+                    return transcript.strip()
+
+                print(f"   ⚠️ 200 OK pero sin resultados con model={attempt['model']}, probando otra variante...")
+
+            # Último recurso: convertir a WAV con pydub/ffmpeg si no lo
+            # habíamos hecho ya (requiere ffmpeg Y ffprobe instalados).
+            if not converted_to_wav and PYDUB_AVAILABLE:
+                try:
+                    print("🔄 Ninguna variante funcionó con Opus, probando conversión a WAV como último recurso...")
+                    audio = AudioSegment.from_file(audio_path)
+                    audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
+                        wav_path = tmp_wav.name
+                        audio.export(wav_path, format="wav")
+
+                    with open(wav_path, "rb") as f:
+                        wav_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+                    payload = {
+                        "config": {
+                            "encoding": "LINEAR16",
+                            "sampleRateHertz": 16000,
+                            "languageCode": self.language_code,
+                            "enableAutomaticPunctuation": True,
+                            "model": "command_and_search",
+                            "audioChannelCount": 1,
+                        },
+                        "audio": {"content": wav_base64},
+                    }
+                    response = requests.post(url, headers=headers, json=payload, timeout=30)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if "results" in data and data["results"]:
+                            transcript = data["results"][0].get("alternatives", [{}])[0].get("transcript", "")
+                            print(f"✅ Reconocido tras convertir a WAV: '{transcript}'")
+                            return transcript.strip()
+                    last_response = response
+                except Exception as e:
+                    print(f"⚠️ Falló también la conversión a WAV: {e}")
+
+            if last_response is not None and last_response.status_code != 200:
+                print(f"⚠️ Error final en Google STT: {last_response.status_code}")
+                print(f"   {last_response.text[:300]}")
+            else:
+                print("⚠️ No se reconoció texto en ninguna variante probada (Google no detectó habla)")
             return None
-            
+
         except Exception as e:
             print(f"⚠️ Error en Google STT: {e}")
             return None
         finally:
-            # Limpiar archivos temporales
             try:
                 if wav_path and os.path.exists(wav_path):
                     os.unlink(wav_path)
