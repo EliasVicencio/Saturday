@@ -11,23 +11,30 @@ import {
   Download,
   Send,
   Mic,
-  Keyboard,
   MapPin,
+  LayoutDashboard,
+  Folder,
+  Newspaper,
+  ListTodo,
+  CloudSun,
+  Timer,
 } from "lucide-react";
-import "./JarvisInterface.css";
+import "../styles/Home.css";
 
 interface Message {
   id: string;
-  sender: "jarvis" | "user";
+  sender: "saturday" | "user";
   text: string;
   time: string;
 }
 
+type NavKey = "dashboard" | "proyectos" | "noticias" | "tareas" | "clima" | "hora";
+
 const formatTime = (d: Date) =>
-  d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+  d.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", second: "2-digit" });
 
 const formatDate = (d: Date) =>
-  d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
 
 const formatUptime = (seconds: number) => {
   const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
@@ -36,18 +43,28 @@ const formatUptime = (seconds: number) => {
   return `${h}:${m}:${s}`;
 };
 
-export default function JarvisInterface() {
+const navItems: { key: NavKey; label: string; icon: typeof LayoutDashboard }[] = [
+  { key: "dashboard", label: "DASHBOARD", icon: LayoutDashboard },
+  { key: "proyectos", label: "PROYECTOS", icon: Folder },
+  { key: "noticias", label: "NOTICIAS", icon: Newspaper },
+  { key: "tareas", label: "TAREAS", icon: ListTodo },
+  { key: "clima", label: "CLIMA", icon: CloudSun },
+  { key: "hora", label: "HORA", icon: Timer },
+];
+
+export default function Home() {
   const [now, setNow] = useState(new Date());
-  const [uptime, setUptime] = useState(7 * 60 + 19); // seconds
+  const [uptime, setUptime] = useState(7 * 60 + 19);
   const [cameraOn, setCameraOn] = useState(false);
   const [listening, setListening] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [commandCount, setCommandCount] = useState(0);
+  const [activeNav, setActiveNav] = useState<NavKey>("hora");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      sender: "jarvis",
-      text: "Hello, I am JARVIS. JARVIS backend is offline. Some features may be limited. How can I assist you today sir?",
+      sender: "saturday",
+      text: "Hola, soy SATURDAY. El backend está offline. Algunas funciones pueden estar limitadas. ¿En qué te ayudo, jefe?",
       time: "2:45 PM",
     },
   ]);
@@ -66,13 +83,7 @@ export default function JarvisInterface() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const systemStats = {
-    cpu: 8,
-    ram: 44,
-    ramGb: "7 GB",
-    disk: "439/475 GB",
-  };
-
+  const systemStats = { cpu: 8, ram: 44, ramGb: "7 GB", disk: "439/475 GB" };
   const weather = {
     temp: "25.2°C",
     location: "Quezon City, PH",
@@ -81,17 +92,12 @@ export default function JarvisInterface() {
     wind: "5.8 m/s",
     feelsLike: "26.3°C",
   };
-
   const systemLoad = 26;
 
-  const sendMessage = () => {
-    if (!inputValue.trim()) return;
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: inputValue.trim(),
-      time: formatTime(new Date()),
-    };
+  const sendMessage = (text?: string) => {
+    const value = (text ?? inputValue).trim();
+    if (!value) return;
+    const userMsg: Message = { id: Date.now().toString(), sender: "user", text: value, time: formatTime(new Date()) };
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
     setCommandCount((c) => c + 1);
@@ -101,8 +107,8 @@ export default function JarvisInterface() {
         ...prev,
         {
           id: (Date.now() + 1).toString(),
-          sender: "jarvis",
-          text: "Backend connection unavailable — running in limited offline mode, sir.",
+          sender: "saturday",
+          text: `SATURDAY AI v3.1 — Holograma Saturno · comando "${value}" recibido.`,
           time: formatTime(new Date()),
         },
       ]);
@@ -112,38 +118,39 @@ export default function JarvisInterface() {
   const clearConversation = () => setMessages([]);
 
   const extractConversation = () => {
-    const text = messages.map((m) => `[${m.time}] ${m.sender === "jarvis" ? "JARVIS" : "You"}: ${m.text}`).join("\n");
+    const text = messages.map((m) => `[${m.time}] ${m.sender === "saturday" ? "SATURDAY" : "You"}: ${m.text}`).join("\n");
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "jarvis-conversation.txt";
+    a.download = "saturday-conversation.txt";
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="jarvis">
-      <div className="jarvis__bg-grid" />
+    <div className="sd">
+      <div className="sd__bg-grid" />
 
       {/* ===== TOP BAR ===== */}
-      <header className="jarvis-topbar">
-        <div className="jarvis-topbar__brand">
-          <span className="jarvis-logo">J.A.R.V.I.S</span>
+      <header className="sd-topbar">
+        <div className="sd-topbar__brand">
+          <div className="sd-logo-badge">S</div>
+          <span className="sd-logo">SATURDAY</span>
           <span className="pill pill--online">
             <span className="dot dot--green" />
             Online
           </span>
         </div>
 
-        <div className="jarvis-topbar__center pill">
+        <div className="sd-topbar__center pill">
           <Clock size={14} />
           <span>{formatTime(now)}</span>
           <span className="topbar-sep">|</span>
           <span>{formatDate(now)}</span>
         </div>
 
-        <div className="jarvis-topbar__right">
+        <div className="sd-topbar__right">
           <span className="pill">
             <MapPin size={13} />
             {weather.temp} <span className="muted">Quezon City</span>
@@ -155,9 +162,9 @@ export default function JarvisInterface() {
       </header>
 
       {/* ===== MAIN GRID ===== */}
-      <div className="jarvis-main">
+      <div className="sd-main">
         {/* ===== LEFT SIDEBAR ===== */}
-        <aside className="jarvis-sidebar">
+        <aside className="sd-sidebar">
           <section className="panel">
             <div className="panel__head">
               <div className="panel__title">
@@ -315,51 +322,59 @@ export default function JarvisInterface() {
           </section>
         </aside>
 
-        {/* ===== CENTER ORB ===== */}
-        <main className="jarvis-center">
-          <div className="orb-wrap">
-            <div className="orb-ring orb-ring--outer" />
-            <div className="orb-ring orb-ring--mid" />
-            <div className="orb-core">
-              <div className="orb-core__dots">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
+        {/* ===== CENTER: SATURN ORB + NAV + COMPOSER ===== */}
+        <main className="sd-center">
+          <div className="saturn-wrap">
+            <div className="saturn-glow" />
+            <div className="saturn-orb" />
+            <div className="saturn-ring" />
           </div>
-
-          <h1 className="orb-title">J.A.R.V.I.S</h1>
 
           <button className="listening-pill" onClick={() => setListening((v) => !v)}>
-            <span className={`dot ${listening ? "dot--green" : "dot--gray"}`} />
-            {listening ? "Listening for wake word..." : "Wake word paused"}
+            <Mic size={13} />
+            {listening ? "SATURDAY HABLANDO" : "SATURDAY EN ESPERA"}
           </button>
 
-          <div className="center-controls">
-            <button className="round-btn">
-              <CameraIcon size={18} />
-            </button>
-            <button className={`round-btn round-btn--mic ${listening ? "round-btn--mic-active" : ""}`}>
-              <Mic size={20} />
-            </button>
-            <button className="round-btn">
-              <Keyboard size={18} />
+          <nav className="sd-nav">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeNav === item.key;
+              return (
+                <button
+                  key={item.key}
+                  className={`sd-nav__item ${active ? "active" : ""}`}
+                  onClick={() => setActiveNav(item.key)}
+                >
+                  <Icon size={14} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="composer">
+            <input
+              type="text"
+              placeholder="Escribe un mensaje o comando..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            />
+            <button className="composer__send" onClick={() => sendMessage()} disabled={!inputValue.trim()}>
+              <Send size={14} />
+              Enviar
             </button>
           </div>
 
-          <div className="carousel-dots">
-            <span className="carousel-dot carousel-dot--active" />
-            <span className="carousel-dot" />
-            <span className="carousel-dot" />
-            <span className="carousel-dot" />
+          <div className="last-msg-preview">
+            <span className="last-msg-preview__label">saturday:</span>
+            <span className="last-msg-preview__dot" />
+            {messages[messages.length - 1]?.text}
           </div>
         </main>
 
         {/* ===== RIGHT: CONVERSATION ===== */}
-        <aside className="jarvis-conversation">
+        <aside className="sd-conversation">
           <div className="conversation__head">
             <span className="conversation__title">Conversation</span>
             <div className="conversation__actions">
@@ -384,19 +399,6 @@ export default function JarvisInterface() {
               </div>
             ))}
             <div ref={chatEndRef} />
-          </div>
-
-          <div className="conversation__input">
-            <input
-              type="text"
-              placeholder="Type a message..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            />
-            <button onClick={sendMessage} disabled={!inputValue.trim()}>
-              <Send size={16} />
-            </button>
           </div>
         </aside>
       </div>
