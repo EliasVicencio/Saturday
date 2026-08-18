@@ -1,0 +1,90 @@
+/* frontend/src/components/Navigation.css - Mejoras sobre los estilos base de App.css */
+
+/* Efectos y animaciones adicionales para la navegación */
+
+/* Estados de transición mejorados para los botones existentes */
+.nav-side-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hover effect más sutil */
+.nav-side-btn:hover:not(.active) {
+  background: rgba(34, 211, 238, 0.08) !important;
+  color: rgba(96, 165, 250, 0.8) !important;
+  transform: translateX(4px) !important;
+}
+
+/* Estado activo con animación de pulse */
+.nav-side-btn.active {
+  background: rgba(34, 211, 238, 0.1) !important;
+  color: #22d3ee !important;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3) !important;
+}
+
+.nav-side-btn.active::before {
+  animation: pulseBorder 2s ease-in-out infinite;
+}
+
+@keyframes pulseBorder {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/• Efecto de aparición escalonada para los ítems */
+.nav-item {
+  animation: itemEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.nav-item:nth-child(1) { animation-delay: 0.1s; }
+.nav-item:nth-child(2) { animation-delay: 0.2s; }
+.nav-item:nth-child(3) { animation-delay: 0.3s; }
+.nav-item:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes itemEnter {
+  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* Efecto de glow sutil al pasar el mouse */
+.nav-side-btn:hover:not(.active)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, transparent, rgba(34,211,238,0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nav-side-btn:hover:not(.active)::after {
+  opacity: 0.4;
+}
+
+/* Reducir especificidad para no interferir con App.css */
+@media (max-width: 768px) {
+  /* Los estilos de posición ya están en App.css, solo añadimos ajustes */
+  .nav-side-btn {
+    padding: 8px 12px !important;
+    min-width: 40px !important;
+  }
+  
+  .nav-side-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  
+  .nav-side-label {
+    font-size: 5px !important;
+    opacity: 0.8 !important;
+  }
+  
+  /* En mobile, ocultar etiqueta por defecto */
+  .nav-side-label {
+    display: none;
+  }
+  
+  .nav-item.active::before {
+    display: none;
+  }
+}

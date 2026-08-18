@@ -1,523 +1,405 @@
-// frontend/src/pages/Home.tsx
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, Sparkles, Zap } from 'lucide-react';
-import { sendMessage, speakText, getGreeting, API_BASE_URL } from '../services/api';
-import '../styles/Home.css';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Settings,
+  RefreshCw,
+  Cloud,
+  Camera as CameraIcon,
+  Power,
+  Clock,
+  Maximize2,
+  Trash2,
+  Download,
+  Send,
+  Mic,
+  Keyboard,
+  MapPin,
+} from "lucide-react";
+import "./JarvisInterface.css";
 
-interface MessageType {
+interface Message {
   id: string;
+  sender: "jarvis" | "user";
   text: string;
-  sender: 'user' | 'saturday';
-  timestamp: Date;
+  time: string;
 }
 
-interface HomeProps {
-  onNavigate?: (view: 'home' | 'dashboard' | 'projects' | 'news') => void;
-}
+const formatTime = (d: Date) =>
+  d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
 
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
+const formatDate = (d: Date) =>
+  d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
-const Home: React.FC<HomeProps> = ({ onNavigate }) => {
-  const [messages, setMessages] = useState<MessageType[]>([
+const formatUptime = (seconds: number) => {
+  const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
+  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+  const s = Math.floor(seconds % 60).toString().padStart(2, "0");
+  return `${h}:${m}:${s}`;
+};
+
+export default function JarvisInterface() {
+  const [now, setNow] = useState(new Date());
+  const [uptime, setUptime] = useState(7 * 60 + 19); // seconds
+  const [cameraOn, setCameraOn] = useState(false);
+  const [listening, setListening] = useState(true);
+  const [inputValue, setInputValue] = useState("");
+  const [commandCount, setCommandCount] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      text: '🔷 SYSTEM INITIALIZED\nSATURDAY AI v3.1 ONLINE\n\n🟣 AWAITING INPUT\n\n💡 Puedes decir: "dashboard", "proyectos", "noticias" o "inicio" para navegar.\n🎤 Haz clic en el micrófono y habla (se detendrá automáticamente).',
-      sender: 'saturday',
-      timestamp: new Date(),
+      id: "1",
+      sender: "jarvis",
+      text: "Hello, I am JARVIS. JARVIS backend is offline. Some features may be limited. How can I assist you today sir?",
+      time: "2:45 PM",
     },
   ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recognition, setRecognition] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [isSaturdaySpeaking, setIsSaturdaySpeaking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const greetedRef = useRef(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    const up = setInterval(() => setUptime((u) => u + 1), 1000);
+    return () => {
+      clearInterval(clock);
+      clearInterval(up);
+    };
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Saludo de bienvenida: se pide al backend (que ya NO lo reproduce
-  // localmente en el servidor) y se habla acá, en el navegador del
-  // usuario, igual que cualquier otra respuesta de Saturday.
-  useEffect(() => {
-    if (greetedRef.current) return;
-    greetedRef.current = true;
-
-    let cancelled = false;
-    const tryGreet = async (attempt = 0) => {
-      if (cancelled) return;
-      try {
-        const { ready, text } = await getGreeting();
-        if (ready && text) {
-          await speakTextWithIndicator(text);
-          return;
-        }
-      } catch (e) {
-        console.warn('⚠️ No se pudo obtener el saludo:', e);
-      }
-      // El saludo se arma en un hilo aparte al iniciar el backend,
-      // así que puede no estar listo de inmediato: reintenta un poco.
-      if (attempt < 5 && !cancelled) {
-        setTimeout(() => tryGreet(attempt + 1), 1000);
-      }
-    };
-    tryGreet();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const speakTextWithIndicator = async (text: string) => {
-    setIsSaturdaySpeaking(true);
-    try {
-      await speakText(text);
-    } finally {
-      setIsSaturdaySpeaking(false);
-    }
+  const systemStats = {
+    cpu: 8,
+    ram: 44,
+    ramGb: "7 GB",
+    disk: "439/475 GB",
   };
 
-  const startRecording = async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('⚠️ Tu navegador no soporta grabación de audio.');
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-
-      // Elegimos el mejor formato que el navegador realmente soporte.
-      // Antes se forzaba 'audio/webm;codecs=opus' sin verificar soporte:
-      // en navegadores que no lo soportan (ej. Safari/iOS) esto lanza un
-      // error inmediato y el botón de micrófono "no hace nada".
-      const preferredMimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4',
-      ];
-      const supportedMimeType = preferredMimeTypes.find(
-        (type) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)
-      );
-
-      const mediaRecorder = supportedMimeType
-        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
-        : new MediaRecorder(stream); // último recurso: dejar que el navegador decida
-
-      audioChunksRef.current = [];
-      mediaRecorderRef.current = mediaRecorder;
-      streamRef.current = stream;
-
-      let audioContext: AudioContext | null = null;
-      let analyser: AnalyserNode | null = null;
-      let silenceStartTime: number | null = null;
-      const SILENCE_THRESHOLD = 0.01;
-      const SILENCE_DURATION = 1500;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstart = () => {
-        setIsRecording(true);
-        setIsProcessing(false);
-        setTranscript('🎤 Escuchando...');
-        silenceStartTime = null;
-
-        try {
-          audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const source = audioContext.createMediaStreamSource(stream);
-          analyser = audioContext.createAnalyser();
-          analyser.fftSize = 512;
-          source.connect(analyser);
-
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-          const checkSilence = () => {
-            if (!analyser || !mediaRecorder || mediaRecorder.state !== 'recording') return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-              sum += dataArray[i];
-            }
-            const average = sum / dataArray.length;
-            const normalized = average / 255;
-
-            if (normalized < SILENCE_THRESHOLD) {
-              if (silenceStartTime === null) {
-                silenceStartTime = Date.now();
-              } else if (Date.now() - silenceStartTime > SILENCE_DURATION) {
-                console.log('🔇 Silencio detectado, deteniendo grabación...');
-                if (mediaRecorder.state === 'recording') {
-                  mediaRecorder.stop();
-                }
-                return;
-              }
-            } else {
-              silenceStartTime = null;
-            }
-            requestAnimationFrame(checkSilence);
-          };
-          checkSilence();
-        } catch (error) {
-          console.warn('⚠️ No se pudo detectar silencio:', error);
-          setTimeout(() => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-              mediaRecorder.stop();
-            }
-          }, 10000);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        setIsRecording(false);
-        setIsProcessing(true);
-        setTranscript('🔍 Procesando...');
-
-        if (audioContext) {
-          try {
-            await audioContext.close();
-          } catch (e) {}
-        }
-
-        if (audioChunksRef.current.length === 0) {
-          setTranscript('');
-          setIsProcessing(false);
-          return;
-        }
-
-        const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-        }
-
-        if (audioBlob.size < 1000) {
-          setTranscript('⚠️ No detecté voz');
-          setTimeout(() => {
-            setTranscript('');
-            setIsProcessing(false);
-          }, 1500);
-          return;
-        }
-
-        try {
-          // La extensión debe coincidir con el formato real grabado, porque
-          // el backend elige la config de Google STT según la extensión.
-          const extension = actualMimeType.includes('ogg')
-            ? 'ogg'
-            : actualMimeType.includes('mp4')
-            ? 'mp4'
-            : 'webm';
-
-          const formData = new FormData();
-          formData.append('audio', audioBlob, `recording.${extension}`);
-          // Usamos la misma URL configurable que el resto de la app
-          // (VITE_API_URL) en vez de un 'localhost:5000' hardcodeado, que
-          // fallaba si la app se abría desde otro host/IP (ej. celular).
-          const response = await fetch(`${API_BASE_URL}/stt`, {
-            method: 'POST',
-            body: formData,
-          });
-          const data = await response.json();
-
-          if (data.success && data.text) {
-            setTranscript(`"${data.text}"`);
-            setTimeout(() => {
-              setTranscript('');
-              setIsProcessing(false);
-              handleSend(data.text);
-            }, 500);
-          } else {
-            setTranscript('⚠️ No entendí');
-            setTimeout(() => {
-              setTranscript('');
-              setIsProcessing(false);
-            }, 1500);
-          }
-        } catch (error) {
-          console.error('❌ Error procesando audio:', error);
-          setTranscript('⚠️ Error');
-          setIsProcessing(false);
-          setTimeout(() => setTranscript(''), 1500);
-        }
-      };
-
-      mediaRecorder.start();
-      setRecognition({
-        mediaRecorder,
-        stream,
-        stop: () => {
-          if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-          }
-          if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-          }
-          setIsRecording(false);
-          setIsProcessing(false);
-          setTranscript('');
-        },
-      });
-    } catch (error) {
-      console.error('❌ Error accediendo al micrófono:', error);
-      alert('⚠️ No se pudo acceder al micrófono. Verifica los permisos.');
-    }
+  const weather = {
+    temp: "25.2°C",
+    location: "Quezon City, PH",
+    condition: "overcast clouds",
+    humidity: "94%",
+    wind: "5.8 m/s",
+    feelsLike: "26.3°C",
   };
 
-  const stopRecording = () => {
-    if (recognition && recognition.stop) {
-      recognition.stop();
-    }
-    setIsRecording(false);
-    setIsProcessing(false);
-    setTranscript('');
-  };
+  const systemLoad = 26;
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  const detectNavigation = (text: string): boolean => {
-    const lower = text.toLowerCase().trim();
-    if (lower === 'dashboard' || lower === 'ver dashboard' || lower === 'ir a dashboard') {
-      if (onNavigate) onNavigate('dashboard');
-      return true;
-    }
-    if (lower === 'proyectos' || lower === 'ver proyectos' || lower === 'ir a proyectos' || lower === 'projects') {
-      if (onNavigate) onNavigate('projects');
-      return true;
-    }
-    if (lower === 'noticias' || lower === 'ver noticias' || lower === 'ir a noticias' || lower === 'news') {
-      if (onNavigate) onNavigate('news');
-      return true;
-    }
-    if (lower === 'inicio' || lower === 'home' || lower === 'atrás' || lower === 'volver') {
-      if (onNavigate) onNavigate('home');
-      return true;
-    }
-    return false;
-  };
-
-  const handleSend = async (text?: string) => {
-    const messageToSend = text || input;
-    if (!messageToSend.trim() || isLoading) return;
-
-    const userMessage: MessageType = {
+  const sendMessage = () => {
+    if (!inputValue.trim()) return;
+    const userMsg: Message = {
       id: Date.now().toString(),
-      text: messageToSend.trim(),
-      sender: 'user',
-      timestamp: new Date(),
+      sender: "user",
+      text: inputValue.trim(),
+      time: formatTime(new Date()),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMsg]);
+    setInputValue("");
+    setCommandCount((c) => c + 1);
 
-    const userText = messageToSend.trim();
-    setInput('');
-    setIsLoading(true);
-
-    if (detectNavigation(userText)) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await sendMessage(userText);
-      const responseText = response.response || 'ERROR: COMMAND NOT RECOGNIZED';
+    setTimeout(() => {
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
-          text: responseText,
-          sender: 'saturday',
-          timestamp: new Date(),
+          sender: "jarvis",
+          text: "Backend connection unavailable — running in limited offline mode, sir.",
+          time: formatTime(new Date()),
         },
       ]);
-      if (responseText) {
-        await speakTextWithIndicator(responseText);
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: '⚠️ CONNECTION ERROR',
-          sender: 'saturday',
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    }, 700);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const clearConversation = () => setMessages([]);
+
+  const extractConversation = () => {
+    const text = messages.map((m) => `[${m.time}] ${m.sender === "jarvis" ? "JARVIS" : "You"}: ${m.text}`).join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "jarvis-conversation.txt";
+    a.click();
+    URL.revokeObjectURL(url);
   };
-
-  const suggestions = [
-    { label: '📊 Dashboard', cmd: 'dashboard' },
-    { label: '📁 Proyectos', cmd: 'proyectos' },
-    { label: '📰 Noticias', cmd: 'noticias' },
-    { label: '📋 Tareas', cmd: 'tareas' },
-    { label: '🌤️ Clima', cmd: 'clima' },
-    { label: '🕐 Hora', cmd: 'hora' },
-  ];
-
-  const getHologramState = () => {
-    if (isSaturdaySpeaking) return 'active';
-    if (isRecording) return 'recording';
-    if (isProcessing) return 'processing';
-    return 'idle';
-  };
-
-  const hologramState = getHologramState();
 
   return (
-    <div className="page">
-      <div className="ambient-bg">
-        <div className="ambient-glow" style={{ top: '20%', left: '20%', width: 400, height: 400, background: 'rgba(37,99,235,0.06)' }} />
-        <div className="ambient-glow" style={{ bottom: '20%', right: '20%', width: 300, height: 300, background: 'rgba(6,182,212,0.06)', animationDelay: '1s' }} />
-      </div>
+    <div className="jarvis">
+      <div className="jarvis__bg-grid" />
 
-      <header className="page-header">
-        <div className="page-header__title">
-          <div style={{ position: 'relative' }}>
-            <div className="animate-pulse-ring" style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(6,182,212,0.2))', border: '1px solid rgba(96,165,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Sparkles size={18} color="#22d3ee" />
-            </div>
-            <span className="animate-pulse-soft" style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#22d3ee' }} />
-          </div>
-          <div>
-            <h1 className="gradient-text" style={{ fontSize: 24 }}>SATURDAY</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-              <span style={{ fontSize: 10, color: 'rgba(147,197,253,0.5)', letterSpacing: '0.1em' }}>AI ASSISTANT · v3.1</span>
-              <span className="status-pill__divider" style={{ width: 1, height: 12, background: 'rgba(37,99,235,0.2)' }} />
-              <span style={{ fontSize: 9, color: '#22d3ee' }}>● ONLINE</span>
-            </div>
-          </div>
+      {/* ===== TOP BAR ===== */}
+      <header className="jarvis-topbar">
+        <div className="jarvis-topbar__brand">
+          <span className="jarvis-logo">J.A.R.V.I.S</span>
+          <span className="pill pill--online">
+            <span className="dot dot--green" />
+            Online
+          </span>
+        </div>
+
+        <div className="jarvis-topbar__center pill">
+          <Clock size={14} />
+          <span>{formatTime(now)}</span>
+          <span className="topbar-sep">|</span>
+          <span>{formatDate(now)}</span>
+        </div>
+
+        <div className="jarvis-topbar__right">
+          <span className="pill">
+            <MapPin size={13} />
+            {weather.temp} <span className="muted">Quezon City</span>
+          </span>
+          <button className="icon-square-btn">
+            <Settings size={16} />
+          </button>
         </div>
       </header>
 
-      <div className="main-content">
-        <div className={`hologram-container ${hologramState}`} data-state={hologramState}>
-          <div className="hologram-base">
-            <div className="hologram-ring ring-1" />
-            <div className="hologram-ring ring-2" />
-            <div className="hologram-ring ring-3" />
+      {/* ===== MAIN GRID ===== */}
+      <div className="jarvis-main">
+        {/* ===== LEFT SIDEBAR ===== */}
+        <aside className="jarvis-sidebar">
+          <section className="panel">
+            <div className="panel__head">
+              <div className="panel__title">
+                <Settings size={15} className="accent" />
+                System Stats
+              </div>
+              <button className="ghost-icon-btn">
+                <RefreshCw size={13} />
+              </button>
+            </div>
+
+            <div className="stat-row">
+              <div className="stat-row__label">
+                <span>CPU Usage</span>
+                <span>{systemStats.cpu}%</span>
+              </div>
+              <div className="bar">
+                <div className="bar__fill bar__fill--cyan" style={{ width: `${systemStats.cpu}%` }} />
+              </div>
+            </div>
+
+            <div className="stat-row">
+              <div className="stat-row__label">
+                <span>RAM Usage</span>
+                <span>{systemStats.ramGb}</span>
+              </div>
+              <div className="bar">
+                <div className="bar__fill bar__fill--cyan" style={{ width: `${systemStats.ram}%` }} />
+              </div>
+            </div>
+
+            <div className="mini-stats">
+              <div className="mini-stat">
+                <div className="mini-stat__label">CPU</div>
+                <div className="mini-stat__value">{systemStats.cpu}%</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat__label">Memory</div>
+                <div className="mini-stat__value">{systemStats.ram}%</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat__label">Disk</div>
+                <div className="mini-stat__value">{systemStats.disk}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel__head">
+              <div className="panel__title">
+                <Cloud size={15} className="accent" />
+                Weather
+              </div>
+              <button className="ghost-icon-btn">
+                <RefreshCw size={13} />
+              </button>
+            </div>
+
+            <div className="weather-main">
+              <div>
+                <div className="weather-temp">{weather.temp}</div>
+                <div className="weather-loc">{weather.location}</div>
+                <div className="weather-cond">{weather.condition}</div>
+              </div>
+              <Cloud size={36} className="weather-icon" />
+            </div>
+
+            <div className="mini-stats mini-stats--3">
+              <div className="mini-stat">
+                <div className="mini-stat__label">Humidity</div>
+                <div className="mini-stat__value">{weather.humidity}</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat__label">Wind</div>
+                <div className="mini-stat__value">{weather.wind}</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat__label">Feels Like</div>
+                <div className="mini-stat__value">{weather.feelsLike}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel__head">
+              <div className="panel__title">
+                <CameraIcon size={15} className="accent" />
+                Camera
+              </div>
+              <div className="panel__head-actions">
+                <button className="ghost-icon-btn">
+                  <CameraIcon size={13} />
+                </button>
+                <button
+                  className={`ghost-icon-btn ${cameraOn ? "ghost-icon-btn--active" : ""}`}
+                  onClick={() => setCameraOn((v) => !v)}
+                >
+                  <Power size={13} />
+                </button>
+              </div>
+            </div>
+
+            <div className="camera-view">
+              {cameraOn ? (
+                <div className="camera-view__live">LIVE FEED</div>
+              ) : (
+                <div className="camera-view__off">
+                  <CameraIcon size={26} />
+                  <span>Camera Off</span>
+                </div>
+              )}
+            </div>
+            <p className="camera-hint">
+              {cameraOn ? "Camera is active." : "Camera is inactive. Click the power button to start."}
+            </p>
+          </section>
+
+          <section className="panel">
+            <div className="panel__head">
+              <div className="panel__title">
+                <Clock size={15} className="accent" />
+                System Uptime
+              </div>
+              <div className="panel__head-actions">
+                <span className="uptime-chip">{formatUptime(uptime)}</span>
+                <button className="ghost-icon-btn">
+                  <Maximize2 size={12} />
+                </button>
+              </div>
+            </div>
+
+            <div className="uptime-label">System Running For:</div>
+            <div className="uptime-value">{formatUptime(uptime)}</div>
+
+            <div className="mini-stats">
+              <div className="mini-stat">
+                <div className="mini-stat__label">Session</div>
+                <div className="mini-stat__value">1</div>
+              </div>
+              <div className="mini-stat">
+                <div className="mini-stat__label">Commands</div>
+                <div className="mini-stat__value">{commandCount}</div>
+              </div>
+            </div>
+
+            <div className="load-row">
+              <div className="load-row__label">
+                <span className="load-row__tag">Moderate</span>
+                <span>{systemLoad}%</span>
+              </div>
+              <div className="bar">
+                <div className="bar__fill bar__fill--amber" style={{ width: `${systemLoad}%` }} />
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        {/* ===== CENTER ORB ===== */}
+        <main className="jarvis-center">
+          <div className="orb-wrap">
+            <div className="orb-ring orb-ring--outer" />
+            <div className="orb-ring orb-ring--mid" />
+            <div className="orb-core">
+              <div className="orb-core__dots">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
           </div>
-          <div className="hologram-scan"><div className="scan-line" /></div>
-          <div className="hologram-particles">
-            <div className="particle p1" /><div className="particle p2" />
-            <div className="particle p3" /><div className="particle p4" />
-            <div className="particle p5" /><div className="particle p6" />
-            <div className="particle p7" /><div className="particle p8" />
-          </div>
-          <div className="hologram-core">
-            <button onClick={toggleRecording} className="hologram-button" disabled={isLoading || isProcessing || isSaturdaySpeaking}>
-              {isRecording ? <MicOff size={36} color="#ef4444" /> : isProcessing ? <span style={{ fontSize: 28, color: '#f59e0b' }}>⏳</span> : <Mic size={36} color="#22d3ee" />}
+
+          <h1 className="orb-title">J.A.R.V.I.S</h1>
+
+          <button className="listening-pill" onClick={() => setListening((v) => !v)}>
+            <span className={`dot ${listening ? "dot--green" : "dot--gray"}`} />
+            {listening ? "Listening for wake word..." : "Wake word paused"}
+          </button>
+
+          <div className="center-controls">
+            <button className="round-btn">
+              <CameraIcon size={18} />
+            </button>
+            <button className={`round-btn round-btn--mic ${listening ? "round-btn--mic-active" : ""}`}>
+              <Mic size={20} />
+            </button>
+            <button className="round-btn">
+              <Keyboard size={18} />
             </button>
           </div>
-          <div className="hologram-text">
-            {isSaturdaySpeaking && <span className="holo-text speaking">🔊 SATURDAY HABLANDO</span>}
-            {isRecording && <span className="holo-text listening">🎤 ESCUCHANDO...</span>}
-            {isProcessing && <span className="holo-text processing">⏳ PROCESANDO...</span>}
-            {!isRecording && !isProcessing && !isSaturdaySpeaking && <span className="holo-text idle">🎙️ TOCA PARA HABLAR</span>}
-          </div>
-          <div className="hologram-distortion" />
-        </div>
-        {transcript && (
-          <div className="transcript-display">
-            <span className="transcript-text">{transcript}</span>
-          </div>
-        )}
-      </div>
 
-      <div className="composer">
-        <div className="composer__inner">
-          <div className="composer__row">
-            <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Escribe un mensaje..." className="composer__input" disabled={isLoading} />
-            <button onClick={() => handleSend()} disabled={isLoading || !input.trim()} className="icon-btn gradient-btn"><Send size={18} /></button>
+          <div className="carousel-dots">
+            <span className="carousel-dot carousel-dot--active" />
+            <span className="carousel-dot" />
+            <span className="carousel-dot" />
+            <span className="carousel-dot" />
           </div>
-          <div className="suggestions">
-            {suggestions.map((item) => (
-              <button key={item.cmd} onClick={() => { setInput(item.cmd); setTimeout(() => handleSend(), 100); }} className="suggestion-chip">{item.label}</button>
-            ))}
-          </div>
-        </div>
-      </div>
+        </main>
 
-      <div className="chat-container">
-        <div className="chat-scroll">
-          <div className="chat-scroll__inner">
-            {messages.slice(-4).map((msg) => (
-              <div key={msg.id} className={`chat-row ${msg.sender === 'user' ? 'user' : 'bot'} fade-in`}>
-                <div className={`chat-bubble-wrap ${msg.sender === 'user' ? 'user' : ''}`}>
-                  {msg.sender === 'saturday' && (
-                    <div className="chat-prompt-line">
-                      <span>SATURDAY@CORE:~$</span>
-                      <span className="chat-caret animate-pulse-soft" />
-                    </div>
-                  )}
-                  <div className={`chat-bubble glass ${msg.sender === 'user' ? 'user' : 'bot'}`}>
-                    <div className="whitespace-pre-wrap" style={{ fontSize: 12 }}>{msg.text}</div>
-                    <div className="chat-time" style={{ fontSize: 8 }}>
-                      {msg.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
+        {/* ===== RIGHT: CONVERSATION ===== */}
+        <aside className="jarvis-conversation">
+          <div className="conversation__head">
+            <span className="conversation__title">Conversation</span>
+            <div className="conversation__actions">
+              <button className="text-btn" onClick={clearConversation}>
+                <Trash2 size={13} />
+                Clear
+              </button>
+              <button className="text-btn text-btn--accent" onClick={extractConversation}>
+                <Download size={13} />
+                Extract Conversation
+              </button>
+            </div>
+          </div>
+
+          <div className="conversation__body">
+            {messages.map((m) => (
+              <div key={m.id} className={`msg-row msg-row--${m.sender}`}>
+                <div className={`msg-bubble msg-bubble--${m.sender}`}>
+                  <p>{m.text}</p>
+                  <span className="msg-time">{m.time}</span>
                 </div>
               </div>
             ))}
-            {isLoading && (
-              <div className="typing-row">
-                <span className="typing-dot animate-bounce-dot" />
-                <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.15s' }} />
-                <span className="typing-dot animate-bounce-dot" style={{ animationDelay: '0.3s' }} />
-                <span className="typing-label">PROCESSING...</span>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+            <div ref={chatEndRef} />
           </div>
-        </div>
+
+          <div className="conversation__input">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            />
+            <button onClick={sendMessage} disabled={!inputValue.trim()}>
+              <Send size={16} />
+            </button>
+          </div>
+        </aside>
       </div>
     </div>
   );
-};
-
-export default Home;
+}

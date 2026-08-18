@@ -5,8 +5,9 @@ import DashboardPage from './pages/Dashboard';
 import ProjectsPage from './pages/Projects';
 import NewsPage from './pages/News';
 import Navigation from './components/Navigation';
-import { getStatus } from './services/api';
+import './components/Navigation.css';
 import './styles/App.css';
+import { getStatus } from './services/api';
 
 type View = 'home' | 'dashboard' | 'projects' | 'news';
 
