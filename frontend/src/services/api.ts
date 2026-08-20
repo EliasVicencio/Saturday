@@ -43,6 +43,37 @@ export interface SpeakResponse {
   format: string;
 }
 
+// ===== CLIMA =====
+export interface WeatherResponse {
+  temp: number;
+  feels_like: number;
+  condition: string;
+  humidity: number;
+  wind: number;
+  city: string;
+  country: string;
+}
+
+export const getWeather = async (): Promise<WeatherResponse> => {
+  const response = await api.get<WeatherResponse>('/weather');
+  return response.data;
+};
+
+// ===== MÉTRICAS DEL SISTEMA (CPU / RAM / DISCO) =====
+export interface SystemMetrics {
+  cpu_percent: number;
+  ram_percent: number;
+  ram_used_gb: number;
+  ram_total_gb: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+}
+
+export const getSystemMetrics = async (): Promise<SystemMetrics> => {
+  const response = await api.get<SystemMetrics>('/system');
+  return response.data;
+};
+
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
   return response.data;

@@ -295,6 +295,58 @@ def stop_scheduler():
     return jsonify({'success': True, 'message': 'Scheduler detenido'})
 
 
+@app.route('/api/weather', methods=['GET'])
+def weather():
+    """Devuelve el clima actual en formato estructurado para el dashboard"""
+    try:
+        api_key = os.getenv("WEATHER_API_KEY")
+        city = os.getenv("SATURDAY_CITY", "Santiago")
+        if not api_key:
+            return jsonify({'error': 'No configuraste WEATHER_API_KEY'}), 500
+
+        import requests
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            return jsonify({'error': 'Error obteniendo el clima'}), 502
+
+        data = response.json()
+        return jsonify({
+            'temp': round(data['main']['temp'], 1),
+            'feels_like': round(data['main']['feels_like'], 1),
+            'condition': data['weather'][0]['description'],
+            'humidity': data['main']['humidity'],
+            'wind': data['wind']['speed'],
+            'city': data.get('name', city),
+            'country': data.get('sys', {}).get('country', ''),
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/system', methods=['GET'])
+def system_stats():
+    """Devuelve uso real de CPU, RAM y disco del servidor"""
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        return jsonify({
+            'cpu_percent': cpu,
+            'ram_percent': mem.percent,
+            'ram_used_gb': round(mem.used / (1024 ** 3), 1),
+            'ram_total_gb': round(mem.total / (1024 ** 3), 1),
+            'disk_used_gb': round(disk.used / (1024 ** 3), 1),
+            'disk_total_gb': round(disk.total / (1024 ** 3), 1),
+        })
+    except ImportError:
+        return jsonify({'error': 'psutil no está instalado en el backend'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check para despliegue"""

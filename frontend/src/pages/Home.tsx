@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Settings,
   RefreshCw,
@@ -7,8 +7,6 @@ import {
   Power,
   Clock,
   Maximize2,
-  Trash2,
-  Download,
   Send,
   Mic,
   MapPin,
@@ -18,8 +16,20 @@ import {
   ListTodo,
   CloudSun,
   Timer,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import "../styles/Home.css";
+import {
+  sendMessage as apiSendMessage,
+  getStatus,
+  getWeather,
+  getSystemMetrics,
+  speakText,
+  type StatusResponse,
+  type WeatherResponse,
+  type SystemMetrics,
+} from "../services/api";
 
 interface Message {
   id: string;
@@ -52,20 +62,105 @@ const navItems: { key: NavKey; label: string; icon: typeof LayoutDashboard }[] =
   { key: "hora", label: "HORA", icon: Timer },
 ];
 
+/** Logo: anillo tipo Saturno con núcleo brillante */
+function SaturdayLogo({ pulsing }: { pulsing: boolean }) {
+  return (
+    <div className={`sd-logo-mark ${pulsing ? "sd-logo-mark--pulsing" : ""}`}>
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sdLogoGrad" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="100%" stopColor="#22d3ee" />
+          </linearGradient>
+        </defs>
+        <circle cx="20" cy="20" r="9" fill="url(#sdLogoGrad)" />
+        <ellipse
+          cx="20"
+          cy="20"
+          rx="18"
+          ry="6.5"
+          transform="rotate(-18 20 20)"
+          stroke="url(#sdLogoGrad)"
+          strokeWidth="1.6"
+          opacity="0.85"
+        />
+        <ellipse
+          cx="20"
+          cy="20"
+          rx="18"
+          ry="6.5"
+          transform="rotate(-18 20 20)"
+          stroke="#0a1220"
+          strokeWidth="4"
+          strokeDasharray="0 34 8 100"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/** Núcleo central: Saturno reinterpretado como átomo — 3 órbitas cruzadas en azul eléctrico */
+function SaturnAtom({ active }: { active: boolean }) {
+  return (
+    <div className={`atom-wrap ${active ? "atom-wrap--active" : ""}`}>
+      <div className="atom-glow" />
+      <svg viewBox="0 0 240 240" className="atom-svg">
+        <defs>
+          <radialGradient id="atomCoreGrad" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#e0f7ff" />
+            <stop offset="35%" stopColor="#7dd8ff" />
+            <stop offset="70%" stopColor="#1e90ff" />
+            <stop offset="100%" stopColor="#0a3d91" />
+          </radialGradient>
+          <linearGradient id="atomRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="100%" stopColor="#22d3ee" />
+          </linearGradient>
+        </defs>
+
+        <g className="atom-orbit atom-orbit--1">
+          <ellipse cx="120" cy="120" rx="105" ry="38" fill="none" stroke="url(#atomRingGrad)" strokeWidth="1.4" opacity="0.75" />
+          <circle cx="225" cy="120" r="4.5" fill="#7ee6ff" className="atom-electron-glow" />
+        </g>
+
+        <g className="atom-orbit atom-orbit--2">
+          <ellipse cx="120" cy="120" rx="105" ry="38" fill="none" stroke="url(#atomRingGrad)" strokeWidth="1.4" opacity="0.6" />
+          <circle cx="225" cy="120" r="4" fill="#38bdf8" className="atom-electron-glow" />
+        </g>
+
+        <g className="atom-orbit atom-orbit--3">
+          <ellipse cx="120" cy="120" rx="105" ry="38" fill="none" stroke="url(#atomRingGrad)" strokeWidth="1.4" opacity="0.6" />
+          <circle cx="225" cy="120" r="4" fill="#93c5fd" className="atom-electron-glow" />
+        </g>
+
+        <circle cx="120" cy="120" r="34" fill="url(#atomCoreGrad)" className="atom-core" />
+      </svg>
+    </div>
+  );
+}
+
 export default function Home() {
   const [now, setNow] = useState(new Date());
-  const [uptime, setUptime] = useState(7 * 60 + 19);
+  const [uptime, setUptime] = useState(0);
   const [cameraOn, setCameraOn] = useState(false);
-  const [listening, setListening] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [commandCount, setCommandCount] = useState(0);
   const [activeNav, setActiveNav] = useState<NavKey>("hora");
+  const [sending, setSending] = useState(false);
+
+  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [statusError, setStatusError] = useState(false);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       sender: "saturday",
-      text: "Hola, soy SATURDAY. El backend está offline. Algunas funciones pueden estar limitadas. ¿En qué te ayudo, jefe?",
-      time: "2:45 PM",
+      text: "Hola, soy SATURDAY. Conectando con el backend...",
+      time: formatTime(new Date()),
     },
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -83,63 +178,115 @@ export default function Home() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const systemStats = { cpu: 8, ram: 44, ramGb: "7 GB", disk: "439/475 GB" };
-  const weather = {
-    temp: "25.2°C",
-    location: "Quezon City, PH",
-    condition: "overcast clouds",
-    humidity: "94%",
-    wind: "5.8 m/s",
-    feelsLike: "26.3°C",
-  };
-  const systemLoad = 26;
+  const refreshStatus = useCallback(async () => {
+    try {
+      const data = await getStatus();
+      setStatus(data);
+      setStatusError(false);
+    } catch {
+      setStatus(null);
+      setStatusError(true);
+    }
+  }, []);
 
-  const sendMessage = (text?: string) => {
+  const refreshWeather = useCallback(async () => {
+    try {
+      const data = await getWeather();
+      setWeather(data);
+    } catch {
+      setWeather(null);
+    }
+  }, []);
+
+  const refreshMetrics = useCallback(async () => {
+    try {
+      const data = await getSystemMetrics();
+      setMetrics(data);
+    } catch {
+      setMetrics(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshStatus();
+    refreshWeather();
+    refreshMetrics();
+
+    const statusInterval = setInterval(refreshStatus, 15000);
+    const weatherInterval = setInterval(refreshWeather, 5 * 60 * 1000);
+    const metricsInterval = setInterval(refreshMetrics, 5000);
+
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(weatherInterval);
+      clearInterval(metricsInterval);
+    };
+  }, [refreshStatus, refreshWeather, refreshMetrics]);
+
+  useEffect(() => {
+    if (!status && !statusError) return;
+    setMessages((prev) => {
+      const greeting = statusError
+        ? "No pude conectar con el backend. Revisá que esté corriendo en el puerto 5000, jefe."
+        : `Backend conectado (v${status?.version ?? "?"}). ¿En qué te ayudo?`;
+      if (prev.length === 1 && prev[0].id === "1") {
+        return [{ ...prev[0], text: `Hola, soy SATURDAY. ${greeting}` }];
+      }
+      return prev;
+    });
+  }, [status, statusError]);
+
+  const sendMessage = async (text?: string) => {
     const value = (text ?? inputValue).trim();
-    if (!value) return;
+    if (!value || sending) return;
+
     const userMsg: Message = { id: Date.now().toString(), sender: "user", text: value, time: formatTime(new Date()) };
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
     setCommandCount((c) => c + 1);
+    setSending(true);
 
-    setTimeout(() => {
+    try {
+      const result = await apiSendMessage(value);
+      const replyText = result.response || "No obtuve respuesta del backend.";
+      setMessages((prev) => [
+        ...prev,
+        { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatTime(new Date()) },
+      ]);
+      if (voiceOn) {
+        setListening(true);
+        await speakText(replyText);
+        setListening(false);
+      }
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           sender: "saturday",
-          text: `SATURDAY AI v3.1 — Holograma Saturno · comando "${value}" recibido.`,
+          text: "⚠️ No pude comunicarme con el backend. Verificá que esté corriendo.",
           time: formatTime(new Date()),
         },
       ]);
-    }, 700);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const clearConversation = () => setMessages([]);
-
-  const extractConversation = () => {
-    const text = messages.map((m) => `[${m.time}] ${m.sender === "saturday" ? "SATURDAY" : "You"}: ${m.text}`).join("\n");
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "saturday-conversation.txt";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const isOnline = !!status && status.status === "online";
+  const activeModulesCount = status ? Object.values(status.modules).filter(Boolean).length : 0;
 
   return (
     <div className="sd">
       <div className="sd__bg-grid" />
 
-      {/* ===== TOP BAR ===== */}
       <header className="sd-topbar">
         <div className="sd-topbar__brand">
-          <div className="sd-logo-badge">S</div>
+          <SaturdayLogo pulsing={listening} />
           <span className="sd-logo">SATURDAY</span>
-          <span className="pill pill--online">
-            <span className="dot dot--green" />
-            Online
+          <span className={`pill ${isOnline ? "pill--online" : "pill--offline"}`}>
+            <span className={`dot ${isOnline ? "dot--green" : "dot--gray"}`} />
+            {isOnline ? "Online" : "Offline"}
           </span>
         </div>
 
@@ -153,17 +300,20 @@ export default function Home() {
         <div className="sd-topbar__right">
           <span className="pill">
             <MapPin size={13} />
-            {weather.temp} <span className="muted">Quezon City</span>
+            {weather ? `${weather.temp}°C` : "--°C"}{" "}
+            <span className="muted">{weather?.city ?? "Sin datos"}</span>
           </span>
-          <button className="icon-square-btn">
-            <Settings size={16} />
+          <button
+            className={`icon-square-btn ${voiceOn ? "icon-square-btn--active" : ""}`}
+            onClick={() => setVoiceOn((v) => !v)}
+            title={voiceOn ? "Voz activada" : "Voz desactivada"}
+          >
+            {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
         </div>
       </header>
 
-      {/* ===== MAIN GRID ===== */}
       <div className="sd-main">
-        {/* ===== LEFT SIDEBAR ===== */}
         <aside className="sd-sidebar">
           <section className="panel">
             <div className="panel__head">
@@ -171,7 +321,7 @@ export default function Home() {
                 <Settings size={15} className="accent" />
                 System Stats
               </div>
-              <button className="ghost-icon-btn">
+              <button className="ghost-icon-btn" onClick={refreshMetrics}>
                 <RefreshCw size={13} />
               </button>
             </div>
@@ -179,35 +329,37 @@ export default function Home() {
             <div className="stat-row">
               <div className="stat-row__label">
                 <span>CPU Usage</span>
-                <span>{systemStats.cpu}%</span>
+                <span>{metrics ? `${metrics.cpu_percent}%` : "--%"}</span>
               </div>
               <div className="bar">
-                <div className="bar__fill bar__fill--cyan" style={{ width: `${systemStats.cpu}%` }} />
+                <div className="bar__fill bar__fill--cyan" style={{ width: `${metrics?.cpu_percent ?? 0}%` }} />
               </div>
             </div>
 
             <div className="stat-row">
               <div className="stat-row__label">
                 <span>RAM Usage</span>
-                <span>{systemStats.ramGb}</span>
+                <span>{metrics ? `${metrics.ram_used_gb} GB` : "-- GB"}</span>
               </div>
               <div className="bar">
-                <div className="bar__fill bar__fill--cyan" style={{ width: `${systemStats.ram}%` }} />
+                <div className="bar__fill bar__fill--cyan" style={{ width: `${metrics?.ram_percent ?? 0}%` }} />
               </div>
             </div>
 
             <div className="mini-stats">
               <div className="mini-stat">
                 <div className="mini-stat__label">CPU</div>
-                <div className="mini-stat__value">{systemStats.cpu}%</div>
+                <div className="mini-stat__value">{metrics ? `${metrics.cpu_percent}%` : "--"}</div>
               </div>
               <div className="mini-stat">
                 <div className="mini-stat__label">Memory</div>
-                <div className="mini-stat__value">{systemStats.ram}%</div>
+                <div className="mini-stat__value">{metrics ? `${metrics.ram_percent}%` : "--"}</div>
               </div>
               <div className="mini-stat">
                 <div className="mini-stat__label">Disk</div>
-                <div className="mini-stat__value">{systemStats.disk}</div>
+                <div className="mini-stat__value">
+                  {metrics ? `${metrics.disk_used_gb}/${metrics.disk_total_gb} GB` : "--"}
+                </div>
               </div>
             </div>
           </section>
@@ -218,16 +370,16 @@ export default function Home() {
                 <Cloud size={15} className="accent" />
                 Weather
               </div>
-              <button className="ghost-icon-btn">
+              <button className="ghost-icon-btn" onClick={refreshWeather}>
                 <RefreshCw size={13} />
               </button>
             </div>
 
             <div className="weather-main">
               <div>
-                <div className="weather-temp">{weather.temp}</div>
-                <div className="weather-loc">{weather.location}</div>
-                <div className="weather-cond">{weather.condition}</div>
+                <div className="weather-temp">{weather ? `${weather.temp}°C` : "--°C"}</div>
+                <div className="weather-loc">{weather ? `${weather.city}, ${weather.country}` : "Sin datos"}</div>
+                <div className="weather-cond">{weather?.condition ?? "—"}</div>
               </div>
               <Cloud size={36} className="weather-icon" />
             </div>
@@ -235,15 +387,15 @@ export default function Home() {
             <div className="mini-stats mini-stats--3">
               <div className="mini-stat">
                 <div className="mini-stat__label">Humidity</div>
-                <div className="mini-stat__value">{weather.humidity}</div>
+                <div className="mini-stat__value">{weather ? `${weather.humidity}%` : "--"}</div>
               </div>
               <div className="mini-stat">
                 <div className="mini-stat__label">Wind</div>
-                <div className="mini-stat__value">{weather.wind}</div>
+                <div className="mini-stat__value">{weather ? `${weather.wind} m/s` : "--"}</div>
               </div>
               <div className="mini-stat">
                 <div className="mini-stat__label">Feels Like</div>
-                <div className="mini-stat__value">{weather.feelsLike}</div>
+                <div className="mini-stat__value">{weather ? `${weather.feels_like}°C` : "--"}</div>
               </div>
             </div>
           </section>
@@ -312,27 +464,22 @@ export default function Home() {
 
             <div className="load-row">
               <div className="load-row__label">
-                <span className="load-row__tag">Moderate</span>
-                <span>{systemLoad}%</span>
+                <span className="load-row__tag">{isOnline ? `${activeModulesCount} módulos activos` : "Sin conexión"}</span>
+                <span>{metrics ? `${metrics.cpu_percent}%` : "--%"}</span>
               </div>
               <div className="bar">
-                <div className="bar__fill bar__fill--amber" style={{ width: `${systemLoad}%` }} />
+                <div className="bar__fill bar__fill--amber" style={{ width: `${metrics?.cpu_percent ?? 0}%` }} />
               </div>
             </div>
           </section>
         </aside>
 
-        {/* ===== CENTER: SATURN ORB + NAV + COMPOSER ===== */}
         <main className="sd-center">
-          <div className="saturn-wrap">
-            <div className="saturn-glow" />
-            <div className="saturn-orb" />
-            <div className="saturn-ring" />
-          </div>
+          <SaturnAtom active={listening} />
 
-          <button className="listening-pill" onClick={() => setListening((v) => !v)}>
+          <button className="listening-pill" onClick={() => setVoiceOn((v) => !v)}>
             <Mic size={13} />
-            {listening ? "SATURDAY HABLANDO" : "SATURDAY EN ESPERA"}
+            {sending ? "SATURDAY PENSANDO..." : voiceOn ? "VOZ ACTIVADA" : "TOCA PARA ACTIVAR VOZ"}
           </button>
 
           <nav className="sd-nav">
@@ -359,10 +506,11 @@ export default function Home() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              disabled={sending}
             />
-            <button className="composer__send" onClick={() => sendMessage()} disabled={!inputValue.trim()}>
+            <button className="composer__send" onClick={() => sendMessage()} disabled={sending || !inputValue.trim()}>
               <Send size={14} />
-              Enviar
+              {sending ? "Enviando..." : "Enviar"}
             </button>
           </div>
 
@@ -372,35 +520,6 @@ export default function Home() {
             {messages[messages.length - 1]?.text}
           </div>
         </main>
-
-        {/* ===== RIGHT: CONVERSATION ===== */}
-        <aside className="sd-conversation">
-          <div className="conversation__head">
-            <span className="conversation__title">Conversation</span>
-            <div className="conversation__actions">
-              <button className="text-btn" onClick={clearConversation}>
-                <Trash2 size={13} />
-                Clear
-              </button>
-              <button className="text-btn text-btn--accent" onClick={extractConversation}>
-                <Download size={13} />
-                Extract Conversation
-              </button>
-            </div>
-          </div>
-
-          <div className="conversation__body">
-            {messages.map((m) => (
-              <div key={m.id} className={`msg-row msg-row--${m.sender}`}>
-                <div className={`msg-bubble msg-bubble--${m.sender}`}>
-                  <p>{m.text}</p>
-                  <span className="msg-time">{m.time}</span>
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-        </aside>
       </div>
     </div>
   );
