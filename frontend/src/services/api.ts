@@ -1,4 +1,3 @@
-// frontend/src/services/api.ts
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -13,37 +12,8 @@ const api = axios.create({
   },
 });
 
-export interface ChatResponse {
-  response: string;
-  intent: string;
-  action: boolean;
-}
+// ===== INTERFACES BASICAS =====
 
-export interface StatusResponse {
-  status: string;
-  version: string;
-  modules: {
-    notion: boolean;
-    calendar: boolean;
-    email: boolean;
-    voice: boolean;
-    data: boolean;
-    telegram: boolean;
-  };
-}
-
-export interface GreetingResponse {
-  ready: boolean;
-  text: string | null;
-}
-
-// ===== VOZ (Google TTS via Backend) =====
-export interface SpeakResponse {
-  audio: string;
-  format: string;
-}
-
-// ===== CLIMA =====
 export interface WeatherResponse {
   temp: number;
   feels_like: number;
@@ -54,54 +24,99 @@ export interface WeatherResponse {
   country: string;
 }
 
+export interface GreetingResponse {
+  ready: boolean;
+  text: string | null;
+}
+
+// NUEVA INTERFACIÓN CON 'id' PARA SOLUCIONAR ERROR TYPEScRIPT
+export interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  source: string;
+}
+
+// Panel de noticias
+export interface NewsPanelData {
+  headlines: NewsItem[];
+  lastUpdate: string;
+}
+
+// ===== FUNCION AUXILIAR POLIFUNCIONAL =====
+// Intenta extraer título de: **1. Título**, **Título**, 1. Título
+function extractTitleFromLine(line: string): string | null {
+  // Patrón 1: **1. Título** (número + punto + texto)
+  const p1 = /^\*\*(\d+)\.\s(.+?)\*\*$/;
+  const m1 = line.match(p1);
+  if (m1) return m1[2];
+  
+  // Patrón 2: **Título** (solo negrita, sin número)
+  const p2 = /^\*\*(.+?)\*\*$/;
+  const m2 = line.match(p2);
+  if (m2) return m2[1];
+  
+  // Patrón 3: 1. Título (sin negrita, solo número + punto + texto)
+  const p3 = /^(\d+)\.\s(.+)$/;
+  const m3 = line.match(p3);
+  if (m3) return m3[2];
+  
+  return null;
+}
+
+// ===== FUNCIÓN PRINCIPAL GETNEWSPANEL =====
+export const getNewsPanel = async (): Promise<NewsPanelData> => {
+  try {
+    const response = await api.get<{ response?: string; success?: boolean }>('/news');
+    if (response.data.response) {
+      const articles: NewsItem[] = [];
+      const lines = response.data.response.split('\n');
+      let currentTitle = '';
+      let currentSource = '';
+      
+      for (const line of lines) {
+        // 1. Intentar extraer título con cualquiera de los 3 patrones
+        const title = extractTitleFromLine(line);
+        
+        if (title) {
+          // Guardar título anterior antes de empezar el nuevo
+          if (currentTitle) {
+            articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
+          }
+          currentTitle = title;
+          currentSource = '';
+        }
+        // Detectar fuente: debe contener "📌 *Fuente:*"
+        else if (line.includes('📌 *Fuente:*')) {
+          const sm = line.match(/📌 \*Fuente:\*\s(.+)/);
+          if (sm) currentSource = sm[1];
+        }
+        // Detectar descripción: "📝 Texto" (opcional, se ignora por simplicidad)
+        else if (line.startsWith('📝 ')) {
+          // Se asocia descriptivamente al título actual (ignoramos por simplicidad)
+        }
+      }
+      // Empujar el último título si quedó pendiente
+      if (currentTitle) {
+        articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
+      }
+      
+      return { headlines: articles, lastUpdate: new Date().toLocaleString() };
+    }
+    return { headlines: [], lastUpdate: 'Nunca' };
+  } catch (error) {
+    console.error('Error obteniendo panel de noticias:', error);
+    return { headlines: [], lastUpdate: 'Error' };
+  }
+};
+
+// ===== FUNCIÓN GETWEATHER (OBLIGATORIA PARA Home.tsx) =====
 export const getWeather = async (): Promise<WeatherResponse> => {
   const response = await api.get<WeatherResponse>('/weather');
   return response.data;
 };
 
-// ===== MÉTRICAS DEL SISTEMA (CPU / RAM / DISCO) =====
-export interface SystemMetrics {
-  cpu_percent: number;
-  ram_percent: number;
-  ram_used_gb: number;
-  ram_total_gb: number;
-  disk_used_gb: number;
-  disk_total_gb: number;
-}
-
-export const getSystemMetrics = async (): Promise<SystemMetrics> => {
-  const response = await api.get<SystemMetrics>('/system');
-  return response.data;
-};
-
-// ===== CÁMARA =====
-export interface CameraResponse {
-  available: boolean;
-  last_capture: string | null;
-}
-
-export const getCamera = async (): Promise<CameraResponse> => {
-  try {
-    const response = await api.get<CameraResponse>('/camera');
-    return response.data;
-  } catch (error) {
-    console.error('Error obteniendo cámara:', error);
-    return { available: false, last_capture: null };
-  }
-};
-
-// Añade después de la línea 75 (después de getSystemMetrics)
-export const getSystemInfo = async (): Promise<{text: string, icon: string}> => {
-  try {
-    const response = await api.get<{response: string}>('/chat', { 
-      params: { message: 'estado del sistema' } 
-    });
-    return { text: response.data.response, icon: '⚙️' };
-  } catch (error) {
-    console.error('Error obteniendo info del sistema:', error);
-    return { text: '❌ Error obteniendo datos', icon: '⚠️' };
-  }
-};
+// ===== ENVÍO DE MENSAJES =====
 
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
@@ -161,6 +176,7 @@ export const speakText = async (text: string): Promise<boolean> => {
 };
 
 // ===== STT (Speech-to-Text) con Google Cloud =====
+
 export interface STTResponse {
   text: string;
   success: boolean;
@@ -335,3 +351,35 @@ export const formatNewsForWhatsApp = (articles: any[]): string => {
 
   return message;
 };
+
+// Interfaz para el response del chat
+export interface ChatResponse {
+  response: string;
+  intent: string;
+  action: boolean;
+}
+
+export interface StatusResponse {
+  status: string;
+  version: string;
+  modules: {
+    notion: boolean;
+    calendar: boolean;
+    email: boolean;
+    voice: boolean;
+    data: boolean;
+    telegram: boolean;
+  };
+}
+
+// ===== VOZ (Google TTS via Backend) =====
+
+export interface SpeakResponse {
+  audio: string;
+  format: string;
+}
+
+// ===== CLIMA =====
+
+// ... resto de los exports existentes que estaban en tu archivo original
+// (Send, Mic, MapPin, etc. interfaces si las tenías, pero las esenciales están arriba)

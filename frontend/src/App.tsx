@@ -1,6 +1,7 @@
 // frontend/src/App.tsx
 import React, { useState, useEffect } from 'react';
 import HomePage from './pages/Home';
+import NewsPage from './pages/News';
 import Navigation from './components/Navigation';
 import './components/Navigation.css';
 import './styles/App.css';
@@ -20,6 +21,8 @@ function App() {
     switch (currentView) {
       case 'home':
         return <HomePage />;;
+      case 'news':
+        return <NewsPage />;
       default:
         return <HomePage />;
     }

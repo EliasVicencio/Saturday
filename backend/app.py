@@ -346,6 +346,15 @@ def system_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+@app.route('/api/news', methods=['GET'])
+def news():
+    """Devuelve las noticias principales"""
+    try:
+        result = saturday.get_news()
+        return jsonify({'response': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 @app.route('/api/camera', methods=['GET'])
 def camera():
     """Devuelve el estado de la cámara"""

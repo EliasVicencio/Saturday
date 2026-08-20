@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Settings,
   RefreshCw,
   Cloud,
   Camera as CameraIcon,
@@ -24,12 +23,8 @@ import {
   sendMessage as apiSendMessage,
   getStatus,
   getWeather,
-  getSystemMetrics,
-  speakText,
   type StatusResponse,
   type WeatherResponse,
-  type SystemMetrics,
-  getCamera,
 } from "../services/api";
 
 interface Message {
@@ -154,7 +149,6 @@ export default function Home() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [statusError, setStatusError] = useState(false);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [floatingBubble, setFloatingBubble] = useState<{visible: boolean, text: string, icon: string} | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
@@ -200,30 +194,18 @@ export default function Home() {
     }
   }, []);
 
-  const refreshMetrics = useCallback(async () => {
-    try {
-      const data = await getSystemMetrics();
-      setMetrics(data);
-    } catch {
-      setMetrics(null);
-    }
-  }, []);
-
   useEffect(() => {
     refreshStatus();
     refreshWeather();
-    refreshMetrics();
 
     const statusInterval = setInterval(refreshStatus, 15000);
     const weatherInterval = setInterval(refreshWeather, 5 * 60 * 1000);
-    const metricsInterval = setInterval(refreshMetrics, 5000);
 
     return () => {
       clearInterval(statusInterval);
       clearInterval(weatherInterval);
-      clearInterval(metricsInterval);
     };
-  }, [refreshStatus, refreshWeather, refreshMetrics]);
+  }, [refreshStatus, refreshWeather]);
 
   useEffect(() => {
     if (!status && !statusError) return;
@@ -262,10 +244,9 @@ export default function Home() {
       } else if (isWeather) {
         setFloatingBubble({ visible: true, text: replyText, icon: '☀️' });
       } else if (isCamera) {
-        const cameraData = await getCamera();
         setFloatingBubble({ 
           visible: true, 
-          text: cameraData.available ? '📷 Cámara activa' : '❌ Cámara no disponible', 
+          text: cameraOn ? '📷 Cámara activa' : '❌ Cámara no disponible', 
           icon: '📷' 
         });
       } else {
@@ -325,7 +306,7 @@ export default function Home() {
           </span>
           <button
             className={`icon-square-btn ${voiceOn ? "icon-square-btn--active" : ""}`}
-            onClick={() => setVoiceOn((v) => !v)}
+            onClick={() => setVoiceOn((v) => { setListening(!v); return !v; })}
             title={voiceOn ? "Voz activada" : "Voz desactivada"}
           >
             {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -436,10 +417,10 @@ export default function Home() {
             <div className="load-row">
               <div className="load-row__label">
                 <span className="load-row__tag">{isOnline ? `${activeModulesCount} módulos activos` : "Sin conexión"}</span>
-                <span>{metrics ? `${metrics.cpu_percent}%` : "--%"}</span>
+                <span>--%</span>
               </div>
               <div className="bar">
-                <div className="bar__fill bar__fill--amber" style={{ width: `${metrics?.cpu_percent ?? 0}%` }} />
+                <div className="bar__fill bar__fill--amber" style={{ width: "0%" }} />
               </div>
             </div>
           </section>
@@ -448,7 +429,7 @@ export default function Home() {
         <main className="sd-center">
           <SaturnAtom active={listening} />
 
-          <button className="listening-pill" onClick={() => setVoiceOn((v) => !v)}>
+          <button className="listening-pill" onClick={() => setVoiceOn((v) => { setListening(!v); return !v; })}>
             <Mic size={13} />
             {sending ? "SATURDAY PENSANDO..." : voiceOn ? "VOZ ACTIVADA" : "TOCA PARA ACTIVAR VOZ"}
           </button>
