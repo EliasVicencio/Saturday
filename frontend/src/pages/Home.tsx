@@ -29,6 +29,7 @@ import {
   type StatusResponse,
   type WeatherResponse,
   type SystemMetrics,
+  getCamera,
 } from "../services/api";
 
 interface Message {
@@ -154,6 +155,7 @@ export default function Home() {
   const [statusError, setStatusError] = useState(false);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [floatingBubble, setFloatingBubble] = useState<{visible: boolean, text: string, icon: string} | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -236,7 +238,7 @@ export default function Home() {
     });
   }, [status, statusError]);
 
-  const sendMessage = async (text?: string) => {
+    const sendMessage = async (text?: string) => {
     const value = (text ?? inputValue).trim();
     if (!value || sending) return;
 
@@ -249,15 +251,33 @@ export default function Home() {
     try {
       const result = await apiSendMessage(value);
       const replyText = result.response || "No obtuve respuesta del backend.";
-      setMessages((prev) => [
-        ...prev,
-        { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatTime(new Date()) },
-      ]);
-      if (voiceOn) {
-        setListening(true);
-        await speakText(replyText);
-        setListening(false);
+      
+      // Verificar comandos especiales DESPUÉS de obtener la respuesta
+      const isSystemInfo = value.toLowerCase().includes('estado del sistema');
+      const isWeather = value.toLowerCase().includes('clima') || value.toLowerCase().includes('dime el clima');
+      const isCamera = value.toLowerCase().includes('ver cámara') || value.toLowerCase().includes('cámara');
+      
+      if (isSystemInfo) {
+        setFloatingBubble({ visible: true, text: replyText, icon: '⚙️' });
+      } else if (isWeather) {
+        setFloatingBubble({ visible: true, text: replyText, icon: '☀️' });
+      } else if (isCamera) {
+        const cameraData = await getCamera();
+        setFloatingBubble({ 
+          visible: true, 
+          text: cameraData.available ? '📷 Cámara activa' : '❌ Cámara no disponible', 
+          icon: '📷' 
+        });
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatTime(new Date()) }
+        ]);
       }
+      
+      // Scroll al final
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -315,55 +335,6 @@ export default function Home() {
 
       <div className="sd-main">
         <aside className="sd-sidebar">
-          <section className="panel">
-            <div className="panel__head">
-              <div className="panel__title">
-                <Settings size={15} className="accent" />
-                System Stats
-              </div>
-              <button className="ghost-icon-btn" onClick={refreshMetrics}>
-                <RefreshCw size={13} />
-              </button>
-            </div>
-
-            <div className="stat-row">
-              <div className="stat-row__label">
-                <span>CPU Usage</span>
-                <span>{metrics ? `${metrics.cpu_percent}%` : "--%"}</span>
-              </div>
-              <div className="bar">
-                <div className="bar__fill bar__fill--cyan" style={{ width: `${metrics?.cpu_percent ?? 0}%` }} />
-              </div>
-            </div>
-
-            <div className="stat-row">
-              <div className="stat-row__label">
-                <span>RAM Usage</span>
-                <span>{metrics ? `${metrics.ram_used_gb} GB` : "-- GB"}</span>
-              </div>
-              <div className="bar">
-                <div className="bar__fill bar__fill--cyan" style={{ width: `${metrics?.ram_percent ?? 0}%` }} />
-              </div>
-            </div>
-
-            <div className="mini-stats">
-              <div className="mini-stat">
-                <div className="mini-stat__label">CPU</div>
-                <div className="mini-stat__value">{metrics ? `${metrics.cpu_percent}%` : "--"}</div>
-              </div>
-              <div className="mini-stat">
-                <div className="mini-stat__label">Memory</div>
-                <div className="mini-stat__value">{metrics ? `${metrics.ram_percent}%` : "--"}</div>
-              </div>
-              <div className="mini-stat">
-                <div className="mini-stat__label">Disk</div>
-                <div className="mini-stat__value">
-                  {metrics ? `${metrics.disk_used_gb}/${metrics.disk_total_gb} GB` : "--"}
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="panel">
             <div className="panel__head">
               <div className="panel__title">
@@ -513,6 +484,20 @@ export default function Home() {
               {sending ? "Enviando..." : "Enviar"}
             </button>
           </div>
+          
+          {/* Burbuja flotante - Sistema */}
+          {floatingBubble && floatingBubble.visible && (
+            <div className="floating-bubble">
+              <span className="floating-bubble__icon">{floatingBubble.icon}</span>
+              <span className="floating-bubble__text">{floatingBubble.text}</span>
+              <button 
+                className="floating-bubble__close" 
+                onClick={() => setFloatingBubble(null)}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <div className="last-msg-preview">
             <span className="last-msg-preview__label">saturday:</span>

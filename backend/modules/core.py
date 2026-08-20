@@ -81,6 +81,14 @@ except ImportError:
     NEWS_AVAILABLE = False
     print("⚠️ NewsManager no disponible")
     
+try:
+    from modules.camera_manager import CameraManager
+    CAMERA_AVAILABLE = True
+    print("✅ CameraManager importado correctamente")
+except ImportError as e:
+    CAMERA_AVAILABLE = False
+    print(f"⚠️ CameraManager no disponible: {e}")
+    
 class SaturdayCore:
     """Núcleo de inteligencia de Saturday"""
     
@@ -190,6 +198,15 @@ class SaturdayCore:
                 print("✅ NewsManager inicializado")
             except Exception as e:
                 print(f"⚠️ Error inicializando NewsManager: {e}")
+                
+        # Inicializar Cámara
+        self.camera = None
+        if CAMERA_AVAILABLE:
+            try:
+                self.camera = CameraManager()
+                print("✅ CameraManager inicializado")
+            except Exception as e:
+                print(f"⚠️ Error inicializando CameraManager: {e}")
         
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
@@ -261,6 +278,9 @@ class SaturdayCore:
             "noticias": self.get_news,
             "buscar_noticias": self.search_news,
             "noticias_resumen": self.get_news_summary,
+            
+            # Cámara
+            "ver_cámara": self.get_camera,
         }
         
         for name, func in actions.items():
@@ -317,9 +337,6 @@ class SaturdayCore:
         # MAPEO DE INTENCIONES (resto de comandos)
         # ============================================================
         intent_map = [
-            # ============================================================
-            # SPOTIFY (prioridad alta)
-            # ============================================================
             ("abrir spotify", "abrir_spotify"),
             ("abre spotify", "abrir_spotify"),
             ("reproduce", "reproducir_musica"),
@@ -339,10 +356,6 @@ class SaturdayCore:
             ("qué suena", "cancion_actual"),
             ("qué música suena", "cancion_actual"),
             ("que suena", "cancion_actual"),
-            
-            # ============================================================
-            # TAREAS
-            # ============================================================
             ("buscar tarea", "buscar_tarea"),
             ("crear tarea", "crear_tarea"),
             ("completar tarea", "completar_tarea"),
@@ -350,51 +363,26 @@ class SaturdayCore:
             ("tareas hoy", "tareas_hoy"),
             ("tareas completadas", "tareas_completadas"),
             ("tareas", "tareas"),
-            
-            # ============================================================
-            # NOTAS
-            # ============================================================
             ("nota", "crear_nota"),
             ("ver notas", "ver_notas"),
             ("buscar nota", "buscar_nota"),
-            
-            # ============================================================
-            # RECORDATORIOS
-            # ============================================================
             ("recordatorio", "crear_recordatorio"),
             ("ver recordatorios", "ver_recordatorios"),
             ("recordatorios hoy", "recordatorios_hoy"),
-            
-            # ============================================================
-            # CALENDARIO
-            # ============================================================
             ("eventos", "eventos"),
             ("eventos hoy", "eventos_hoy"),
             ("crear evento", "crear_evento"),
-            
-            # ============================================================
-            # EMAILS
-            # ============================================================
             ("correos", "correos"),
             ("no leídos", "no_leidos"),
             ("enviar correo", "enviar_correo"),
-            
-            # ============================================================
-            # INFORMACIÓN
-            # ============================================================
             ("hora", "hora"),
             ("fecha", "fecha"),
             ("clima", "clima"),
             ("temperatura", "clima"),
-            
-            # ============================================================
-            # ESTADÍSTICAS
-            # ============================================================
+            ("ver cámara", "get_camera"),
+            ("cámara", "get_camera"),
             ("estadisticas", "estadisticas"),
-            
-            # =============================================================
-            # NOTICIAS
-            # =============================================================
+            ("estado del sistema", "system_info"),
             ("noticias", "noticias"),
             ("noticias de", "noticias"),
             ("noticias del día", "noticias"),
@@ -402,9 +390,6 @@ class SaturdayCore:
             ("buscar noticia", "buscar_noticias"),
             ("noticias resumen", "noticias_resumen"),
             ("resumen noticias", "noticias_resumen"),
-            # ============================================================
-            # OTROS
-            # ============================================================
             ("hola", "saludo"),
             ("ayuda", "ayuda"),
         ]
@@ -604,6 +589,26 @@ class SaturdayCore:
         if not self.data:
             return "❌ DataManager no disponible"
         return self.data.get_stats()
+    
+    def get_camera(self, **kwargs) -> str:
+        """Obtiene imagen/estado de la cámara"""
+        if not self.camera:
+            return "❌ CameraManager no disponible"
+        return self.camera.get_status()
+    
+    def get_system_info(self, **kwargs) -> str:
+        """Obtiene información del sistema (CPU, RAM, disco)"""
+        try:
+            import psutil
+            cpu = psutil.cpu_percent(interval=0.3)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            return (f"💻 CPU: {cpu}% | 📟 RAM: {mem.percent}% ({mem.used//1024//1024}GB/{mem.total//1024//1024}GB) | "
+                    f"💿 Disco: {disk.percent}% ({disk.used//1024//1024}GB/{disk.total//1024//1024}GB)")
+        except ImportError:
+            return "❌ psutil no está instalado en el backend"
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
     
     def get_events(self, **kwargs) -> str:
         if not self.calendar:

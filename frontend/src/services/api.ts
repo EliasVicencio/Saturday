@@ -74,6 +74,35 @@ export const getSystemMetrics = async (): Promise<SystemMetrics> => {
   return response.data;
 };
 
+// ===== CÁMARA =====
+export interface CameraResponse {
+  available: boolean;
+  last_capture: string | null;
+}
+
+export const getCamera = async (): Promise<CameraResponse> => {
+  try {
+    const response = await api.get<CameraResponse>('/camera');
+    return response.data;
+  } catch (error) {
+    console.error('Error obteniendo cámara:', error);
+    return { available: false, last_capture: null };
+  }
+};
+
+// Añade después de la línea 75 (después de getSystemMetrics)
+export const getSystemInfo = async (): Promise<{text: string, icon: string}> => {
+  try {
+    const response = await api.get<{response: string}>('/chat', { 
+      params: { message: 'estado del sistema' } 
+    });
+    return { text: response.data.response, icon: '⚙️' };
+  } catch (error) {
+    console.error('Error obteniendo info del sistema:', error);
+    return { text: '❌ Error obteniendo datos', icon: '⚠️' };
+  }
+};
+
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
   return response.data;

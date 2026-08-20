@@ -345,13 +345,22 @@ def system_stats():
         return jsonify({'error': 'psutil no está instalado en el backend'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
+@app.route('/api/camera', methods=['GET'])
+def camera():
+    """Devuelve el estado de la cámara"""
+    try:
+        if saturday.camera:
+            result = saturday.camera.get_status()
+            return jsonify({'success': True, 'data': result})
+        return jsonify({'success': False, 'error': 'CameraManager no disponible'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check para despliegue"""
     return jsonify({'status': 'ok'})
-
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
