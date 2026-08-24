@@ -2,6 +2,7 @@
 import sys
 import os
 import base64
+import requests
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -208,16 +209,40 @@ def stt():
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    """Obtiene tareas de Notion"""
+    """Obtiene tareas de Notion (texto, para el chat/voz)"""
     result = saturday.process_intent('tareas')
     return jsonify({'response': result['response']})
 
 
+@app.route('/api/tasks/list', methods=['GET'])
+def get_tasks_list():
+    """Tareas pendientes de Notion en formato estructurado (para el dashboard)"""
+    if not saturday.notion:
+        return jsonify({'tasks': []})
+    try:
+        tasks = saturday.notion.get_tasks(status="Todo", limit=8)
+        return jsonify({'tasks': [{'title': t.get('name', 'Sin título')} for t in tasks]})
+    except Exception as e:
+        return jsonify({'tasks': [], 'error': str(e)})
+
+
 @app.route('/api/events', methods=['GET'])
 def get_events():
-    """Obtiene eventos del calendario"""
+    """Obtiene eventos del calendario (texto, para el chat/voz)"""
     result = saturday.process_intent('eventos')
     return jsonify({'response': result['response']})
+
+
+@app.route('/api/events/today', methods=['GET'])
+def get_events_today():
+    """Eventos de hoy en formato estructurado (para el dashboard)"""
+    if not saturday.calendar:
+        return jsonify({'events': []})
+    try:
+        events = saturday.calendar.get_events_today_list()
+        return jsonify({'events': events})
+    except Exception as e:
+        return jsonify({'events': [], 'error': str(e)})
 
 
 @app.route('/api/notes', methods=['GET'])
@@ -270,7 +295,11 @@ def send_summary():
     result = saturday.daily_summary.send(via="whatsapp")
     
     if result.get('success'):
-        return jsonify({'success': True, 'message': 'Resumen enviado'})
+        return jsonify({
+            'success': True,
+            'message': 'Resumen enviado',
+            'vault_path': result.get('vault_path'),
+        })
     else:
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
@@ -354,6 +383,52 @@ def news():
         return jsonify({'response': result})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/news/headlines', methods=['GET'])
+def news_headlines():
+    """
+    Titulares en formato estructurado (título, fuente, url, imagen, categoría),
+    sin pasar por texto formateado. ?category=technology&limit=8
+    """
+    if not saturday.news or not saturday.news.is_available():
+        return jsonify({'articles': [], 'available': False})
+    try:
+        category = request.args.get('category')
+        limit = int(request.args.get('limit', 8))
+        articles = saturday.news.get_top_headlines(category=category, limit=limit)
+        return jsonify({'articles': articles, 'available': True})
+    except Exception as e:
+        return jsonify({'articles': [], 'available': True, 'error': str(e)})
+
+
+@app.route('/api/crypto/bitcoin', methods=['GET'])
+def crypto_bitcoin():
+    """Precio actual de Bitcoin (CoinGecko, sin necesidad de API key)"""
+    try:
+        response = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={
+                "ids": "bitcoin",
+                "vs_currencies": "usd,clp",
+                "include_24hr_change": "true",
+                "include_last_updated_at": "true",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json().get("bitcoin", {})
+        if not data:
+            return jsonify({'error': 'Sin datos de CoinGecko'}), 502
+        return jsonify({
+            'usd': data.get('usd'),
+            'clp': data.get('clp'),
+            'usd_24h_change': round(data.get('usd_24h_change', 0), 2),
+            'last_updated_at': data.get('last_updated_at'),
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
     
 @app.route('/api/camera', methods=['GET'])
 def camera():
@@ -365,6 +440,71 @@ def camera():
         return jsonify({'success': False, 'error': 'CameraManager no disponible'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vault/stats', methods=['GET'])
+def vault_stats():
+    """Resumen de la bóveda: cuántas notas hay en raw/, wiki/, outputs/ y el grafo"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    return jsonify(saturday.vault.get_stats())
+
+
+@app.route('/api/vault/notes', methods=['GET'])
+def vault_notes():
+    """Lista las notas de una capa: ?layer=raw|wiki|outputs"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    layer = request.args.get('layer', 'wiki')
+    return jsonify({'layer': layer, 'notes': saturday.vault.list_notes(layer)})
+
+
+@app.route('/api/vault/note', methods=['GET'])
+def vault_note():
+    """Devuelve el contenido de una nota: ?path=wiki/mi-nota.md"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'error': "Falta el parámetro 'path'"}), 400
+    content = saturday.vault.read_note(path)
+    if content is None:
+        return jsonify({'error': 'Nota no encontrada'}), 404
+    return jsonify({'path': path, 'content': content})
+
+
+@app.route('/api/vault/note', methods=['POST'])
+def vault_create_note():
+    """Crea/actualiza una nota en wiki/. Body: {title, content, tags?}"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    data = request.json or {}
+    title = data.get('title', '').strip()
+    content = data.get('content', '').strip()
+    tags = data.get('tags', [])
+    if not title or not content:
+        return jsonify({'error': "Se requieren 'title' y 'content'"}), 400
+    path = saturday.vault.create_wiki_note(title, content, tags)
+    return jsonify({'success': True, 'path': path})
+
+
+@app.route('/api/vault/search', methods=['GET'])
+def vault_search():
+    """Busca texto en toda la bóveda: ?q=término"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({'error': "Falta el parámetro 'q'"}), 400
+    return jsonify({'query': query, 'results': saturday.vault.search(query)})
+
+
+@app.route('/api/vault/graph', methods=['GET'])
+def vault_graph():
+    """Grafo de notas enlazadas (nodes/edges) para visualizar en el frontend"""
+    if not saturday.vault:
+        return jsonify({'error': 'VaultManager no disponible'}), 500
+    return jsonify(saturday.vault.get_graph_json())
+
 
 @app.route('/api/health', methods=['GET'])
 def health():

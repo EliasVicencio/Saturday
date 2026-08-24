@@ -101,6 +101,27 @@ class CalendarManager:
             lines.append(f"  • {event.get('summary', 'Sin título')} - {time_str}")
         return "\n".join(lines)
     
+    def get_events_today_list(self) -> list:
+        """Igual que get_events_today_formatted pero devuelve datos estructurados (para la API)."""
+        events = self.get_events()
+        today = datetime.now().date()
+        result = []
+        for event in events:
+            start = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
+            if not start:
+                continue
+            try:
+                dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                if dt.date() != today:
+                    continue
+                result.append({
+                    'title': event.get('summary', 'Sin título'),
+                    'time': dt.strftime('%H:%M') if 'T' in start else 'Todo el día',
+                })
+            except Exception:
+                continue
+        return result
+
     def create_event_from_text(self, text: str) -> str:
         if not text:
             return "¿Qué evento quieres crear?"

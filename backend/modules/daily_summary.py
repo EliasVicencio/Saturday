@@ -138,23 +138,47 @@ class DailySummary:
             return []
     
     def send(self, via: str = "whatsapp") -> Dict[str, Any]:
-        """Envía el resumen por el canal especificado"""
+        """Envía el resumen por el canal especificado y lo guarda en la bóveda"""
         summary = self.generate()
-        
+
         if via == "whatsapp":
             if not self.core.communication:
                 return {'success': False, 'error': 'CommunicationManager no disponible'}
-            
+
             # Enviar por WhatsApp
             result = self.core.communication.send_whatsapp_message(summary)
-            return result
-        
+
         elif via == "telegram":
             if not self.core.telegram:
                 return {'success': False, 'error': 'Telegram no disponible'}
             # Enviar por Telegram
             # self.core.telegram.send_message(summary)
-            return {'success': True, 'message': 'Resumen enviado por Telegram'}
-        
+            result = {'success': True, 'message': 'Resumen enviado por Telegram'}
+
         else:
             return {'success': False, 'error': f'Canal no soportado: {via}'}
+
+        # Si el envío fue exitoso, dejamos rastro en la bóveda ("si no está en la
+        # bóveda, no pasó"). Nunca dejamos que un fallo acá tumbe el envío ya hecho.
+        if result.get('success') and self.core.vault:
+            try:
+                # 1) copia cruda del texto enviado, en outputs/
+                output_path = self.core.vault.save_output(
+                    summary, kind=f"resumen-diario-{via}"
+                )
+                # 2) nota enlazada en wiki/, agrupada bajo el hub "Resúmenes Diarios"
+                #    así el resumen aparece como nodo conectado en el grafo de la bóveda
+                item_title = f"Resumen {self.date_str}"
+                wiki_path = self.core.vault.link_into_hub(
+                    hub_title="Resúmenes Diarios",
+                    item_title=item_title,
+                    item_summary=summary,
+                    source_path=output_path,
+                    tags=["resumen-diario", via],
+                )
+                result['vault_path'] = output_path
+                result['vault_wiki_path'] = wiki_path
+            except Exception as e:
+                print(f"⚠️ No se pudo guardar el resumen en la bóveda: {e}")
+
+        return result

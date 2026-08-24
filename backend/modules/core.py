@@ -21,6 +21,12 @@ except ImportError:
     DATA_AVAILABLE = False
 
 try:
+    from modules.vault_manager import VaultManager
+    VAULT_AVAILABLE = True
+except ImportError:
+    VAULT_AVAILABLE = False
+
+try:
     from modules.voice import VoiceManager
     VOICE_AVAILABLE = True
 except ImportError:
@@ -104,6 +110,15 @@ class SaturdayCore:
             except Exception as e:
                 print(f"⚠️ Error inicializando DataManager: {e}")
         
+        # Inicializar VaultManager (memoria en Markdown, "bóveda/")
+        self.vault = None
+        if VAULT_AVAILABLE:
+            try:
+                self.vault = VaultManager()
+                print("✅ VaultManager inicializado")
+            except Exception as e:
+                print(f"⚠️ Error inicializando VaultManager: {e}")
+
         # Inicializar Notion
         self.notion = None
         if NOTION_AVAILABLE:
@@ -281,6 +296,11 @@ class SaturdayCore:
             
             # Cámara
             "ver_cámara": self.get_camera,
+
+            # Bóveda (memoria en Markdown)
+            "guardar_boveda": self.guardar_en_boveda,
+            "buscar_boveda": self.buscar_en_boveda,
+            "estado_boveda": self.estado_boveda,
         }
         
         for name, func in actions.items():
@@ -392,6 +412,12 @@ class SaturdayCore:
             ("resumen noticias", "noticias_resumen"),
             ("hola", "saludo"),
             ("ayuda", "ayuda"),
+            ("guardar en la bóveda", "guardar_boveda"),
+            ("guardar en boveda", "guardar_boveda"),
+            ("buscar en la bóveda", "buscar_boveda"),
+            ("buscar en boveda", "buscar_boveda"),
+            ("estado de la bóveda", "estado_boveda"),
+            ("estado de la boveda", "estado_boveda"),
         ]
         
         for key, value in intent_map:
@@ -400,7 +426,8 @@ class SaturdayCore:
                 # Extraer parámetros
                 if intent in ["crear_tarea", "completar_tarea", "eliminar_tarea", "buscar_tarea"]:
                     params["name"] = text.replace(key, "").strip()
-                elif intent in ["crear_nota", "crear_recordatorio", "crear_evento", "enviar_correo"]:
+                elif intent in ["crear_nota", "crear_recordatorio", "crear_evento", "enviar_correo",
+                                 "guardar_boveda", "buscar_boveda"]:
                     params["text"] = text.replace(key, "").strip()
                 break
         
@@ -590,6 +617,39 @@ class SaturdayCore:
             return "❌ DataManager no disponible"
         return self.data.get_stats()
     
+    # ------------------------------------------------------------------
+    # BÓVEDA (memoria en Markdown)
+    # ------------------------------------------------------------------
+
+    def guardar_en_boveda(self, text: str = None, **kwargs) -> str:
+        """Guarda algo dicho/capturado en raw/ de la bóveda."""
+        if not self.vault:
+            return "❌ VaultManager no disponible"
+        if not text:
+            return "¿Qué querés que guarde en la bóveda?"
+        path = self.vault.save_raw(text, source="voz" if kwargs.get("voz") else "chat")
+        return f"✅ Guardado en la bóveda: {path}"
+
+    def buscar_en_boveda(self, text: str = None, **kwargs) -> str:
+        """Busca un texto en toda la bóveda."""
+        if not self.vault:
+            return "❌ VaultManager no disponible"
+        if not text:
+            return "¿Qué querés buscar en la bóveda?"
+        results = self.vault.search(text)
+        if not results:
+            return f"No encontré nada con '{text}' en la bóveda."
+        lines = [f"🔍 {len(results)} resultado(s) para '{text}':"]
+        for r in results[:5]:
+            lines.append(f"  📄 {r['path']}: ...{r['snippet']}...")
+        return "\n".join(lines)
+
+    def estado_boveda(self, **kwargs) -> str:
+        """Resumen de la bóveda (cuántas notas hay en cada capa)."""
+        if not self.vault:
+            return "❌ VaultManager no disponible"
+        return self.vault.get_stats_text()
+
     def get_camera(self, **kwargs) -> str:
         """Obtiene imagen/estado de la cámara"""
         if not self.camera:
@@ -701,7 +761,10 @@ class SaturdayCore:
         result = self.daily_summary.send(via="whatsapp")
         
         if result.get('success'):
-            return "📋 Resumen del día enviado por WhatsApp. Revisa tu teléfono."
+            msg = "📋 Resumen del día enviado por WhatsApp. Revisa tu teléfono."
+            if result.get('vault_path'):
+                msg += f"\n🗂️ Guardado en la bóveda: {result['vault_path']}"
+            return msg
         else:
             return f"❌ Error al enviar resumen: {result.get('error')}"
         

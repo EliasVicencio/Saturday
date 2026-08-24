@@ -381,5 +381,125 @@ export interface SpeakResponse {
 
 // ===== CLIMA =====
 
+// ===== BÓVEDA (memoria en Markdown) =====
+
+export interface VaultGraphNode {
+  id: string;
+  title: string;
+  path: string;
+}
+
+export interface VaultGraphEdge {
+  source: string;
+  target: string;
+}
+
+export interface VaultGraphResponse {
+  nodes: VaultGraphNode[];
+  edges: VaultGraphEdge[];
+}
+
+export interface VaultStats {
+  raw_count: number;
+  wiki_count: number;
+  outputs_count: number;
+  graph_nodes: number;
+  graph_edges: number;
+}
+
+export const getVaultGraph = async (): Promise<VaultGraphResponse> => {
+  const response = await api.get<VaultGraphResponse>('/vault/graph');
+  return response.data;
+};
+
+export const getVaultStats = async (): Promise<VaultStats> => {
+  const response = await api.get<VaultStats>('/vault/stats');
+  return response.data;
+};
+
+export interface VaultNote {
+  name: string;
+  path: string;
+  modified: string;
+  size_bytes: number;
+}
+
+export const getVaultNotes = async (layer: "raw" | "wiki" | "outputs"): Promise<VaultNote[]> => {
+  const response = await api.get<{ layer: string; notes: VaultNote[] }>(`/vault/notes?layer=${layer}`);
+  return response.data.notes;
+};
+
+// ===== SISTEMA (CPU / RAM / disco reales) =====
+
+export interface SystemStats {
+  cpu_percent: number;
+  ram_percent: number;
+  ram_used_gb: number;
+  ram_total_gb: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+}
+
+export const getSystemStats = async (): Promise<SystemStats> => {
+  const response = await api.get<SystemStats>('/system');
+  return response.data;
+};
+
+// ===== TAREAS (Notion) Y EVENTOS (Calendar) =====
+
+export interface TaskItem {
+  title: string;
+}
+
+export const getTasksList = async (): Promise<TaskItem[]> => {
+  const response = await api.get<{ tasks: TaskItem[] }>('/tasks/list');
+  return response.data.tasks;
+};
+
+export interface EventItem {
+  title: string;
+  time: string;
+}
+
+export const getEventsToday = async (): Promise<EventItem[]> => {
+  const response = await api.get<{ events: EventItem[] }>('/events/today');
+  return response.data.events;
+};
+
+// ===== NOTICIAS (estructurado) =====
+
+export interface Headline {
+  title: string;
+  description: string;
+  source: string;
+  source_name: string;
+  url: string;
+  published_at: string;
+  image: string;
+  category: string[];
+}
+
+export const getNewsHeadlines = async (category?: string, limit = 8): Promise<{ articles: Headline[]; available: boolean }> => {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  params.set("limit", String(limit));
+  const response = await api.get<{ articles: Headline[]; available: boolean }>(`/news/headlines?${params.toString()}`);
+  return response.data;
+};
+
+// ===== BITCOIN =====
+
+export interface BitcoinPrice {
+  usd: number;
+  clp: number;
+  usd_24h_change: number;
+  last_updated_at: number;
+}
+
+export const getBitcoinPrice = async (): Promise<BitcoinPrice> => {
+  const response = await api.get<BitcoinPrice>('/crypto/bitcoin');
+  return response.data;
+};
+
 // ... resto de los exports existentes que estaban en tu archivo original
 // (Send, Mic, MapPin, etc. interfaces si las tenías, pero las esenciales están arriba)

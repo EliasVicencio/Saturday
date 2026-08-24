@@ -1,37 +1,27 @@
 // frontend/src/App.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import HomePage from './pages/Home';
 import NewsPage from './pages/News';
-import Navigation from './components/Navigation';
-import './components/Navigation.css';
 import './styles/App.css';
-import { getStatus } from './services/api';
 
-type View = 'home' | 'dashboard' | 'projects' | 'news';
+type View = 'home' | 'news';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
-  const [status, setStatus] = useState<{ status: string } | null>(null);
 
   useEffect(() => {
-    getStatus().then(setStatus).catch(() => setStatus(null));
+    const goHome = () => setCurrentView('home');
+    window.addEventListener('go-home', goHome);
+    return () => window.removeEventListener('go-home', goHome);
   }, []);
-
-  const renderView = () => {
-    switch (currentView) {
-      case 'home':
-        return <HomePage />;;
-      case 'news':
-        return <NewsPage />;
-      default:
-        return <HomePage />;
-    }
-  };
 
   return (
     <div className="app-container">
-      {renderView()}
-      <Navigation currentView={currentView} onNavigate={setCurrentView} />
+      {currentView === 'news' ? (
+        <NewsPage />
+      ) : (
+        <HomePage onNavigateNews={() => setCurrentView('news')} />
+      )}
     </div>
   );
 }
