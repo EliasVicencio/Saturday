@@ -59,6 +59,6 @@ OpenWeather	OpenWeatherMap	WEATHER_API_KEY
 ```
 
 ---
-> Despliegue automático via webhook en Oracle Cloud Free Tier
+> Despliegue automático via webhook en Oracle Cloud
 
 | Desarrollado por Elias Vicencio
