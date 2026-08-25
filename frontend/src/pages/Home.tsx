@@ -17,6 +17,7 @@ import VaultGraph from "../components/Vaultgraph";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import {
   sendMessage as apiSendMessage,
+  speakText,
   getStatus,
   getWeather,
   getSystemStats,
@@ -208,6 +209,8 @@ export default function Home({ onNavigateNews }: HomeProps) {
         ...prev,
         { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatClock(new Date()) },
       ]);
+
+      speakText(replyText);
 
       // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
