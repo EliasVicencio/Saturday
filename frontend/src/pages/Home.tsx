@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import "../styles/Home.css";
 import VaultGraph from "../components/Vaultgraph";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import {
   sendMessage as apiSendMessage,
   getStatus,
@@ -72,7 +73,6 @@ interface HomeProps {
 
 export default function Home({ onNavigateNews }: HomeProps) {
   const [now, setNow] = useState(new Date());
-  const [listening, setListening] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -208,6 +208,12 @@ export default function Home({ onNavigateNews }: HomeProps) {
         ...prev,
         { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatClock(new Date()) },
       ]);
+
+      // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
+      // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
+      if (result.navigate === "news" && onNavigateNews) {
+        setTimeout(() => onNavigateNews(), 400);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -222,6 +228,13 @@ export default function Home({ onNavigateNews }: HomeProps) {
       setSending(false);
     }
   };
+
+  // Reconocimiento de voz: al terminar de hablar, el texto final se manda solo
+  // por el mismo pipeline que el chat de texto (sendMessage -> /api/chat).
+  const speech = useSpeechRecognition({
+    lang: "es-CL",
+    onFinalResult: (transcript) => sendMessage(transcript),
+  });
 
   const isOnline = !!status && status.status === "online";
   const activeModulesCount = status ? Object.values(status.modules).filter(Boolean).length : 0;
@@ -335,7 +348,7 @@ export default function Home({ onNavigateNews }: HomeProps) {
         {/* ===== COLUMNA CENTRAL ===== */}
         <main className="vault-col vault-col--center">
           <div className="vault-sphere-wrap">
-            <VaultGraph active={listening || sending} size={460} />
+            <VaultGraph active={speech.listening || sending} size={460} />
             <div className="vault-sphere-count">
               <span className="vault-sphere-count__num">
                 {vaultStats
@@ -363,27 +376,44 @@ export default function Home({ onNavigateNews }: HomeProps) {
             <span className="vault-composer__prompt">SATURDAY /</span>
             <input
               type="text"
-              placeholder="Escribe una instrucción o comando..."
-              value={inputValue}
+              placeholder={
+                speech.listening
+                  ? speech.interimTranscript || "Escuchando..."
+                  : "Escribe una instrucción o comando..."
+              }
+              value={speech.listening ? speech.interimTranscript : inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              disabled={sending}
+              disabled={sending || speech.listening}
             />
             <button
-              className={`vault-composer__mic ${listening ? "vault-composer__mic--active" : ""}`}
-              onClick={() => setListening((v) => !v)}
-              title={listening ? "Escuchando" : "Activar voz"}
+              className={`vault-composer__mic ${speech.listening ? "vault-composer__mic--active" : ""}`}
+              onClick={speech.toggle}
+              disabled={!speech.supported}
+              title={
+                !speech.supported
+                  ? "Tu navegador no soporta reconocimiento de voz (probá con Chrome o Edge)"
+                  : speech.listening
+                    ? "Detener y escuchar"
+                    : "Activar voz"
+              }
             >
-              {listening ? <Mic size={14} /> : <MicOff size={14} />}
+              {speech.listening ? <Mic size={14} /> : <MicOff size={14} />}
             </button>
             <button className="vault-composer__send" onClick={() => sendMessage()} disabled={sending || !inputValue.trim()}>
               <Send size={14} />
             </button>
           </div>
 
+          {speech.error && (
+            <div className="vault-speech-error">
+              🎙️ No pude usar el micrófono ({speech.error === "not-allowed" ? "permiso denegado" : speech.error}).
+            </div>
+          )}
+
           <div className="vault-last-msg">
             <span className="vault-last-msg__tag">saturday</span>
-            {sending ? "pensando..." : lastMessage?.text}
+            {sending ? "pensando..." : speech.listening ? "escuchando..." : lastMessage?.text}
           </div>
           <div ref={chatEndRef} />
         </main>
@@ -419,7 +449,7 @@ export default function Home({ onNavigateNews }: HomeProps) {
           <div className="vault-panel-title vault-panel-title--tight">AUDIO E/S</div>
           <div className="vault-audio-row">
             TTS / LOCAL
-            <span className="vault-audio-state">{listening ? "ESCUCHANDO..." : "EJECUTÁNDOSE..."}</span>
+            <span className="vault-audio-state">{speech.listening ? "ESCUCHANDO..." : "EJECUTÁNDOSE..."}</span>
           </div>
 
           <div className="vault-panel-title vault-panel-title--tight">

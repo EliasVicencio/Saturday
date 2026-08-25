@@ -357,6 +357,7 @@ export interface ChatResponse {
   response: string;
   intent: string;
   action: boolean;
+  navigate?: string;
 }
 
 export interface StatusResponse {

@@ -440,6 +440,12 @@
   text-align: center;
   line-height: 1.5;
 }
+.vault-speech-error {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--red);
+  text-align: center;
+}
 .vault-last-msg__tag {
   color: var(--gold);
   margin-right: 6px;

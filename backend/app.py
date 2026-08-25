@@ -123,11 +123,14 @@ def chat():
     
     try:
         result = saturday.process_intent(message)
-        return jsonify({
+        response_payload = {
             'response': result['response'],
             'intent': result.get('intent', 'general'),
             'action': result.get('action', False)
-        })
+        }
+        if result.get('navigate'):
+            response_payload['navigate'] = result['navigate']
+        return jsonify(response_payload)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

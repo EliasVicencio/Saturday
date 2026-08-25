@@ -26,6 +26,8 @@ try:
 except ImportError:
     VAULT_AVAILABLE = False
 
+from modules.intent_engine import build_default_engine
+
 try:
     from modules.voice import VoiceManager
     VOICE_AVAILABLE = True
@@ -118,6 +120,10 @@ class SaturdayCore:
                 print("✅ VaultManager inicializado")
             except Exception as e:
                 print(f"⚠️ Error inicializando VaultManager: {e}")
+
+        # Motor de interpretación de intenciones (sinónimos + fuzzy matching,
+        # ver modules/intent_engine.py)
+        self.intent_engine = build_default_engine()
 
         # Inicializar Notion
         self.notion = None
@@ -316,122 +322,35 @@ class SaturdayCore:
         self.knowledge_graph.add_edge("enviar_whatsapp", "enviar_voz_whatsapp", weight=0.5)
     
     def process_intent(self, text: str) -> Dict[str, Any]:
-        """Procesa la intención del usuario"""
-        text_lower = text.lower()
-        intent = "general"
-        params = {}
-        
-        # ============================================================
-        # DETECTAR COMANDOS DE WHATSAPP (prioridad alta)
-        # ============================================================
-        if "envía whatsapp" in text_lower or "enviar whatsapp" in text_lower or "envía wsp" in text_lower:
-            intent = "enviar_whatsapp"
-            params["text"] = text
-            print(f"📱 Detectado comando WhatsApp: {text}")
-            # Ejecutar directamente
-            node = self.knowledge_graph.nodes[intent]
-            if node.get('type') == 'action':
-                try:
-                    result = node['function'](**params)
-                    self.send_to_telegram(f"📱 Interfaz: {text}")
-                    self.send_to_telegram(f"🟣 Saturday: {result}")
-                    return {"intent": intent, "response": result, "action": True}
-                except Exception as e:
-                    return {"intent": "error", "response": f"❌ Error: {str(e)}", "action": False}
-        
-        if "envía voz whatsapp" in text_lower or "enviar voz whatsapp" in text_lower or "voz whatsapp" in text_lower:
-            intent = "enviar_voz_whatsapp"
-            params["text"] = text
-            print(f"🎤 Detectado comando WhatsApp voz: {text}")
-            node = self.knowledge_graph.nodes[intent]
-            if node.get('type') == 'action':
-                try:
-                    result = node['function'](**params)
-                    self.send_to_telegram(f"📱 Interfaz: {text}")
-                    self.send_to_telegram(f"🟣 Saturday: {result}")
-                    return {"intent": intent, "response": result, "action": True}
-                except Exception as e:
-                    return {"intent": "error", "response": f"❌ Error: {str(e)}", "action": False}
-        
-        # ============================================================
-        # MAPEO DE INTENCIONES (resto de comandos)
-        # ============================================================
-        intent_map = [
-            ("abrir spotify", "abrir_spotify"),
-            ("abre spotify", "abrir_spotify"),
-            ("reproduce", "reproducir_musica"),
-            ("reproducir", "reproducir_musica"),
-            ("pon música", "reproducir_musica"),
-            ("pon musica", "reproducir_musica"),
-            ("toca", "reproducir_musica"),
-            ("toca música", "reproducir_musica"),
-            ("play", "reproducir_musica"),
-            ("pausa", "pausar_musica"),
-            ("pausar", "pausar_musica"),
-            ("siguiente", "siguiente_cancion"),
-            ("siguiente canción", "siguiente_cancion"),
-            ("siguiente tema", "siguiente_cancion"),
-            ("anterior", "anterior_cancion"),
-            ("canción actual", "cancion_actual"),
-            ("qué suena", "cancion_actual"),
-            ("qué música suena", "cancion_actual"),
-            ("que suena", "cancion_actual"),
-            ("buscar tarea", "buscar_tarea"),
-            ("crear tarea", "crear_tarea"),
-            ("completar tarea", "completar_tarea"),
-            ("eliminar tarea", "eliminar_tarea"),
-            ("tareas hoy", "tareas_hoy"),
-            ("tareas completadas", "tareas_completadas"),
-            ("tareas", "tareas"),
-            ("nota", "crear_nota"),
-            ("ver notas", "ver_notas"),
-            ("buscar nota", "buscar_nota"),
-            ("recordatorio", "crear_recordatorio"),
-            ("ver recordatorios", "ver_recordatorios"),
-            ("recordatorios hoy", "recordatorios_hoy"),
-            ("eventos", "eventos"),
-            ("eventos hoy", "eventos_hoy"),
-            ("crear evento", "crear_evento"),
-            ("correos", "correos"),
-            ("no leídos", "no_leidos"),
-            ("enviar correo", "enviar_correo"),
-            ("hora", "hora"),
-            ("fecha", "fecha"),
-            ("clima", "clima"),
-            ("temperatura", "clima"),
-            ("ver cámara", "get_camera"),
-            ("cámara", "get_camera"),
-            ("estadisticas", "estadisticas"),
-            ("estado del sistema", "system_info"),
-            ("noticias", "noticias"),
-            ("noticias de", "noticias"),
-            ("noticias del día", "noticias"),
-            ("buscar noticias", "buscar_noticias"),
-            ("buscar noticia", "buscar_noticias"),
-            ("noticias resumen", "noticias_resumen"),
-            ("resumen noticias", "noticias_resumen"),
-            ("hola", "saludo"),
-            ("ayuda", "ayuda"),
-            ("guardar en la bóveda", "guardar_boveda"),
-            ("guardar en boveda", "guardar_boveda"),
-            ("buscar en la bóveda", "buscar_boveda"),
-            ("buscar en boveda", "buscar_boveda"),
-            ("estado de la bóveda", "estado_boveda"),
-            ("estado de la boveda", "estado_boveda"),
-        ]
-        
-        for key, value in intent_map:
-            if key in text_lower:
-                intent = value
-                # Extraer parámetros
-                if intent in ["crear_tarea", "completar_tarea", "eliminar_tarea", "buscar_tarea"]:
-                    params["name"] = text.replace(key, "").strip()
-                elif intent in ["crear_nota", "crear_recordatorio", "crear_evento", "enviar_correo",
-                                 "guardar_boveda", "buscar_boveda"]:
-                    params["text"] = text.replace(key, "").strip()
-                break
-        
-        # Ejecutar acción
+        """
+        Procesa la intención del usuario.
+        Usa IntentEngine (modules/intent_engine.py) para clasificar el texto
+        contra sinónimos + fuzzy matching, en vez de comparar substrings a mano.
+        """
+        match = self.intent_engine.classify(text)
+
+        if match is None:
+            return {"intent": "general", "response": "No entendí tu petición. ¿Puedes repetirla?", "action": False}
+
+        intent = match.intent
+        params = dict(match.params)
+
+        # ------------------------------------------------------------
+        # Intención "abrir_noticias": no ejecuta nada en el backend, solo
+        # le indica al frontend que cambie de vista (ver meta.navigate).
+        # ------------------------------------------------------------
+        if match.meta.get("navigate"):
+            return {
+                "intent": intent,
+                "response": "Abriendo el panel de noticias 📰",
+                "action": True,
+                "navigate": match.meta["navigate"],
+            }
+
+        # ------------------------------------------------------------
+        # Resto de intenciones: se ejecutan a través del knowledge_graph
+        # (igual que antes, no se tocó esa parte).
+        # ------------------------------------------------------------
         if intent in self.knowledge_graph:
             node = self.knowledge_graph.nodes[intent]
             if node.get('type') == 'action':
@@ -442,7 +361,7 @@ class SaturdayCore:
                     return {"intent": intent, "response": result, "action": True}
                 except Exception as e:
                     return {"intent": "error", "response": f"❌ Error: {str(e)}", "action": False}
-        
+
         return {"intent": "general", "response": "No entendí tu petición. ¿Puedes repetirla?", "action": False}
     
     # ============ ACCIONES BÁSICAS ============
