@@ -6,8 +6,7 @@ interface UseSpeechRecognitionOptions {
   onFinalResult?: (transcript: string) => void;
 }
 
-export function useSpeechRecognition({ lang = "es-CL", onFinalResult }: UseSpeechRecognitionOptions = {}) {
-  const [supported, setSupported] = useState(true);
+export function useSpeechRecognition({ onFinalResult }: UseSpeechRecognitionOptions = {}) {
   const [listening, setListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,5 +76,5 @@ export function useSpeechRecognition({ lang = "es-CL", onFinalResult }: UseSpeec
     else start();
   }, [listening, start, stop]);
 
-  return { supported, listening, interimTranscript, error, start, stop, toggle };
+  return { supported: true, listening, interimTranscript, error, start, stop, toggle };
 }
