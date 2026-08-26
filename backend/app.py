@@ -94,6 +94,10 @@ def greeting():
 @app.route('/api/status', methods=['GET'])
 def status():
     """Verifica el estado del sistema"""
+    scheduler_running = False
+    if saturday.scheduler:
+        scheduler_running = saturday.scheduler.is_running
+    
     return jsonify({
         'status': 'online',
         'version': '3.2.0',
@@ -105,7 +109,7 @@ def status():
             'data': saturday.data is not None,
             'telegram': saturday.telegram is not None,
             'communication': saturday.communication is not None,
-            'scheduler': saturday.scheduler is not None,
+            'scheduler': scheduler_running,
             'spotify': saturday.spotify is not None,
             'news': saturday.news is not None,
             'conversation': saturday.conversation is not None,

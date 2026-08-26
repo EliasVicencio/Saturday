@@ -250,6 +250,9 @@ class SaturdayCore:
         self.build_knowledge_graph()
         self.say_welcome()
         
+        # Auto-iniciar scheduler y programar tareas autónomas
+        self._setup_autonomous_tasks()
+        
         print("✅ Núcleo inicializado correctamente")
     
     def build_knowledge_graph(self):
@@ -480,6 +483,23 @@ class SaturdayCore:
         meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", 
                  "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
         return f"Hoy es {dias[ahora.weekday()]}, {ahora.day} de {meses[ahora.month-1]} de {ahora.year}"
+    
+    def _setup_autonomous_tasks(self):
+        """Configura tareas autónomas del scheduler"""
+        if not self.scheduler:
+            print("⚠️ Scheduler no disponible, tareas autónomas no configuradas")
+            return
+        
+        try:
+            self.scheduler.start()
+            print("⏰ Scheduler iniciado en segundo plano")
+            
+            # Programar resumen diario a las 21:00 (9 PM)
+            self.scheduler.schedule_daily_summary(hour=21, minute=0)
+            print("📋 Resumen diario programado para las 21:00")
+            
+        except Exception as e:
+            print(f"⚠️ Error configurando tareas autónomas: {e}")
     
     def get_weather(self, **kwargs) -> str:
         try:
