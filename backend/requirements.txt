@@ -13,3 +13,4 @@ SpeechRecognition==3.10.1
 pydub==0.25.1
 psutil>=5.9.0
 python-telegram-bot>=20.0
+schedule>=1.2.0
