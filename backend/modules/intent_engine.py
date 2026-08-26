@@ -273,6 +273,12 @@ def build_default_engine() -> IntentEngine:
         IntentDefinition(name="resumen_dia", phrases=[
             "resumen del día", "resumen diario", "qué hice hoy", "resumen de hoy",
         ]),
+        
+        # ---- Status ----
+        IntentDefinition(name="status", phrases=[
+            "status", "estatus", "cómo estás", "cómo andas", "todo bien",
+            "estado general", "chequeo general", "health check",
+        ]),
     ])
 
     return engine

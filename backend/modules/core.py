@@ -306,6 +306,9 @@ class SaturdayCore:
             # Resumen diario
             "resumen_dia": self.send_daily_summary,
             
+            # Status
+            "status": self.get_status,
+            
             # Spotify
             "abrir_spotify": self.open_spotify,
             "reproducir_musica": self.play_music,
@@ -472,6 +475,66 @@ class SaturdayCore:
         return {"intent": "followup", "response": response, "action": False}
     
     # ============ ACCIONES BÁSICAS ============
+    
+    def get_status(self, **kwargs) -> str:
+        """Estado general de Saturday"""
+        modules = []
+        
+        # Verificar módulos
+        if self.notion:
+            modules.append("✅ Notion")
+        else:
+            modules.append("❌ Notion")
+        
+        if self.calendar:
+            modules.append("✅ Calendario")
+        else:
+            modules.append("❌ Calendario")
+        
+        if self.email:
+            modules.append("✅ Correos")
+        else:
+            modules.append("❌ Correos")
+        
+        if self.communication:
+            modules.append("✅ WhatsApp")
+        else:
+            modules.append("❌ WhatsApp")
+        
+        if self.news:
+            modules.append("✅ Noticias")
+        else:
+            modules.append("❌ Noticias")
+        
+        if self.voice:
+            modules.append("✅ Voz (TTS/STT)")
+        else:
+            modules.append("❌ Voz")
+        
+        if self.scheduler:
+            scheduler_status = "🟢 Activo" if self.scheduler.is_running else "🔴 Detenido"
+            modules.append(f"⏰ Scheduler: {scheduler_status}")
+        
+        if self.conversation:
+            modules.append("✅ Memoria conversacional")
+        else:
+            modules.append("❌ Memoria conversacional")
+        
+        # Información del sistema
+        try:
+            import psutil
+            cpu = psutil.cpu_percent(interval=0.3)
+            mem = psutil.virtual_memory()
+            sys_info = f"💻 CPU: {cpu}% | RAM: {mem.percent}%"
+        except:
+            sys_info = ""
+        
+        response = "🟣 **ESTADO DE SATURDAY**\n\n"
+        response += "\n".join(modules)
+        if sys_info:
+            response += f"\n\n{sys_info}"
+        
+        return response
     
     def get_time(self, **kwargs) -> str:
         ahora = datetime.now()
