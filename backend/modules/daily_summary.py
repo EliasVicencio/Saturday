@@ -71,6 +71,20 @@ class DailySummary:
             summary.append("⏰ *Recordatorios:* No tienes recordatorios")
             summary.append("")
         
+        # ===== CORREOS REVISADOS (autónomo) =====
+        correos = self._get_autonomous_emails()
+        if correos:
+            summary.append(f"📧 *Correos revisados:*")
+            summary.append(f"  {correos}")
+            summary.append("")
+        
+        # ===== NOTICIAS DEL DÍA (autónomo) =====
+        noticias = self._get_autonomous_news()
+        if noticias:
+            summary.append(f"📰 *Noticias de hoy:*")
+            summary.append(f"  {noticias}")
+            summary.append("")
+        
         # ===== FOOTER =====
         summary.append("")
         summary.append("💡 *Para más información:*")
@@ -136,6 +150,38 @@ class DailySummary:
             return [f"{r['text']} - {r['time']}" for r in reminders]
         except:
             return []
+    
+    def _get_autonomous_emails(self) -> Optional[str]:
+        """Obtiene correos revisados automáticamente de la bóveda"""
+        if not self.core.vault:
+            return None
+        try:
+            results = self.core.vault.search("Correos no leídos")
+            if results:
+                # Tomar el más reciente
+                latest = results[0]
+                return latest.get('snippet', 'Correos revisados hoy')
+            return None
+        except:
+            return None
+    
+    def _get_autonomous_news(self) -> Optional[str]:
+        """Obtiene noticias recolectadas automáticamente de la bóveda"""
+        if not self.core.vault:
+            return None
+        try:
+            results = self.core.vault.search("Noticias")
+            if results:
+                # Tomar las más recientes
+                news_items = []
+                for r in results[:3]:
+                    snippet = r.get('snippet', '')
+                    if snippet:
+                        news_items.append(snippet[:100])
+                return '\n'.join(news_items) if news_items else None
+            return None
+        except:
+            return None
     
     def send(self, via: str = "whatsapp") -> Dict[str, Any]:
         """Envía el resumen por el canal especificado y lo guarda en la bóveda"""
