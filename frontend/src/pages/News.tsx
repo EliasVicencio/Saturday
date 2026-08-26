@@ -5,17 +5,17 @@ import { getNewsHeadlines, getBitcoinPrice, searchYouTube, type Headline, type B
 
 const NEWS_SOURCES = [
   { id: "all", label: "CNN", badge: "NEWS", badgeColor: "red" },
-  { id: "tech", label: "BBC News", badge: "NEWS", badgeColor: "red" },
+  { id: "technology", label: "BBC News", badge: "NEWS", badgeColor: "red" },
   { id: "world", label: "DW News", badge: "NEWS", badgeColor: "red" },
   { id: "business", label: "AL Jazeerea", badge: "NEWS", badgeColor: "red" },
   { id: "science", label: "France 24", badge: "NEWS", badgeColor: "red" },
   { id: "sports", label: "NBC News", badge: "NEWS", badgeColor: "red" },
-  { id: "fireship", label: "Fireship", badge: "DEV", badgeColor: "green" },
-  { id: "ai", label: "AI Explained", badge: "IA", badgeColor: "purple" },
-  { id: "deepmind", label: "Google DeepMind", badge: "IA", badgeColor: "purple" },
-  { id: "mkbhd", label: "MKBHD", badge: "TECH", badgeColor: "blue" },
-  { id: "networkchuck", label: "NetworkChuck", badge: "SEC", badgeColor: "orange" },
-  { id: "linus", label: "Linus Tech Tips", badge: "TECH", badgeColor: "blue" },
+  { id: "entertainment", label: "Fireship", badge: "DEV", badgeColor: "green" },
+  { id: "health", label: "AI Explained", badge: "IA", badgeColor: "purple" },
+  { id: "nation", label: "Google DeepMind", badge: "IA", badgeColor: "purple" },
+  { id: "tech2", label: "MKBHD", badge: "TECH", badgeColor: "blue" },
+  { id: "biz2", label: "NetworkChuck", badge: "SEC", badgeColor: "orange" },
+  { id: "sci2", label: "Linus Tech Tips", badge: "TECH", badgeColor: "blue" },
 ];
 
 const NEWS_FILTERS = [
@@ -47,11 +47,13 @@ export default function NewsPage() {
   const [ytSearching, setYtSearching] = useState(false);
   const [currentVideo, setCurrentVideo] = useState({ id: "dQw4w9WgXcQ", title: "Última hora" });
 
-  const loadNews = useCallback(async (source: string) => {
+  const VALID_CATEGORIES = ["technology", "business", "world", "science", "sports", "entertainment", "health", "nation"];
+
+const loadNews = useCallback(async (source: string) => {
     setLoading(true);
     setError(null);
     try {
-      const category = source === "all" ? undefined : source;
+      const category = (source !== "all" && VALID_CATEGORIES.includes(source)) ? source : undefined;
       const result = await getNewsHeadlines(category, 12);
       setAvailable(result.available);
       setArticles(result.articles);
