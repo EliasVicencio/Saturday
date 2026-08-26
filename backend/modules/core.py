@@ -498,6 +498,10 @@ class SaturdayCore:
             self.scheduler.schedule_daily_summary(hour=21, minute=0)
             print("📋 Resumen diario programado para las 21:00")
             
+            # Programar tareas autónomas (correos, noticias, organización)
+            self.scheduler.schedule_autonomous_tasks()
+            print("🤖 Tareas autónomas programadas")
+            
         except Exception as e:
             print(f"⚠️ Error configurando tareas autónomas: {e}")
     
