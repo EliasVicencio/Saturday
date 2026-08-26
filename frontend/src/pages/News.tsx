@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, ExternalLink, Share2, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, ExternalLink, Share2, TrendingUp, TrendingDown, Search, Play } from "lucide-react";
 import "../styles/News.css";
-import { getNewsHeadlines, getBitcoinPrice, type Headline, type BitcoinPrice } from "../services/api";
+import { getNewsHeadlines, getBitcoinPrice, searchYouTube, type Headline, type BitcoinPrice, type YouTubeVideo } from "../services/api";
 
 const NEWS_SOURCES = [
   { id: "all", label: "CNN", badge: "NEWS", badgeColor: "red" },
@@ -42,6 +42,11 @@ export default function NewsPage() {
 
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
 
+  const [ytQuery, setYtQuery] = useState("");
+  const [ytResults, setYtResults] = useState<YouTubeVideo[]>([]);
+  const [ytSearching, setYtSearching] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState({ id: "dQw4w9WgXcQ", title: "Última hora" });
+
   const loadNews = useCallback(async (source: string) => {
     setLoading(true);
     setError(null);
@@ -72,6 +77,19 @@ export default function NewsPage() {
       setBtcError(true);
     }
   }, []);
+
+  const searchYt = useCallback(async () => {
+    if (!ytQuery.trim()) return;
+    setYtSearching(true);
+    try {
+      const results = await searchYouTube(ytQuery, 5);
+      setYtResults(results);
+    } catch {
+      setYtResults([]);
+    } finally {
+      setYtSearching(false);
+    }
+  }, [ytQuery]);
 
   useEffect(() => {
     loadNews(activeSource);
@@ -141,20 +159,49 @@ export default function NewsPage() {
       <div className="intel-layout">
         <div className="intel-main-left">
           <div className="intel-video-area">
+            <div className="intel-video-search">
+              <Search size={14} className="intel-video-search__icon" />
+              <input
+                className="intel-video-search__input"
+                type="text"
+                placeholder="Buscar video en YouTube..."
+                value={ytQuery}
+                onChange={(e) => setYtQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchYt()}
+              />
+              <button className="intel-video-search__btn" onClick={searchYt} disabled={ytSearching}>
+                {ytSearching ? "..." : "Buscar"}
+              </button>
+            </div>
+            {ytResults.length > 0 && (
+              <div className="intel-video-results">
+                {ytResults.map((v) => (
+                  <button
+                    key={v.id}
+                    className={`intel-video-result ${currentVideo.id === v.id ? "intel-video-result--active" : ""}`}
+                    onClick={() => setCurrentVideo({ id: v.id, title: v.title })}
+                  >
+                    <img src={v.thumbnail} alt="" className="intel-video-result__thumb" />
+                    <div className="intel-video-result__info">
+                      <span className="intel-video-result__title">{v.title}</span>
+                      <span className="intel-video-result__channel">{v.channel}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="intel-video-area__player">
               <iframe
                 width="100%"
                 height="100%"
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1"
-                title="Última hora"
+                src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&mute=1`}
+                title={currentVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
             </div>
-            <div className="intel-video-area__title">
-              Hormuz, Oman deal, new defense pact &amp; more | Military expert analysis
-            </div>
+            <div className="intel-video-area__title">{currentVideo.title}</div>
           </div>
 
           <div className="intel-field-section">

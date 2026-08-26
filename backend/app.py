@@ -458,6 +458,52 @@ def crypto_bitcoin():
         return jsonify({'error': str(e)}), 500
 
     
+@app.route('/api/youtube/search', methods=['GET'])
+def youtube_search():
+    """Busca videos en YouTube. ?q=termino&max_results=5"""
+    api_key = os.getenv('YOUTUBE_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'YOUTUBE_API_KEY no configurada en .env'}), 500
+    
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({'error': 'Parámetro q requerido'}), 400
+    
+    max_results = min(int(request.args.get('max_results', 5)), 10)
+    
+    try:
+        url = 'https://www.googleapis.com/youtube/v3/search'
+        params = {
+            'part': 'snippet',
+            'q': query,
+            'type': 'video',
+            'maxResults': max_results,
+            'key': api_key,
+            'relevanceLanguage': 'es',
+            'order': 'relevance',
+        }
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        videos = []
+        for item in data.get('items', []):
+            snippet = item['snippet']
+            videos.append({
+                'id': item['id']['videoId'],
+                'title': snippet['title'],
+                'channel': snippet['channelTitle'],
+                'thumbnail': snippet['thumbnails']['medium']['url'],
+                'published': snippet['publishedAt'],
+            })
+        
+        return jsonify({'videos': videos, 'query': query})
+    except requests.exceptions.HTTPError as e:
+        return jsonify({'error': f'Error de YouTube API: {e.response.text}'}), 502
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/camera', methods=['GET'])
 def camera():
     """Devuelve el estado de la cámara"""

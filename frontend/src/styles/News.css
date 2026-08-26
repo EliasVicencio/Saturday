@@ -164,6 +164,123 @@
   flex-shrink: 0;
 }
 
+/* ===== VIDEO SEARCH ===== */
+.intel-video-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  background: rgba(214, 178, 94, 0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.intel-video-search__icon {
+  color: var(--gold-dim);
+  flex-shrink: 0;
+}
+
+.intel-video-search__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.intel-video-search__input::placeholder {
+  color: var(--text-faint);
+}
+
+.intel-video-search__btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #050403;
+  background: var(--gold-dim);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.intel-video-search__btn:hover { background: var(--gold-bright); }
+.intel-video-search__btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ===== VIDEO RESULTS ===== */
+.intel-video-results {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.intel-video-results::-webkit-scrollbar { height: 3px; }
+.intel-video-results::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+
+.intel-video-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(214, 178, 94, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  min-width: 200px;
+  max-width: 280px;
+  text-align: left;
+}
+
+.intel-video-result:hover {
+  border-color: var(--gold-dim);
+}
+
+.intel-video-result--active {
+  border-color: var(--gold);
+  background: rgba(214, 178, 94, 0.08);
+}
+
+.intel-video-result__thumb {
+  width: 48px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.intel-video-result__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.intel-video-result__title {
+  font-size: 9px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.intel-video-result__channel {
+  font-size: 8px;
+  color: var(--text-faint);
+}
+
+/* ===== VIDEO PLAYER ===== */
 .intel-video-area__player {
   width: 100%;
   max-height: 45vh;

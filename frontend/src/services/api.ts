@@ -502,5 +502,22 @@ export const getBitcoinPrice = async (): Promise<BitcoinPrice> => {
   return response.data;
 };
 
+// ===== YOUTUBE SEARCH =====
+
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  channel: string;
+  thumbnail: string;
+  published: string;
+}
+
+export const searchYouTube = async (query: string, maxResults = 5): Promise<YouTubeVideo[]> => {
+  const response = await api.get<{ videos: YouTubeVideo[]; query: string }>('/youtube/search', {
+    params: { q: query, max_results: maxResults },
+  });
+  return response.data.videos;
+};
+
 // ... resto de los exports existentes que estaban en tu archivo original
 // (Send, Mic, MapPin, etc. interfaces si las tenías, pero las esenciales están arriba)
