@@ -1,23 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
-import { Newspaper, ArrowLeft, ExternalLink, Share2, Bitcoin, TrendingUp, TrendingDown } from "lucide-react";
-import "../styles/Home.css";
+import { Newspaper, ArrowLeft, ExternalLink, Share2, Bitcoin, TrendingUp, TrendingDown, Play, Brain, Rss } from "lucide-react";
 import "../styles/News.css";
 import { getNewsHeadlines, getBitcoinPrice, type Headline, type BitcoinPrice } from "../services/api";
 
-const CATEGORIES: { id: string | undefined; label: string }[] = [
-  { id: undefined, label: "Portada" },
-  { id: "technology", label: "Tecnología" },
+const NEWS_SOURCES = [
+  { id: "all", label: "Todos" },
+  { id: "tech", label: "Tecnología" },
   { id: "business", label: "Negocios" },
   { id: "world", label: "Mundo" },
   { id: "science", label: "Ciencia" },
   { id: "sports", label: "Deportes" },
 ];
 
+const SAMPLE_VIDEOS = [
+  { id: "dQw4w9WgXcQ", title: "Última hora: Noticias de última generación" },
+  { id: "9bZkp7q19f0", title: "Resumen del día en tecnología" },
+];
+
 const formatClock = (d: Date) =>
   d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false });
 
 export default function NewsPage() {
-  const [category, setCategory] = useState<string | undefined>(undefined);
+  const [activeSource, setActiveSource] = useState("all");
   const [articles, setArticles] = useState<Headline[]>([]);
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
@@ -27,14 +31,23 @@ export default function NewsPage() {
   const [btc, setBtc] = useState<BitcoinPrice | null>(null);
   const [btcError, setBtcError] = useState(false);
 
-  const loadNews = useCallback(async (cat: string | undefined) => {
+  const [selectedVideo, setSelectedVideo] = useState(SAMPLE_VIDEOS[0]);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+
+  const loadNews = useCallback(async (source: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getNewsHeadlines(cat, 9);
+      const category = source === "all" ? undefined : source;
+      const result = await getNewsHeadlines(category, 12);
       setAvailable(result.available);
       setArticles(result.articles);
       setLastUpdate(new Date());
+      
+      if (result.articles.length > 0) {
+        const topHeadlines = result.articles.slice(0, 3).map(a => a.title).join(" | ");
+        setAiAnalysis(`Análisis de las principales noticias: ${topHeadlines}. Tendencia general: información en desarrollo.`);
+      }
     } catch {
       setError("No pude conectar con el backend.");
       setArticles([]);
@@ -53,8 +66,8 @@ export default function NewsPage() {
   }, []);
 
   useEffect(() => {
-    loadNews(category);
-  }, [category, loadNews]);
+    loadNews(activeSource);
+  }, [activeSource, loadNews]);
 
   useEffect(() => {
     loadBtc();
@@ -69,9 +82,7 @@ export default function NewsPage() {
       try {
         await navigator.share({ title: article.title, url: article.url });
         return;
-      } catch {
-        // el usuario canceló, no hacemos nada
-      }
+      } catch {}
     }
     if (article.url) {
       await navigator.clipboard.writeText(article.url);
@@ -81,127 +92,193 @@ export default function NewsPage() {
   const btcUp = (btc?.usd_24h_change ?? 0) >= 0;
 
   return (
-    <div className="vault">
-      <div className="vault__bg-grid" />
-      <div className="vault__scanline" />
+    <div className="intel-dashboard">
+      <div className="intel-dashboard__grid-bg" />
+      <div className="intel-dashboard__scanline" />
 
-      <header className="vault-topbar">
-        <div className="vault-topbar__brand">
-          <span className="vault-topbar__link" onClick={goBack} title="Volver al inicio">
+      <header className="intel-header">
+        <div className="intel-header__brand">
+          <span className="intel-header__link" onClick={goBack} title="Volver al inicio">
             <ArrowLeft size={16} />
           </span>
-          <span className="vault-logo">
+          <span className="intel-header__logo">
             <Newspaper size={18} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-            NOTICIAS
+            SATURDAY INTEL
           </span>
-          <span className="vault-subtitle">PANEL DE INFORMACIÓN</span>
+          <span className="intel-header__subtitle">SALA DE CONTROL</span>
+          <span className="intel-header__live">
+            <span className="intel-header__live-dot" />
+            EN VIVO
+          </span>
         </div>
-        <div className="vault-topbar__clock">
-          <span className="vault-topbar__clock-time">{formatClock(new Date())}</span>
-          <span className="vault-topbar__clock-label">
+        <div className="intel-header__clock">
+          <span className="intel-header__clock-time">{formatClock(new Date())}</span>
+          <span className="intel-header__clock-label">
             {lastUpdate ? `ACTUALIZADO ${formatClock(lastUpdate)}` : "CARGANDO"}
           </span>
         </div>
       </header>
 
-      <div className="news-layout">
-        {/* ===== PANEL BITCOIN ===== */}
-        <div className="news-btc-card">
-          <div className="news-btc-card__icon">
-            <Bitcoin size={22} />
+      <div className="intel-sources">
+        {NEWS_SOURCES.map((source) => (
+          <button
+            key={source.id}
+            className={`intel-source-btn ${activeSource === source.id ? "intel-source-btn--active" : ""}`}
+            onClick={() => setActiveSource(source.id)}
+          >
+            {source.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="intel-main">
+        <div className="intel-main__left">
+          <div className="intel-video-section">
+            <div className="intel-video-section__header">
+              <Play size={14} />
+              <span>VIDEO EN VIVO</span>
+            </div>
+            <div className="intel-video-section__player">
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1&mute=1`}
+                title={selectedVideo.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="intel-video-section__info">
+              <h4>{selectedVideo.title}</h4>
+              <div className="intel-video-section__selector">
+                {SAMPLE_VIDEOS.map((video) => (
+                  <button
+                    key={video.id}
+                    className={`intel-video-btn ${selectedVideo.id === video.id ? "intel-video-btn--active" : ""}`}
+                    onClick={() => setSelectedVideo(video)}
+                  >
+                    {video.title}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="news-btc-card__body">
-            <div className="news-btc-card__label">BITCOIN · BTC/USD</div>
-            {btcError ? (
-              <div className="news-btc-card__error">No se pudo obtener el precio</div>
-            ) : btc ? (
-              <>
-                <div className="news-btc-card__price">
-                  ${btc.usd.toLocaleString("en-US")}
-                  <span className={`news-btc-card__change ${btcUp ? "up" : "down"}`}>
-                    {btcUp ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-                    {Math.abs(btc.usd_24h_change)}% 24h
-                  </span>
-                </div>
-                <div className="news-btc-card__sub">
-                  ≈ ${btc.clp.toLocaleString("es-CL")} CLP
-                </div>
-              </>
-            ) : (
-              <div className="news-btc-card__loading">Cargando precio...</div>
+
+          <div className="intel-news-section">
+            <div className="intel-news-section__header">
+              <Rss size={14} />
+              <span>INTELIGENCIA DE CAMPO</span>
+            </div>
+
+            {!available && !loading && (
+              <div className="intel-empty">
+                📰 No configuraste <code>NEWSDATA_API_KEY</code> en el backend, así que no hay noticias disponibles.
+              </div>
+            )}
+
+            {available && error && (
+              <div className="intel-empty">⚠️ {error}</div>
+            )}
+
+            {available && !error && !loading && articles.length === 0 && (
+              <div className="intel-empty">No hay titulares para esta categoría por ahora.</div>
+            )}
+
+            {loading && (
+              <div className="intel-empty">Cargando inteligencia de campo...</div>
+            )}
+
+            {!loading && articles.length > 0 && (
+              <div className="intel-news-grid">
+                {articles.map((article, i) => (
+                  <article key={`${article.title}-${i}`} className="intel-news-card">
+                    {article.image && (
+                      <div className="intel-news-card__image" style={{ backgroundImage: `url(${article.image})` }} />
+                    )}
+                    <div className="intel-news-card__body">
+                      <div className="intel-news-card__meta">
+                        <span className="intel-news-card__source">{article.source_name || article.source}</span>
+                        {article.category?.[0] && (
+                          <span className="intel-news-card__tag">{article.category[0]}</span>
+                        )}
+                      </div>
+                      <h3 className="intel-news-card__title">{article.title}</h3>
+                      <p className="intel-news-card__excerpt">
+                        {article.description || "Sin descripción disponible."}
+                      </p>
+                      <div className="intel-news-card__actions">
+                        <a
+                          className="intel-news-card__btn"
+                          href={article.url || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink size={12} /> Leer
+                        </a>
+                        <button className="intel-news-card__btn intel-news-card__btn--secondary" onClick={() => shareArticle(article)}>
+                          <Share2 size={12} /> Compartir
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
             )}
           </div>
         </div>
 
-        {/* ===== TABS DE CATEGORÍA ===== */}
-        <div className="news-tabs">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.label}
-              className={`news-tab ${category === c.id ? "news-tab--active" : ""}`}
-              onClick={() => setCategory(c.id)}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ===== ESTADOS ===== */}
-        {!available && !loading && (
-          <div className="news-empty">
-            📰 No configuraste <code>NEWSDATA_API_KEY</code> en el backend, así que no hay noticias disponibles.
-          </div>
-        )}
-
-        {available && error && (
-          <div className="news-empty">⚠️ {error}</div>
-        )}
-
-        {available && !error && !loading && articles.length === 0 && (
-          <div className="news-empty">No hay titulares para esta categoría por ahora.</div>
-        )}
-
-        {loading && (
-          <div className="news-empty">Cargando titulares...</div>
-        )}
-
-        {/* ===== GRID DE NOTICIAS ===== */}
-        {!loading && articles.length > 0 && (
-          <div className="news-grid">
-            {articles.map((article, i) => (
-              <article key={`${article.title}-${i}`} className="news-card">
-                {article.image && (
-                  <div className="news-card__image" style={{ backgroundImage: `url(${article.image})` }} />
+        <div className="intel-main__right">
+          <div className="intel-btc-section">
+            <div className="intel-btc-section__header">
+              <Bitcoin size={14} />
+              <span>MERCADOS</span>
+            </div>
+            <div className="intel-btc-card">
+              <div className="intel-btc-card__icon">
+                <Bitcoin size={22} />
+              </div>
+              <div className="intel-btc-card__body">
+                <div className="intel-btc-card__label">BITCOIN · BTC/USD</div>
+                {btcError ? (
+                  <div className="intel-btc-card__error">No se pudo obtener el precio</div>
+                ) : btc ? (
+                  <>
+                    <div className="intel-btc-card__price">
+                      ${btc.usd.toLocaleString("en-US")}
+                      <span className={`intel-btc-card__change ${btcUp ? "up" : "down"}`}>
+                        {btcUp ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                        {Math.abs(btc.usd_24h_change)}% 24h
+                      </span>
+                    </div>
+                    <div className="intel-btc-card__sub">
+                      ≈ ${btc.clp.toLocaleString("es-CL")} CLP
+                    </div>
+                  </>
+                ) : (
+                  <div className="intel-btc-card__loading">Cargando precio...</div>
                 )}
-                <div className="news-card__body">
-                  <div className="news-card__meta">
-                    <span className="news-card__source">{article.source_name || article.source}</span>
-                    {article.category?.[0] && (
-                      <span className="news-card__tag">{article.category[0]}</span>
-                    )}
-                  </div>
-                  <h3 className="news-card__title">{article.title}</h3>
-                  <p className="news-card__excerpt">
-                    {article.description || "Sin descripción disponible."}
-                  </p>
-                  <div className="news-card__actions">
-                    <a
-                      className="news-card__btn"
-                      href={article.url || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink size={12} /> Leer
-                    </a>
-                    <button className="news-card__btn news-card__btn--secondary" onClick={() => shareArticle(article)}>
-                      <Share2 size={12} /> Compartir
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+              </div>
+            </div>
           </div>
-        )}
+
+          <div className="intel-ai-section">
+            <div className="intel-ai-section__header">
+              <Brain size={14} />
+              <span>INTELIGENCIA IA</span>
+            </div>
+            <div className="intel-ai-content">
+              {aiAnalysis ? (
+                <p className="intel-ai-content__text">{aiAnalysis}</p>
+              ) : (
+                <p className="intel-ai-content__placeholder">Sin análisis disponible todavía.</p>
+              )}
+              <div className="intel-ai-content__timestamp">
+                {lastUpdate ? `Último análisis: ${formatClock(lastUpdate)}` : "Esperando datos..."}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
