@@ -5,6 +5,8 @@ import base64
 import requests
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 import io
 import threading
@@ -24,6 +26,22 @@ from modules.input_validator import validate_message, validate_text, validate_se
 
 app = Flask(__name__)
 CORS(app, origins=["https://saturday.viewdns.net", "http://localhost:5173"])
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per minute"])
+
+# ===== API KEY AUTH =====
+API_KEY = os.getenv("SATURDAY_API_KEY", "")
+
+def require_api_key(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not API_KEY:
+            return f(*args, **kwargs)
+        key = request.headers.get("X-API-Key", "")
+        if key != API_KEY:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 # ===== SALUDO DE BIENVENIDA =====
 # Guardamos el mensaje aquÃ­; el FRONTEND lo pide vÃ­a /api/greeting y lo
