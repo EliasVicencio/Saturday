@@ -201,7 +201,7 @@ class SaturdayTelegramBot:
             # Convertir a OGG para Telegram (formato preferido para voice)
             ogg_path = tmp_path.replace('.mp3', '.ogg')
             subprocess.run([
-                'ffmpeg', '-i', tmp_path, '-c:a', 'libopus', '-b:a', '32k', 
+                '/usr/bin/ffmpeg', '-i', tmp_path, '-c:a', 'libopus', '-b:a', '32k', 
                 '-application', 'voip', '-vbr', 'on', ogg_path, '-y'
             ], capture_output=True, check=True)
             
