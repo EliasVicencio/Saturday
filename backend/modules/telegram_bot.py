@@ -17,6 +17,10 @@ from telegram.ext import (
 # Agregar directorio padre al path para importar módulos
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Cargar variables de entorno desde .env
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent.parent / ".env")
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
