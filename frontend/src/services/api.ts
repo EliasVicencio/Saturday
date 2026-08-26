@@ -16,6 +16,7 @@ const api = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    ...(SATURDAY_API_KEY ? { 'X-API-Key': SATURDAY_API_KEY } : {}),
   },
 });
 
