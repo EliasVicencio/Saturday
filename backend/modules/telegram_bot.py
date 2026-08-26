@@ -265,7 +265,14 @@ class SaturdayTelegramBot:
             logger.error("❌ No se pudo inicializar SaturdayCore")
             return
         
-        self.application = Application.builder().token(self.token).build()
+        self.application = (
+            Application.builder()
+            .token(self.token)
+            .read_timeout(30)
+            .write_timeout(30)
+            .connect_timeout(30)
+            .build()
+        )
         
         # Handlers
         self.application.add_handler(CommandHandler("start", self.cmd_start))
@@ -275,7 +282,10 @@ class SaturdayTelegramBot:
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
         
         logger.info("🚀 Bot de Telegram iniciado con polling...")
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        self.application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+        )
 
 
 def main():
