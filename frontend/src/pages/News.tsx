@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, ExternalLink, Share2, Bitcoin, TrendingUp, TrendingDown, Play, Brain, Rss } from "lucide-react";
+import { ArrowLeft, ExternalLink, Share2, TrendingUp, TrendingDown } from "lucide-react";
 import "../styles/News.css";
 import { getNewsHeadlines, getBitcoinPrice, type Headline, type BitcoinPrice } from "../services/api";
 
