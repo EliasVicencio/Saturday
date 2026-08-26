@@ -8,6 +8,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import io
 import threading
+import hashlib
 import time
 from datetime import datetime
 
@@ -117,6 +118,7 @@ def status():
     })
 
 
+@limiter.limit('30 per minute')
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Procesa un mensaje y devuelve respuesta con contexto conversacional"""
@@ -129,7 +131,7 @@ def chat():
     
     try:
         # Usar hash del session_id como chat_id para web users
-        chat_id = hash(session_id) % (10**9)
+        chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
         result = saturday.process_intent(message, chat_id=chat_id)
         response_payload = {
             'response': result['response'],
@@ -149,7 +151,7 @@ def get_conversation(session_id):
     if not saturday.conversation:
         return jsonify({'error': 'ConversationManager no disponible'}), 503
     
-    chat_id = hash(session_id) % (10**9)
+    chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
     ctx = saturday.conversation.get_context(chat_id)
     stats = saturday.conversation.get_stats(chat_id)
     
@@ -160,6 +162,7 @@ def get_conversation(session_id):
     })
 
 
+@limiter.limit('10 per minute')
 @app.route('/api/speak', methods=['POST'])
 def speak():
     """Genera audio a partir de texto usando Google TTS"""
@@ -189,6 +192,7 @@ def speak():
         return jsonify({'error': str(e)}), 500
 
 
+@limiter.limit('10 per minute')
 @app.route('/api/stt', methods=['POST'])
 def stt():
     """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
@@ -280,6 +284,7 @@ def get_notes():
     return jsonify({'response': result['response']})
 
 
+@require_api_key
 @app.route('/api/whatsapp', methods=['POST'])
 def send_whatsapp():
     """EnvÃ­a mensaje por WhatsApp"""
@@ -297,6 +302,7 @@ def send_whatsapp():
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
+@require_api_key
 @app.route('/api/whatsapp/voice', methods=['POST'])
 def send_whatsapp_voice():
     """EnvÃ­a mensaje de voz por WhatsApp"""
@@ -314,6 +320,7 @@ def send_whatsapp_voice():
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
+@require_api_key
 @app.route('/api/summary', methods=['POST'])
 def send_summary():
     """EnvÃ­a el resumen del dÃ­a por WhatsApp"""
@@ -332,6 +339,7 @@ def send_summary():
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
+@require_api_key
 @app.route('/api/scheduler/start', methods=['POST'])
 def start_scheduler():
     """Inicia el scheduler"""
@@ -342,6 +350,7 @@ def start_scheduler():
     return jsonify({'success': True, 'message': 'Scheduler iniciado'})
 
 
+@require_api_key
 @app.route('/api/scheduler/stop', methods=['POST'])
 def stop_scheduler():
     """Detiene el scheduler"""
@@ -458,6 +467,7 @@ def crypto_bitcoin():
         return jsonify({'error': str(e)}), 500
 
     
+@limiter.limit('20 per minute')
 @app.route('/api/youtube/search', methods=['GET'])
 def youtube_search():
     """Busca videos en YouTube. ?q=termino&max_results=5"""
