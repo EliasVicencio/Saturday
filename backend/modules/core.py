@@ -362,9 +362,9 @@ class SaturdayCore:
                 
                 # Si hay tema reciente, preguntar si quiere seguir con eso
                 if ctx.last_topic and ctx.pending_question:
-                    response = f"No estoy seguro de qué querés con eso. {ctx.pending_question}"
+                    response = f"No estoy seguro de qué quieres con eso. {ctx.pending_question}"
                 elif ctx.last_topic:
-                    response = f"Hmm, no te entendí bien. ¿Seguimos hablando de {ctx.last_topic} o querés otra cosa?"
+                    response = f"Hmm, no te entendí bien. ¿Seguimos hablando de {ctx.last_topic} o quieres otra cosa?"
                 else:
                     response = "No entendí tu petición. ¿Puedes repetirla o decir 'ayuda' para ver qué puedo hacer?"
             else:
@@ -433,11 +433,11 @@ class SaturdayCore:
         # Follow-ups naturales según intención
         followups = {
             "clima": " ¿Te parece si te aviso si cambia el clima?",
-            "hora": " ¿Necesitás que te recuerde algo para después?",
-            "fecha": " ¿Tenés algún evento hoy?",
-            "tareas": " ¿Querés que te ayude con alguna?",
+            "hora": " ¿Necesitas que te recuerde algo para después?",
+            "fecha": " ¿Tienes algún evento hoy?",
+            "tareas": " ¿Quieres que te ayude con alguna?",
             "noticias": " ¿Te interesa algún tema en particular?",
-            "correos": " ¿Querés que responda alguno?",
+            "correos": " ¿Quieres que responda alguno?",
         }
         
         if intent in followups and len(result) < 200:
@@ -452,17 +452,17 @@ class SaturdayCore:
         
         # Mapear topic a acciones de seguimiento
         followup_responses = {
-            "clima": "El clima es algo que cambia seguido. ¿Querés que te avise si hay lluvia pronosticada?",
-            "hora": "La hora no cambia mucho 😄. ¿Necesitás programar algo?",
-            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". ¿Tenés planes?",
-            "tareas": "¿Querés que te muestre las tareas pendientes o creemos una nueva?",
+            "clima": "El clima es algo que cambia seguido. ¿Quieres que te avise si hay lluvia pronosticada?",
+            "hora": "La hora no cambia mucho 😄. ¿Necesitas programar algo?",
+            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". ¿Tienes planes?",
+            "tareas": "¿Quieres que te muestre las tareas pendientes o creemos una nueva?",
             "noticias": "¿Hay algún tema que te interese más? Puedo buscar noticias específicas.",
-            "correos": "¿Querés que revise tus correos no leídos?",
-            "spotify": "¿Querés que ponga algo de música?",
+            "correos": "¿Quieres que revise tus correos no leídos?",
+            "spotify": "¿Quieres que ponga algo de música?",
         }
         
         response = followup_responses.get(last_topic, 
-            f"Estábamos hablando de {last_topic}. ¿Qué querés saber?")
+            f"Estábamos hablando de {last_topic}. ¿Qué quieres saber?")
         
         self.conversation.add_assistant_message(chat_id, response, "followup")
         
@@ -649,7 +649,7 @@ class SaturdayCore:
         if not self.vault:
             return "❌ VaultManager no disponible"
         if not text:
-            return "¿Qué querés que guarde en la bóveda?"
+            return "¿Qué quieres que guarde en la bóveda?"
         path = self.vault.save_raw(text, source="voz" if kwargs.get("voz") else "chat")
         return f"✅ Guardado en la bóveda: {path}"
 
@@ -658,7 +658,7 @@ class SaturdayCore:
         if not self.vault:
             return "❌ VaultManager no disponible"
         if not text:
-            return "¿Qué querés buscar en la bóveda?"
+            return "¿Qué quieres buscar en la bóveda?"
         results = self.vault.search(text)
         if not results:
             return f"No encontré nada con '{text}' en la bóveda."
