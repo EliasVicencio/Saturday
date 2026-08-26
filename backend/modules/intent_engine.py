@@ -268,6 +268,11 @@ def build_default_engine() -> IntentEngine:
         # ---- Social ----
         IntentDefinition(name="saludo", phrases=["hola", "buenas", "qué tal", "hey saturday"]),
         IntentDefinition(name="ayuda", phrases=["ayuda", "qué puedes hacer", "qué sabes hacer", "comandos disponibles"]),
+        
+        # ---- Resumen diario ----
+        IntentDefinition(name="resumen_dia", phrases=[
+            "resumen del día", "resumen diario", "qué hice hoy", "resumen de hoy",
+        ]),
     ])
 
     return engine
