@@ -1,4 +1,9 @@
-import axios from 'axios';
+﻿import axios from 'axios';
+
+const isDev = import.meta.env.DEV;
+const devLog = (...args: unknown[]) => isDev && devLog(...args);
+const devWarn = (...args: unknown[]) => isDev && devWarn(...args);
+const devError = (...args: unknown[]) => isDev && devError(...args);
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -29,7 +34,7 @@ export interface GreetingResponse {
   text: string | null;
 }
 
-// NUEVA INTERFACIÓN CON 'id' PARA SOLUCIONAR ERROR TYPEScRIPT
+// NUEVA INTERFACIÃ“N CON 'id' PARA SOLUCIONAR ERROR TYPEScRIPT
 export interface NewsItem {
   id: string;
   title: string;
@@ -44,19 +49,19 @@ export interface NewsPanelData {
 }
 
 // ===== FUNCION AUXILIAR POLIFUNCIONAL =====
-// Intenta extraer título de: **1. Título**, **Título**, 1. Título
+// Intenta extraer tÃ­tulo de: **1. TÃ­tulo**, **TÃ­tulo**, 1. TÃ­tulo
 function extractTitleFromLine(line: string): string | null {
-  // Patrón 1: **1. Título** (número + punto + texto)
+  // PatrÃ³n 1: **1. TÃ­tulo** (nÃºmero + punto + texto)
   const p1 = /^\*\*(\d+)\.\s(.+?)\*\*$/;
   const m1 = line.match(p1);
   if (m1) return m1[2];
   
-  // Patrón 2: **Título** (solo negrita, sin número)
+  // PatrÃ³n 2: **TÃ­tulo** (solo negrita, sin nÃºmero)
   const p2 = /^\*\*(.+?)\*\*$/;
   const m2 = line.match(p2);
   if (m2) return m2[1];
   
-  // Patrón 3: 1. Título (sin negrita, solo número + punto + texto)
+  // PatrÃ³n 3: 1. TÃ­tulo (sin negrita, solo nÃºmero + punto + texto)
   const p3 = /^(\d+)\.\s(.+)$/;
   const m3 = line.match(p3);
   if (m3) return m3[2];
@@ -64,7 +69,7 @@ function extractTitleFromLine(line: string): string | null {
   return null;
 }
 
-// ===== FUNCIÓN PRINCIPAL GETNEWSPANEL =====
+// ===== FUNCIÃ“N PRINCIPAL GETNEWSPANEL =====
 export const getNewsPanel = async (): Promise<NewsPanelData> => {
   try {
     const response = await api.get<{ response?: string; success?: boolean }>('/news');
@@ -75,28 +80,28 @@ export const getNewsPanel = async (): Promise<NewsPanelData> => {
       let currentSource = '';
       
       for (const line of lines) {
-        // 1. Intentar extraer título con cualquiera de los 3 patrones
+        // 1. Intentar extraer tÃ­tulo con cualquiera de los 3 patrones
         const title = extractTitleFromLine(line);
         
         if (title) {
-          // Guardar título anterior antes de empezar el nuevo
+          // Guardar tÃ­tulo anterior antes de empezar el nuevo
           if (currentTitle) {
             articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
           }
           currentTitle = title;
           currentSource = '';
         }
-        // Detectar fuente: debe contener "📌 *Fuente:*"
-        else if (line.includes('📌 *Fuente:*')) {
-          const sm = line.match(/📌 \*Fuente:\*\s(.+)/);
+        // Detectar fuente: debe contener "ðŸ“Œ *Fuente:*"
+        else if (line.includes('ðŸ“Œ *Fuente:*')) {
+          const sm = line.match(/ðŸ“Œ \*Fuente:\*\s(.+)/);
           if (sm) currentSource = sm[1];
         }
-        // Detectar descripción: "📝 Texto" (opcional, se ignora por simplicidad)
-        else if (line.startsWith('📝 ')) {
-          // Se asocia descriptivamente al título actual (ignoramos por simplicidad)
+        // Detectar descripciÃ³n: "ðŸ“ Texto" (opcional, se ignora por simplicidad)
+        else if (line.startsWith('ðŸ“ ')) {
+          // Se asocia descriptivamente al tÃ­tulo actual (ignoramos por simplicidad)
         }
       }
-      // Empujar el último título si quedó pendiente
+      // Empujar el Ãºltimo tÃ­tulo si quedÃ³ pendiente
       if (currentTitle) {
         articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
       }
@@ -105,18 +110,18 @@ export const getNewsPanel = async (): Promise<NewsPanelData> => {
     }
     return { headlines: [], lastUpdate: 'Nunca' };
   } catch (error) {
-    console.error('Error obteniendo panel de noticias:', error);
+    devError('Error obteniendo panel de noticias:', error);
     return { headlines: [], lastUpdate: 'Error' };
   }
 };
 
-// ===== FUNCIÓN GETWEATHER (OBLIGATORIA PARA Home.tsx) =====
+// ===== FUNCIÃ“N GETWEATHER (OBLIGATORIA PARA Home.tsx) =====
 export const getWeather = async (): Promise<WeatherResponse> => {
   const response = await api.get<WeatherResponse>('/weather');
   return response.data;
 };
 
-// ===== ENVÍO DE MENSAJES =====
+// ===== ENVÃO DE MENSAJES =====
 
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
@@ -154,23 +159,23 @@ export const speakText = async (text: string): Promise<boolean> => {
         };
 
         audio.onerror = (e) => {
-          console.warn('Error reproduciendo audio:', e);
+          devWarn('Error reproduciendo audio:', e);
           URL.revokeObjectURL(audioUrl);
           resolve(false);
         };
 
         audio.play().catch((err) => {
-          console.warn('Error al reproducir:', err);
+          devWarn('Error al reproducir:', err);
           URL.revokeObjectURL(audioUrl);
           resolve(false);
         });
       });
     } else {
-      console.warn('No se recibió audio del backend');
+      devWarn('No se recibiÃ³ audio del backend');
       return false;
     }
   } catch (error) {
-    console.error('Error en TTS:', error);
+    devError('Error en TTS:', error);
     return false;
   }
 };
@@ -197,11 +202,11 @@ export const recognizeSpeech = async (audioBlob: Blob): Promise<string | null> =
     if (response.data.success && response.data.text) {
       return response.data.text;
     } else {
-      console.warn('No se reconoció texto:', response.data);
+      devWarn('No se reconociÃ³ texto:', response.data);
       return null;
     }
   } catch (error) {
-    console.error('Error en STT:', error);
+    devError('Error en STT:', error);
     return null;
   }
 };
@@ -238,7 +243,7 @@ export const getSystemStatus = async (): Promise<SystemStatus> => {
       connectionQuality: quality,
     };
   } catch (error) {
-    console.error('Error obteniendo estado del sistema:', error);
+    devError('Error obteniendo estado del sistema:', error);
     return {
       isConnected: false,
       isRecording: false,
@@ -257,8 +262,8 @@ export const sendMessageWithIndicator = async (message: string) => {
     const response = await sendMessage(message);
     return { success: true, response };
   } catch (error) {
-    console.error('Error en envío de mensaje:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Error de conexión' };
+    devError('Error en envÃ­o de mensaje:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Error de conexiÃ³n' };
   } finally {
     setLoadingState(false);
   }
@@ -281,7 +286,7 @@ const setLoadingState = (loading: boolean) => {
     overlay.style.color = '#e2e8f0';
     overlay.innerHTML = `
       <div style="background: rgba(17,24,39,0.8); padding: 2rem; border-radius: 16px; text-align: center;">
-        <div style="font-size: 48px; margin-bottom: 1rem;">⏳</div>
+        <div style="font-size: 48px; margin-bottom: 1rem;">â³</div>
         <div style="font-size: 14px; margin-bottom: 0.5rem;">PROCESANDO...</div>
         <div style="font-size: 12px; color: rgba(147,197,253,0.5);">Por favor espere</div>
       </div>
@@ -311,13 +316,13 @@ export const parseNewsResponse = (text: string): any[] => {
     if (line.match(/^\*\*\d+\.\s/)) {
       if (currentArticle.title) articles.push(currentArticle);
       currentArticle = { title: line.replace(/^\*\*\d+\.\s/, '').replace(/\*\*$/, '') };
-    } else if (line.startsWith('📌 *Fuente:*')) {
-      currentArticle.source = line.replace('📌 *Fuente:*', '').trim();
+    } else if (line.startsWith('ðŸ“Œ *Fuente:*')) {
+      currentArticle.source = line.replace('ðŸ“Œ *Fuente:*', '').trim();
       currentArticle.source_name = currentArticle.source;
-    } else if (line.startsWith('🏷️ *Categoría:*')) {
-      currentArticle.category = line.replace('🏷️ *Categoría:*', '').split(',').map((c: string) => c.trim());
-    } else if (line.startsWith('📝 ')) {
-      currentArticle.description = line.replace('📝 ', '');
+    } else if (line.startsWith('ðŸ·ï¸ *CategorÃ­a:*')) {
+      currentArticle.category = line.replace('ðŸ·ï¸ *CategorÃ­a:*', '').split(',').map((c: string) => c.trim());
+    } else if (line.startsWith('ðŸ“ ')) {
+      currentArticle.description = line.replace('ðŸ“ ', '');
     }
   }
   if (currentArticle.title) articles.push(currentArticle);
@@ -329,7 +334,7 @@ export const searchNews = async (topic: string): Promise<any[]> => {
     const response = await sendMessage('buscar noticias ' + topic);
     return parseNewsResponse(response.response);
   } catch (error) {
-    console.error('Error buscando noticias:', error);
+    devError('Error buscando noticias:', error);
     return [];
   }
 };
@@ -337,16 +342,16 @@ export const searchNews = async (topic: string): Promise<any[]> => {
 export const formatNewsForWhatsApp = (articles: any[]): string => {
   if (!articles || articles.length === 0) return 'No hay noticias disponibles';
 
-  let message = '📰 *Resumen de Noticias*\n\n';
+  let message = 'ðŸ“° *Resumen de Noticias*\n\n';
   articles.slice(0, 5).forEach((article, index) => {
-    const title = article.title || 'Sin título';
-    const description = article.description || 'Sin descripción';
+    const title = article.title || 'Sin tÃ­tulo';
+    const description = article.description || 'Sin descripciÃ³n';
     const source = article.source_name || 'Fuente desconocida';
     const date = article.published_at ? new Date(article.published_at).toLocaleDateString('es-ES') : 'Hoy';
 
     message += (index + 1) + '. *' + title + '*\n';
-    message += '   📝 ' + description.substring(0, 100) + (description.length > 100 ? '...' : '') + '\n';
-    message += '   📎 ' + source + ' • ' + date + '\n\n';
+    message += '   ðŸ“ ' + description.substring(0, 100) + (description.length > 100 ? '...' : '') + '\n';
+    message += '   ðŸ“Ž ' + source + ' â€¢ ' + date + '\n\n';
   });
 
   return message;
@@ -382,7 +387,7 @@ export interface SpeakResponse {
 
 // ===== CLIMA =====
 
-// ===== BÓVEDA (memoria en Markdown) =====
+// ===== BÃ“VEDA (memoria en Markdown) =====
 
 export interface VaultGraphNode {
   id: string;
@@ -520,4 +525,4 @@ export const searchYouTube = async (query: string, maxResults = 5): Promise<YouT
 };
 
 // ... resto de los exports existentes que estaban en tu archivo original
-// (Send, Mic, MapPin, etc. interfaces si las tenías, pero las esenciales están arriba)
+// (Send, Mic, MapPin, etc. interfaces si las tenÃ­as, pero las esenciales estÃ¡n arriba)

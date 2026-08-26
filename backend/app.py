@@ -20,6 +20,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from modules.core import SaturdayCore
+from modules.input_validator import validate_message, validate_text, validate_search_query, validate_category, validate_limit, validate_audio_file, validate_vault_path, validate_vault_layer, validate_note_input
 
 app = Flask(__name__)
 CORS(app, origins=["https://saturday.viewdns.net", "http://localhost:5173"])
