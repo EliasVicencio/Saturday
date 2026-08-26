@@ -1,11 +1,11 @@
-# modules/daily_summary.py
+﻿# modules/daily_summary.py
 import os
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 import requests
 
 class DailySummary:
-    """Genera y envía resúmenes diarios desde Saturday"""
+    """Genera y envÃ­a resÃºmenes diarios desde Saturday"""
     
     def __init__(self, core):
         self.core = core
@@ -14,8 +14,8 @@ class DailySummary:
         self.weekday = self._get_weekday()
     
     def _get_weekday(self) -> str:
-        """Obtiene el nombre del día de la semana"""
-        dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        """Obtiene el nombre del dÃ­a de la semana"""
+        dias = ["Lunes", "Martes", "MiÃ©rcoles", "Jueves", "Viernes", "SÃ¡bado", "Domingo"]
         return dias[self.today.weekday()]
     
     def generate(self) -> str:
@@ -23,94 +23,94 @@ class DailySummary:
         summary = []
         
         # ===== HEADER =====
-        summary.append(f"📅 *RESUMEN DEL DÍA*")
-        summary.append(f"📆 {self.weekday}, {self.date_str}")
+        summary.append(f"ðŸ“… *RESUMEN DEL DÃA*")
+        summary.append(f"ðŸ“† {self.weekday}, {self.date_str}")
         summary.append("")
         
         # ===== HORA =====
         ahora = datetime.now().strftime("%H:%M")
-        summary.append(f"🕐 *Hora:* {ahora}")
+        summary.append(f"ðŸ• *Hora:* {ahora}")
         summary.append("")
         
         # ===== CLIMA =====
         clima = self._get_weather()
         if clima:
-            summary.append(f"🌤️ *Clima:* {clima}")
+            summary.append(f"ðŸŒ¤ï¸ *Clima:* {clima}")
             summary.append("")
         
         # ===== TAREAS PENDIENTES =====
         tareas = self._get_tasks()
         if tareas:
-            summary.append(f"📋 *Tareas pendientes:*")
+            summary.append(f"ðŸ“‹ *Tareas pendientes:*")
             for t in tareas:
-                summary.append(f"  • {t}")
+                summary.append(f"  â€¢ {t}")
             summary.append("")
         else:
-            summary.append("📋 *Tareas pendientes:* ¡Ninguna! 🎉")
+            summary.append("ðŸ“‹ *Tareas pendientes:* Â¡Ninguna! ðŸŽ‰")
             summary.append("")
         
         # ===== EVENTOS DE HOY =====
         eventos = self._get_events()
         if eventos:
-            summary.append(f"📅 *Eventos de hoy:*")
+            summary.append(f"ðŸ“… *Eventos de hoy:*")
             for e in eventos:
-                summary.append(f"  • {e}")
+                summary.append(f"  â€¢ {e}")
             summary.append("")
         else:
-            summary.append("📅 *Eventos de hoy:* No hay eventos programados")
+            summary.append("ðŸ“… *Eventos de hoy:* No hay eventos programados")
             summary.append("")
         
         # ===== RECORDATORIOS =====
         recordatorios = self._get_reminders()
         if recordatorios:
-            summary.append(f"⏰ *Recordatorios:*")
+            summary.append(f"â° *Recordatorios:*")
             for r in recordatorios:
-                summary.append(f"  • {r}")
+                summary.append(f"  â€¢ {r}")
             summary.append("")
         else:
-            summary.append("⏰ *Recordatorios:* No tienes recordatorios")
+            summary.append("â° *Recordatorios:* No tienes recordatorios")
             summary.append("")
         
-        # ===== CORREOS REVISADOS (autónomo) =====
+        # ===== CORREOS REVISADOS (autÃ³nomo) =====
         correos = self._get_autonomous_emails()
         if correos:
-            summary.append(f"📧 *Correos revisados:*")
+            summary.append(f"ðŸ“§ *Correos revisados:*")
             summary.append(f"  {correos}")
             summary.append("")
         
-        # ===== NOTICIAS DEL DÍA (autónomo) =====
+        # ===== NOTICIAS DEL DÃA (autÃ³nomo) =====
         noticias = self._get_autonomous_news()
         if noticias:
-            summary.append(f"📰 *Noticias de hoy:*")
+            summary.append(f"ðŸ“° *Noticias de hoy:*")
             summary.append(f"  {noticias}")
             summary.append("")
         
         # ===== FOOTER =====
         summary.append("")
-        summary.append("💡 *Para más información:*")
-        summary.append("  • 'tareas' - Ver todas las tareas")
-        summary.append("  • 'eventos' - Ver todos los eventos")
-        summary.append("  • 'recordatorios' - Ver todos los recordatorios")
-        summary.append("  • 'clima' - Ver el clima completo")
+        summary.append("ðŸ’¡ *Para mÃ¡s informaciÃ³n:*")
+        summary.append("  â€¢ 'tareas' - Ver todas las tareas")
+        summary.append("  â€¢ 'eventos' - Ver todos los eventos")
+        summary.append("  â€¢ 'recordatorios' - Ver todos los recordatorios")
+        summary.append("  â€¢ 'clima' - Ver el clima completo")
         summary.append("")
-        summary.append("🤖 *Saturday - Tu asistente personal*")
+        summary.append("ðŸ¤– *Saturday - Tu asistente personal*")
         
         return "\n".join(summary)
     
     def _get_weather(self) -> Optional[str]:
-        """Obtiene el clima del día"""
+        """Obtiene el clima del dÃ­a"""
         try:
             api_key = os.getenv("WEATHER_API_KEY")
             if not api_key:
                 return None
             city = os.getenv("SATURDAY_CITY", "Santiago")
-            url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 temp = data['main']['temp']
                 desc = data['weather'][0]['description']
-                return f"{desc}, {temp}°C"
+                return f"{desc}, {temp}Â°C"
             return None
         except:
             return None
@@ -133,16 +133,16 @@ class DailySummary:
             events = self.core.calendar.get_events_today()
             formatted = []
             for e in events:
-                start = e.get('start', {}).get('dateTime', 'Todo el día')
+                start = e.get('start', {}).get('dateTime', 'Todo el dÃ­a')
                 if start and 'T' in start:
                     start = start.split('T')[1][:5]  # HH:MM
-                formatted.append(f"{e.get('summary', 'Sin título')} - {start}")
+                formatted.append(f"{e.get('summary', 'Sin tÃ­tulo')} - {start}")
             return formatted
         except:
             return []
     
     def _get_reminders(self) -> List[str]:
-        """Obtiene recordatorios del día"""
+        """Obtiene recordatorios del dÃ­a"""
         if not self.core.data:
             return []
         try:
@@ -152,13 +152,13 @@ class DailySummary:
             return []
     
     def _get_autonomous_emails(self) -> Optional[str]:
-        """Obtiene correos revisados automáticamente de la bóveda"""
+        """Obtiene correos revisados automÃ¡ticamente de la bÃ³veda"""
         if not self.core.vault:
             return None
         try:
-            results = self.core.vault.search("Correos no leídos")
+            results = self.core.vault.search("Correos no leÃ­dos")
             if results:
-                # Tomar el más reciente
+                # Tomar el mÃ¡s reciente
                 latest = results[0]
                 return latest.get('snippet', 'Correos revisados hoy')
             return None
@@ -166,13 +166,13 @@ class DailySummary:
             return None
     
     def _get_autonomous_news(self) -> Optional[str]:
-        """Obtiene noticias recolectadas automáticamente de la bóveda"""
+        """Obtiene noticias recolectadas automÃ¡ticamente de la bÃ³veda"""
         if not self.core.vault:
             return None
         try:
             results = self.core.vault.search("Noticias")
             if results:
-                # Tomar las más recientes
+                # Tomar las mÃ¡s recientes
                 news_items = []
                 for r in results[:3]:
                     snippet = r.get('snippet', '')
@@ -184,7 +184,7 @@ class DailySummary:
             return None
     
     def send(self, via: str = "whatsapp") -> Dict[str, Any]:
-        """Envía el resumen por el canal especificado y lo guarda en la bóveda"""
+        """EnvÃ­a el resumen por el canal especificado y lo guarda en la bÃ³veda"""
         summary = self.generate()
 
         if via == "whatsapp":
@@ -204,19 +204,19 @@ class DailySummary:
         else:
             return {'success': False, 'error': f'Canal no soportado: {via}'}
 
-        # Si el envío fue exitoso, dejamos rastro en la bóveda ("si no está en la
-        # bóveda, no pasó"). Nunca dejamos que un fallo acá tumbe el envío ya hecho.
+        # Si el envÃ­o fue exitoso, dejamos rastro en la bÃ³veda ("si no estÃ¡ en la
+        # bÃ³veda, no pasÃ³"). Nunca dejamos que un fallo acÃ¡ tumbe el envÃ­o ya hecho.
         if result.get('success') and self.core.vault:
             try:
                 # 1) copia cruda del texto enviado, en outputs/
                 output_path = self.core.vault.save_output(
                     summary, kind=f"resumen-diario-{via}"
                 )
-                # 2) nota enlazada en wiki/, agrupada bajo el hub "Resúmenes Diarios"
-                #    así el resumen aparece como nodo conectado en el grafo de la bóveda
+                # 2) nota enlazada en wiki/, agrupada bajo el hub "ResÃºmenes Diarios"
+                #    asÃ­ el resumen aparece como nodo conectado en el grafo de la bÃ³veda
                 item_title = f"Resumen {self.date_str}"
                 wiki_path = self.core.vault.link_into_hub(
-                    hub_title="Resúmenes Diarios",
+                    hub_title="ResÃºmenes Diarios",
                     item_title=item_title,
                     item_summary=summary,
                     source_path=output_path,
@@ -225,6 +225,6 @@ class DailySummary:
                 result['vault_path'] = output_path
                 result['vault_wiki_path'] = wiki_path
             except Exception as e:
-                print(f"⚠️ No se pudo guardar el resumen en la bóveda: {e}")
+                print(f"âš ï¸ No se pudo guardar el resumen en la bÃ³veda: {e}")
 
         return result

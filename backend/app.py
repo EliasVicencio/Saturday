@@ -1,4 +1,4 @@
-# backend/app.py - API para Saturday COMPLETA
+﻿# backend/app.py - API para Saturday COMPLETA
 import sys
 import os
 import base64
@@ -21,14 +21,14 @@ sys.path.insert(0, project_root)
 from modules.core import SaturdayCore
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://saturday.viewdns.net", "http://localhost:5173"])
 
 # ===== SALUDO DE BIENVENIDA =====
-# Guardamos el mensaje aquí; el FRONTEND lo pide vía /api/greeting y lo
-# reproduce en el navegador (a través de /api/speak), igual que cualquier
-# otra respuesta. Antes esto se reproducía en el propio servidor con
+# Guardamos el mensaje aquÃ­; el FRONTEND lo pide vÃ­a /api/greeting y lo
+# reproduce en el navegador (a travÃ©s de /api/speak), igual que cualquier
+# otra respuesta. Antes esto se reproducÃ­a en el propio servidor con
 # subprocess/mpg123 y dejaba un .mp3 temporal en el disco del backend,
-# lo cual no tiene relación con el navegador del usuario.
+# lo cual no tiene relaciÃ³n con el navegador del usuario.
 _greeting_message = {"text": None, "ready": False}
 
 def build_welcome_message(core):
@@ -36,7 +36,7 @@ def build_welcome_message(core):
     try:
         hora = datetime.now().hour
         if hora < 12:
-            saludo = "Buenos días"
+            saludo = "Buenos dÃ­as"
         elif hora < 19:
             saludo = "Buenas tardes"
         else:
@@ -48,30 +48,30 @@ def build_welcome_message(core):
             api_key = os.getenv("WEATHER_API_KEY")
             city = os.getenv("SATURDAY_CITY", "Santiago")
             if api_key:
-                url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+                url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
                 response = requests.get(url, timeout=5)
                 if response.status_code == 200:
                     data = response.json()
                     temp = data['main']['temp']
                     desc = data['weather'][0]['description']
-                    clima_info = f" Hoy en {city} hace {temp}°C con {desc}."
+                    clima_info = f" Hoy en {city} hace {temp}Â°C con {desc}."
         except:
             pass
 
         mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
         _greeting_message["text"] = mensaje
         _greeting_message["ready"] = True
-        print(f"🗣️ Saludo listo para el frontend: {mensaje}")
+        print(f"ðŸ—£ï¸ Saludo listo para el frontend: {mensaje}")
     except Exception as e:
-        print(f"⚠️ Error preparando saludo: {e}")
+        print(f"âš ï¸ Error preparando saludo: {e}")
 
 # ===== INICIALIZAR SATURDAY =====
 print("=" * 50)
-print("🟣 SATURDAY - Backend API")
+print("ðŸŸ£ SATURDAY - Backend API")
 print("=" * 50)
-print("⏳ Inicializando Saturday Core...")
+print("â³ Inicializando Saturday Core...")
 saturday = SaturdayCore()
-print("✅ Saturday Core inicializado correctamente")
+print("âœ… Saturday Core inicializado correctamente")
 print("=" * 50)
 
 # ===== PREPARAR SALUDO (sin tocar el audio del servidor) =====
@@ -122,10 +122,10 @@ def chat():
     """Procesa un mensaje y devuelve respuesta con contexto conversacional"""
     data = request.json
     message = data.get('message', '').strip()
-    session_id = data.get('session_id', 'web_user')  # ID de sesión del frontend
+    session_id = data.get('session_id', 'web_user')  # ID de sesiÃ³n del frontend
     
     if not message:
-        return jsonify({'error': 'Mensaje vacío'}), 400
+        return jsonify({'error': 'Mensaje vacÃ­o'}), 400
     
     try:
         # Usar hash del session_id como chat_id para web users
@@ -145,7 +145,7 @@ def chat():
 
 @app.route('/api/conversation/<session_id>', methods=['GET'])
 def get_conversation(session_id):
-    """Obtiene el historial de conversación de una sesión"""
+    """Obtiene el historial de conversaciÃ³n de una sesiÃ³n"""
     if not saturday.conversation:
         return jsonify({'error': 'ConversationManager no disponible'}), 503
     
@@ -167,7 +167,7 @@ def speak():
     text = data.get('text', '').strip()
     
     if not text:
-        return jsonify({'error': 'Texto vacío'}), 400
+        return jsonify({'error': 'Texto vacÃ­o'}), 400
     
     try:
         if not saturday.voice:
@@ -185,7 +185,7 @@ def speak():
             return jsonify({'error': 'No se pudo generar el audio'}), 500
             
     except Exception as e:
-        print(f"❌ Error en /api/speak: {e}")
+        print(f"âŒ Error en /api/speak: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -194,11 +194,11 @@ def stt():
     """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
     try:
         if 'audio' not in request.files:
-            return jsonify({'error': 'No se envió archivo de audio'}), 400
+            return jsonify({'error': 'No se enviÃ³ archivo de audio'}), 400
         
         audio_file = request.files['audio']
         if audio_file.filename == '':
-            return jsonify({'error': 'Archivo vacío'}), 400
+            return jsonify({'error': 'Archivo vacÃ­o'}), 400
         
         import tempfile
         import os
@@ -210,7 +210,7 @@ def stt():
             tmp_path = tmp_file.name
             audio_file.save(tmp_path)
         
-        print(f"📁 Archivo guardado: {tmp_path} (ext: {ext})")
+        print(f"ðŸ“ Archivo guardado: {tmp_path} (ext: {ext})")
         
         if not saturday.voice:
             return jsonify({'error': 'VoiceManager no disponible'}), 500
@@ -229,7 +229,7 @@ def stt():
             return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
             
     except Exception as e:
-        print(f"❌ Error en /api/stt: {e}")
+        print(f"âŒ Error en /api/stt: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -249,7 +249,7 @@ def get_tasks_list():
         return jsonify({'tasks': []})
     try:
         tasks = saturday.notion.get_tasks(status="Todo", limit=8)
-        return jsonify({'tasks': [{'title': t.get('name', 'Sin título')} for t in tasks]})
+        return jsonify({'tasks': [{'title': t.get('name', 'Sin tÃ­tulo')} for t in tasks]})
     except Exception as e:
         return jsonify({'tasks': [], 'error': str(e)})
 
@@ -282,7 +282,7 @@ def get_notes():
 
 @app.route('/api/whatsapp', methods=['POST'])
 def send_whatsapp():
-    """Envía mensaje por WhatsApp"""
+    """EnvÃ­a mensaje por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
     
@@ -299,7 +299,7 @@ def send_whatsapp():
 
 @app.route('/api/whatsapp/voice', methods=['POST'])
 def send_whatsapp_voice():
-    """Envía mensaje de voz por WhatsApp"""
+    """EnvÃ­a mensaje de voz por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
     
@@ -316,7 +316,7 @@ def send_whatsapp_voice():
 
 @app.route('/api/summary', methods=['POST'])
 def send_summary():
-    """Envía el resumen del día por WhatsApp"""
+    """EnvÃ­a el resumen del dÃ­a por WhatsApp"""
     if not saturday.daily_summary:
         return jsonify({'error': 'DailySummary no disponible'}), 500
     
@@ -362,7 +362,7 @@ def weather():
             return jsonify({'error': 'No configuraste WEATHER_API_KEY'}), 500
 
         import requests
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
         response = requests.get(url, timeout=10)
         if response.status_code != 200:
             return jsonify({'error': 'Error obteniendo el clima'}), 502
@@ -399,7 +399,7 @@ def system_stats():
             'disk_total_gb': round(disk.total / (1024 ** 3), 1),
         })
     except ImportError:
-        return jsonify({'error': 'psutil no está instalado en el backend'}), 500
+        return jsonify({'error': 'psutil no estÃ¡ instalado en el backend'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -416,7 +416,7 @@ def news():
 @app.route('/api/news/headlines', methods=['GET'])
 def news_headlines():
     """
-    Titulares en formato estructurado (título, fuente, url, imagen, categoría),
+    Titulares en formato estructurado (tÃ­tulo, fuente, url, imagen, categorÃ­a),
     sin pasar por texto formateado. ?category=technology&limit=8
     """
     if not saturday.news or not saturday.news.is_available():
@@ -467,7 +467,7 @@ def youtube_search():
     
     query = request.args.get('q', '').strip()
     if not query:
-        return jsonify({'error': 'Parámetro q requerido'}), 400
+        return jsonify({'error': 'ParÃ¡metro q requerido'}), 400
     
     max_results = min(int(request.args.get('max_results', 5)), 10)
     
@@ -506,7 +506,7 @@ def youtube_search():
 
 @app.route('/api/camera', methods=['GET'])
 def camera():
-    """Devuelve el estado de la cámara"""
+    """Devuelve el estado de la cÃ¡mara"""
     try:
         if saturday.camera:
             result = saturday.camera.get_status()
@@ -517,7 +517,7 @@ def camera():
 
 @app.route('/api/vault/stats', methods=['GET'])
 def vault_stats():
-    """Resumen de la bóveda: cuántas notas hay en raw/, wiki/, outputs/ y el grafo"""
+    """Resumen de la bÃ³veda: cuÃ¡ntas notas hay en raw/, wiki/, outputs/ y el grafo"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     return jsonify(saturday.vault.get_stats())
@@ -539,7 +539,7 @@ def vault_note():
         return jsonify({'error': 'VaultManager no disponible'}), 500
     path = request.args.get('path')
     if not path:
-        return jsonify({'error': "Falta el parámetro 'path'"}), 400
+        return jsonify({'error': "Falta el parÃ¡metro 'path'"}), 400
     content = saturday.vault.read_note(path)
     if content is None:
         return jsonify({'error': 'Nota no encontrada'}), 404
@@ -563,12 +563,12 @@ def vault_create_note():
 
 @app.route('/api/vault/search', methods=['GET'])
 def vault_search():
-    """Busca texto en toda la bóveda: ?q=término"""
+    """Busca texto en toda la bÃ³veda: ?q=tÃ©rmino"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     query = request.args.get('q', '').strip()
     if not query:
-        return jsonify({'error': "Falta el parámetro 'q'"}), 400
+        return jsonify({'error': "Falta el parÃ¡metro 'q'"}), 400
     return jsonify({'query': query, 'results': saturday.vault.search(query)})
 
 
@@ -588,23 +588,23 @@ def health():
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     
-    # Iniciar scheduler automáticamente
+    # Iniciar scheduler automÃ¡ticamente
     if saturday.scheduler:
         saturday.scheduler.start()
         hour = int(os.getenv('SUMMARY_HOUR', 20))
         minute = int(os.getenv('SUMMARY_MINUTE', 0))
         saturday.scheduler.schedule_daily_summary(hour, minute)
-        print(f"📋 Resumen diario programado para las {hour:02d}:{minute:02d}")
+        print(f"ðŸ“‹ Resumen diario programado para las {hour:02d}:{minute:02d}")
     
     print("\n" + "=" * 50)
-    print("🚀 SATURDAY API INICIADA")
+    print("ðŸš€ SATURDAY API INICIADA")
     print("=" * 50)
-    print(f"📡 Puerto: {port}")
-    print(f"📱 WhatsApp: {'✅ Activado' if saturday.communication and saturday.communication.whatsapp_enabled else '❌ Inactivo'}")
-    print(f"⏰ Scheduler: {'✅ Activo' if saturday.scheduler else '❌ Inactivo'}")
-    print(f"📋 Resumen diario: {'✅ Programado' if saturday.scheduler else '❌ No programado'}")
+    print(f"ðŸ“¡ Puerto: {port}")
+    print(f"ðŸ“± WhatsApp: {'âœ… Activado' if saturday.communication and saturday.communication.whatsapp_enabled else 'âŒ Inactivo'}")
+    print(f"â° Scheduler: {'âœ… Activo' if saturday.scheduler else 'âŒ Inactivo'}")
+    print(f"ðŸ“‹ Resumen diario: {'âœ… Programado' if saturday.scheduler else 'âŒ No programado'}")
     print("=" * 50)
-    print("\n📋 Endpoints disponibles:")
+    print("\nðŸ“‹ Endpoints disponibles:")
     print("  GET  /api/status      - Estado del sistema")
     print("  GET  /api/greeting    - Texto de saludo (lo habla el frontend)")
     print("  POST /api/chat        - Enviar mensaje")
@@ -621,4 +621,4 @@ if __name__ == '__main__':
     print("  GET  /api/health      - Health check")
     print("=" * 50)
     
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host="127.0.0.1", port=port, debug=False)

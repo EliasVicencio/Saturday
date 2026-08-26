@@ -1,6 +1,6 @@
-# modules/calendar_manager.py
+﻿# modules/calendar_manager.py
 import os
-import pickle
+import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from google.auth.transport.requests import Request
@@ -18,30 +18,29 @@ class CalendarManager:
     
     def _authenticate(self):
         creds = None
-        token_path = "credentials/token_calendar.pickle"
+        token_path = "credentials/token_calendar.json"
         
         if not os.path.exists("credentials"):
             os.makedirs("credentials")
         
         if os.path.exists(token_path):
-            with open(token_path, 'rb') as token:
-                creds = pickle.load(token)
+            creds = Credentials.from_authorized_user_file(token_path, self.SCOPES)
         
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
                 if not os.path.exists(self.credentials_path):
-                    print("❌ No se encuentra credentials.json")
+                    print("No se encuentra credentials.json")
                     return
                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, self.SCOPES)
                 creds = flow.run_local_server(port=0)
             
-            with open(token_path, 'wb') as token:
-                pickle.dump(creds, token)
+            with open(token_path, 'w') as token:
+                token.write(creds.to_json())
         
         self.service = build('calendar', 'v3', credentials=creds)
-        print("✅ Google Calendar autenticado")
+        print("Google Calendar autenticado")
     
     def get_events(self, max_results: int = 10) -> List[Dict]:
         if not self.service:
@@ -57,14 +56,14 @@ class CalendarManager:
             ).execute()
             return events_result.get('items', [])
         except Exception as e:
-            print(f"⚠️ Error obteniendo eventos: {e}")
+            print(f"Error obteniendo eventos: {e}")
             return []
     
     def get_events_formatted(self) -> str:
         events = self.get_events()
         if not events:
-            return "No tienes eventos próximos"
-        lines = ["📅 EVENTOS PRÓXIMOS:"]
+            return "No tienes eventos proximos"
+        lines = ["EVENTOS PROXIMOS:"]
         for event in events:
             start = event.get('start', {}).get('dateTime', event.get('start', {}).get('date', ''))
             if start:
@@ -75,7 +74,7 @@ class CalendarManager:
                     date_str = start
             else:
                 date_str = 'Sin fecha'
-            lines.append(f"  • {event.get('summary', 'Sin título')} - {date_str}")
+            lines.append(f"  - {event.get('summary', 'Sin titulo')} - {date_str}")
         return "\n".join(lines)
     
     def get_events_today_formatted(self) -> str:
@@ -94,15 +93,14 @@ class CalendarManager:
         
         if not today_events:
             return "No tienes eventos para hoy"
-        lines = ["📅 EVENTOS DE HOY:"]
+        lines = ["EVENTOS DE HOY:"]
         for event in today_events:
             start = event.get('start', {}).get('dateTime', '')
-            time_str = datetime.fromisoformat(start.replace('Z', '+00:00')).strftime('%H:%M') if start else 'Todo el día'
-            lines.append(f"  • {event.get('summary', 'Sin título')} - {time_str}")
+            time_str = datetime.fromisoformat(start.replace('Z', '+00:00')).strftime('%H:%M') if start else 'Todo el dia'
+            lines.append(f"  - {event.get('summary', 'Sin titulo')} - {time_str}")
         return "\n".join(lines)
     
     def get_events_today_list(self) -> list:
-        """Igual que get_events_today_formatted pero devuelve datos estructurados (para la API)."""
         events = self.get_events()
         today = datetime.now().date()
         result = []
@@ -115,8 +113,8 @@ class CalendarManager:
                 if dt.date() != today:
                     continue
                 result.append({
-                    'title': event.get('summary', 'Sin título'),
-                    'time': dt.strftime('%H:%M') if 'T' in start else 'Todo el día',
+                    'title': event.get('summary', 'Sin titulo'),
+                    'time': dt.strftime('%H:%M') if 'T' in start else 'Todo el dia',
                 })
             except Exception:
                 continue
@@ -124,5 +122,5 @@ class CalendarManager:
 
     def create_event_from_text(self, text: str) -> str:
         if not text:
-            return "¿Qué evento quieres crear?"
-        return "✅ Evento creado (implementación en progreso)"
+            return "Que evento quieres crear?"
+        return "Evento creado (implementacion en progreso)"

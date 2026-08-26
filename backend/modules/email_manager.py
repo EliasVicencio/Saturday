@@ -1,6 +1,6 @@
-# modules/email_manager.py
+﻿# modules/email_manager.py
 import os
-import pickle
+import json
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -20,38 +20,38 @@ class EmailManager:
     
     def _authenticate(self):
         creds = None
-        token_path = "credentials/token_email.pickle"
+        token_path = "credentials/token_email.json"
         
         if not os.path.exists("credentials"):
             os.makedirs("credentials")
         
         if os.path.exists(token_path):
-            with open(token_path, 'rb') as token:
-                creds = pickle.load(token)
+            with open(token_path, 'r') as token:
+                creds = Credentials.from_authorized_user_file(token_path, self.SCOPES)
         
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
                 if not os.path.exists(self.credentials_path):
-                    print("❌ No se encuentra credentials.json")
+                    print("No se encuentra credentials.json")
                     return
                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, self.SCOPES)
                 creds = flow.run_local_server(port=0)
             
-            with open(token_path, 'wb') as token:
-                pickle.dump(creds, token)
+            with open(token_path, 'w') as token:
+                token.write(creds.to_json())
         
         self.service = build('gmail', 'v1', credentials=creds)
-        print("✅ Gmail autenticado")
+        print("Gmail autenticado")
     
     def get_emails_formatted(self) -> str:
-        return "📧 Correos (implementación en progreso)"
+        return "Correos (implementacion en progreso)"
     
     def get_unread_emails_formatted(self) -> str:
-        return "📧 Correos no leídos (implementación en progreso)"
+        return "Correos no leidos (implementacion en progreso)"
     
     def send_email_from_text(self, text: str) -> str:
         if not text:
-            return "¿Qué correo quieres enviar?"
-        return "✅ Correo enviado (implementación en progreso)"
+            return "Que correo quieres enviar?"
+        return "Correo enviado (implementacion en progreso)"
