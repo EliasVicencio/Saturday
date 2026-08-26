@@ -167,13 +167,61 @@ class SaturdayTelegramBot:
             result = self.core.process_intent(user_message, chat_id=update.effective_chat.id)
             response = result.get('response', 'No pude procesar eso.')
             
-            # Agregar botones al final
+            # Enviar respuesta de texto
             reply_markup = InlineKeyboardMarkup(MAIN_KEYBOARD)
             await update.message.reply_text(response, reply_markup=reply_markup)
+            
+            # Enviar voz si el módulo de voz está disponible
+            if self.core.voice:
+                try:
+                    await self._send_voice_message(update, context, response)
+                except Exception as e:
+                    logger.warning(f"⚠️ No se pudo enviar voz: {e}")
             
         except Exception as e:
             logger.error(f"❌ Error procesando mensaje: {e}")
             await update.message.reply_text(f"❌ Error: {str(e)}")
+    
+    async def _send_voice_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+        """Genera y envía un mensaje de voz"""
+        import tempfile
+        import subprocess
+        
+        # Generar audio con Google TTS
+        audio_data = self.core.voice._synthesize_google_tts(text)
+        if not audio_data:
+            return
+        
+        # Guardar audio temporalmente
+        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp:
+            tmp.write(audio_data)
+            tmp_path = tmp.name
+        
+        try:
+            # Convertir a OGG para Telegram (formato preferido para voice)
+            ogg_path = tmp_path.replace('.mp3', '.ogg')
+            subprocess.run([
+                'ffmpeg', '-i', tmp_path, '-c:a', 'libopus', '-b:a', '32k', 
+                '-application', 'voip', '-vbr', 'on', ogg_path, '-y'
+            ], capture_output=True, check=True)
+            
+            # Enviar como voice message
+            with open(ogg_path, 'rb') as audio_file:
+                await context.bot.send_voice(
+                    chat_id=update.effective_chat.id,
+                    voice=audio_file
+                )
+            
+            # Limpiar archivos temporales
+            os.unlink(tmp_path)
+            if os.path.exists(ogg_path):
+                os.unlink(ogg_path)
+                
+        except Exception as e:
+            logger.error(f"❌ Error enviando voz: {e}")
+            # Limpiar en caso de error
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
     
     async def handle_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Maneja mensajes de voz"""
