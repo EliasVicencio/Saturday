@@ -143,7 +143,7 @@ class SaturdayTelegramBot:
         
         # Procesar como intención
         text = query.data
-        result = self.core.process_intent(text)
+        result = self.core.process_intent(text, chat_id=update.effective_chat.id)
         
         # Editar el mensaje con la respuesta
         response = result.get('response', 'No pude procesar eso.')
@@ -164,7 +164,7 @@ class SaturdayTelegramBot:
         logger.info(f"📩 Mensaje de {update.effective_chat.id}: {user_message}")
         
         try:
-            result = self.core.process_intent(user_message)
+            result = self.core.process_intent(user_message, chat_id=update.effective_chat.id)
             response = result.get('response', 'No pude procesar eso.')
             
             # Agregar botones al final
@@ -210,7 +210,7 @@ class SaturdayTelegramBot:
                     await update.message.reply_text(f"📝 Escuché: _{transcription}_", parse_mode='Markdown')
                     
                     # Procesar la transcripción como texto
-                    result = self.core.process_intent(transcription)
+                    result = self.core.process_intent(transcription, chat_id=update.effective_chat.id)
                     response = result.get('response', 'No pude procesar eso.')
                     reply_markup = InlineKeyboardMarkup(MAIN_KEYBOARD)
                     await update.message.reply_text(response, reply_markup=reply_markup)

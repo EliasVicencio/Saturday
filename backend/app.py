@@ -96,7 +96,7 @@ def status():
     """Verifica el estado del sistema"""
     return jsonify({
         'status': 'online',
-        'version': '3.1.0',
+        'version': '3.2.0',
         'modules': {
             'notion': saturday.notion is not None,
             'calendar': saturday.calendar is not None,
@@ -108,21 +108,25 @@ def status():
             'scheduler': saturday.scheduler is not None,
             'spotify': saturday.spotify is not None,
             'news': saturday.news is not None,
+            'conversation': saturday.conversation is not None,
         }
     })
 
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Procesa un mensaje y devuelve respuesta"""
+    """Procesa un mensaje y devuelve respuesta con contexto conversacional"""
     data = request.json
     message = data.get('message', '').strip()
+    session_id = data.get('session_id', 'web_user')  # ID de sesión del frontend
     
     if not message:
         return jsonify({'error': 'Mensaje vacío'}), 400
     
     try:
-        result = saturday.process_intent(message)
+        # Usar hash del session_id como chat_id para web users
+        chat_id = hash(session_id) % (10**9)
+        result = saturday.process_intent(message, chat_id=chat_id)
         response_payload = {
             'response': result['response'],
             'intent': result.get('intent', 'general'),
@@ -133,6 +137,23 @@ def chat():
         return jsonify(response_payload)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/conversation/<session_id>', methods=['GET'])
+def get_conversation(session_id):
+    """Obtiene el historial de conversación de una sesión"""
+    if not saturday.conversation:
+        return jsonify({'error': 'ConversationManager no disponible'}), 503
+    
+    chat_id = hash(session_id) % (10**9)
+    ctx = saturday.conversation.get_context(chat_id)
+    stats = saturday.conversation.get_stats(chat_id)
+    
+    return jsonify({
+        'messages': ctx.get_recent_context(20),
+        'stats': stats,
+        'pending_question': ctx.pending_question,
+    })
 
 
 @app.route('/api/speak', methods=['POST'])

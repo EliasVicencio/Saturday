@@ -96,6 +96,13 @@ try:
 except ImportError as e:
     CAMERA_AVAILABLE = False
     print(f"⚠️ CameraManager no disponible: {e}")
+
+try:
+    from modules.conversation_manager import ConversationManager
+    CONVERSATION_AVAILABLE = True
+except ImportError:
+    CONVERSATION_AVAILABLE = False
+    print("⚠️ ConversationManager no disponible")
     
 class SaturdayCore:
     """Núcleo de inteligencia de Saturday"""
@@ -229,6 +236,15 @@ class SaturdayCore:
             except Exception as e:
                 print(f"⚠️ Error inicializando CameraManager: {e}")
         
+        # Inicializar ConversationManager (memoria conversacional)
+        self.conversation = None
+        if CONVERSATION_AVAILABLE:
+            try:
+                self.conversation = ConversationManager()
+                print("✅ ConversationManager inicializado")
+            except Exception as e:
+                print(f"⚠️ Error inicializando ConversationManager: {e}")
+        
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
@@ -321,41 +337,81 @@ class SaturdayCore:
         self.knowledge_graph.add_edge("tareas", "tareas_completadas", weight=0.1)
         self.knowledge_graph.add_edge("enviar_whatsapp", "enviar_voz_whatsapp", weight=0.5)
     
-    def process_intent(self, text: str) -> Dict[str, Any]:
+    def process_intent(self, text: str, chat_id: int = None) -> Dict[str, Any]:
         """
-        Procesa la intención del usuario.
-        Usa IntentEngine (modules/intent_engine.py) para clasificar el texto
-        contra sinónimos + fuzzy matching, en vez de comparar substrings a mano.
+        Procesa la intención del usuario con contexto conversacional.
+        Si chat_id se provee, usa memoria de conversación.
         """
+        # Registrar mensaje del usuario si hay contexto
+        if chat_id and self.conversation:
+            ctx = self.conversation.get_context(chat_id)
+            
+            # Detectar preguntas de seguimiento
+            if self.conversation.is_followup(text) and ctx.last_topic:
+                return self._handle_followup(chat_id, text, ctx)
+            
+            self.conversation.add_user_message(chat_id, text)
+        
         match = self.intent_engine.classify(text)
 
         if match is None:
-            return {"intent": "general", "response": "No entendí tu petición. ¿Puedes repetirla?", "action": False}
+            # Respuesta contextual en vez de "No entendí" genérico
+            if chat_id and self.conversation:
+                ctx = self.conversation.get_context(chat_id)
+                hint = self.conversation.get_context_hint(chat_id)
+                
+                # Si hay tema reciente, preguntar si quiere seguir con eso
+                if ctx.last_topic and ctx.pending_question:
+                    response = f"No estoy seguro de qué querés con eso. {ctx.pending_question}"
+                elif ctx.last_topic:
+                    response = f"Hmm, no te entendí bien. ¿Seguimos hablando de {ctx.last_topic} o querés otra cosa?"
+                else:
+                    response = "No entendí tu petición. ¿Puedes repetirla o decir 'ayuda' para ver qué puedo hacer?"
+            else:
+                response = "No entendí tu petición. ¿Puedes repetirla?"
+            
+            if chat_id and self.conversation:
+                self.conversation.add_assistant_message(chat_id, response, "general")
+            
+            return {"intent": "general", "response": response, "action": False}
 
         intent = match.intent
         params = dict(match.params)
 
+        # Registrar en contexto
+        if chat_id and self.conversation:
+            ctx = self.conversation.get_context(chat_id)
+            ctx.last_topic = intent
+            self.conversation.clear_pending_question(chat_id)
+
         # ------------------------------------------------------------
-        # Intención "abrir_noticias": no ejecuta nada en el backend, solo
-        # le indica al frontend que cambie de vista (ver meta.navigate).
+        # Intención "abrir_noticias": solo indica al frontend cambiar vista
         # ------------------------------------------------------------
         if match.meta.get("navigate"):
+            response = "Abriendo el panel de noticias 📰"
+            if chat_id and self.conversation:
+                self.conversation.add_assistant_message(chat_id, response, intent)
             return {
                 "intent": intent,
-                "response": "Abriendo el panel de noticias 📰",
+                "response": response,
                 "action": True,
                 "navigate": match.meta["navigate"],
             }
 
         # ------------------------------------------------------------
         # Resto de intenciones: se ejecutan a través del knowledge_graph
-        # (igual que antes, no se tocó esa parte).
         # ------------------------------------------------------------
         if intent in self.knowledge_graph:
             node = self.knowledge_graph.nodes[intent]
             if node.get('type') == 'action':
                 try:
                     result = node['function'](**params)
+                    
+                    # Agregar contexto natural a la respuesta
+                    if chat_id and self.conversation:
+                        result = self._enrich_response(intent, result, chat_id)
+                        self.conversation.add_assistant_message(chat_id, result, intent)
+                    
                     self.send_to_telegram(f"📱 Interfaz: {text}")
                     self.send_to_telegram(f"🟣 Saturday: {result}")
                     return {"intent": intent, "response": result, "action": True}
@@ -363,6 +419,54 @@ class SaturdayCore:
                     return {"intent": "error", "response": f"❌ Error: {str(e)}", "action": False}
 
         return {"intent": "general", "response": "No entendí tu petición. ¿Puedes repetirla?", "action": False}
+    
+    def _enrich_response(self, intent: str, result: str, chat_id: int) -> str:
+        """
+        Enriquece la respuesta con contexto conversacional.
+        Agrega follow-ups naturales según la intención.
+        """
+        if not self.conversation:
+            return result
+        
+        ctx = self.conversation.get_context(chat_id)
+        
+        # Follow-ups naturales según intención
+        followups = {
+            "clima": " ¿Te parece si te aviso si cambia el clima?",
+            "hora": " ¿Necesitás que te recuerde algo para después?",
+            "fecha": " ¿Tenés algún evento hoy?",
+            "tareas": " ¿Querés que te ayude con alguna?",
+            "noticias": " ¿Te interesa algún tema en particular?",
+            "correos": " ¿Querés que responda alguno?",
+        }
+        
+        if intent in followups and len(result) < 200:
+            result += followups[intent]
+            self.conversation.set_pending_question(chat_id, followups[intent].strip())
+        
+        return result
+    
+    def _handle_followup(self, chat_id: int, text: str, ctx) -> Dict[str, Any]:
+        """Maneja preguntas de seguimiento basadas en el contexto"""
+        last_topic = ctx.last_topic
+        
+        # Mapear topic a acciones de seguimiento
+        followup_responses = {
+            "clima": "El clima es algo que cambia seguido. ¿Querés que te avise si hay lluvia pronosticada?",
+            "hora": "La hora no cambia mucho 😄. ¿Necesitás programar algo?",
+            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". ¿Tenés planes?",
+            "tareas": "¿Querés que te muestre las tareas pendientes o creemos una nueva?",
+            "noticias": "¿Hay algún tema que te interese más? Puedo buscar noticias específicas.",
+            "correos": "¿Querés que revise tus correos no leídos?",
+            "spotify": "¿Querés que ponga algo de música?",
+        }
+        
+        response = followup_responses.get(last_topic, 
+            f"Estábamos hablando de {last_topic}. ¿Qué querés saber?")
+        
+        self.conversation.add_assistant_message(chat_id, response, "followup")
+        
+        return {"intent": "followup", "response": response, "action": False}
     
     # ============ ACCIONES BÁSICAS ============
     
