@@ -1,6 +1,9 @@
-# modules/gemini_chat.py - Chat con Gemini usando el nuevo SDK google-genai
+﻿# modules/gemini_chat.py - Chat con LLM via Groq (gratis, ultra-rapido)
 import os
+import json
 from typing import Optional
+
+import httpx
 
 SYSTEM_PROMPT = """Sos Saturday, el asistente personal del usuario. Respondi en espanol neutro (tuteo).
 
@@ -16,29 +19,17 @@ Reglas:
 
 
 class GeminiChat:
-    """Wrapper para Gemini usando google-genai (nuevo SDK)."""
+    """Wrapper para LLM via Groq API (compatible OpenAI)."""
 
     def __init__(self):
-        self._client = None
-        self._api_key = os.getenv("GOOGLE_API_KEY", "")
+        self._api_key = os.getenv("GROQ_API_KEY", "")
+        self._model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        self._base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
         self._conversation_histories = {}
-
-    def _get_client(self):
-        if self._client is not None:
-            return self._client
         if not self._api_key:
-            print("[GeminiChat] GOOGLE_API_KEY no configurada")
-            return None
-        try:
-            from google import genai
-            self._client = genai.Client(api_key=self._api_key)
-            return self._client
-        except ImportError:
-            print("[GeminiChat] google-genai no instalado")
-            return None
-        except Exception as e:
-            print(f"[GeminiChat] Error inicializando: {e}")
-            return None
+            print("[GroqChat] WARNING - GROQ_API_KEY no configurada")
+        else:
+            print(f"[GroqChat] OK - modelo '{self._model}'")
 
     def _get_history(self, chat_id):
         if chat_id not in self._conversation_histories:
@@ -49,37 +40,41 @@ class GeminiChat:
         return self._conversation_histories[chat_id]
 
     def chat(self, message, chat_id=0):
-        client = self._get_client()
-        if not client:
+        if not self._api_key:
             return None
 
         try:
-            from google.genai import types
             history = self._get_history(chat_id)
 
-            contents = []
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             for msg in history:
-                role = "user" if msg["role"] == "user" else "model"
-                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["parts"][0])]))
+                messages.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({"role": "user", "content": message})
 
-            contents.append(types.Content(role="user", parts=[types.Part.from_text(text=message)]))
-
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    max_output_tokens=1024,
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    f"{self._base_url}/chat/completions",
+                    json={
+                        "model": self._model,
+                        "messages": messages,
+                        "max_tokens": 1024,
+                        "temperature": 0.7,
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self._api_key}",
+                    },
                 )
-            )
-            answer = response.text.strip()
+                resp.raise_for_status()
+                result = resp.json()
+                answer = result["choices"][0]["message"]["content"].strip()
 
-            history.append({"role": "user", "parts": [message]})
-            history.append({"role": "model", "parts": [answer]})
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": answer})
 
             return answer
         except Exception as e:
-            print(f"[GeminiChat] ERROR: {e}")
+            print(f"[GroqChat] ERROR: {e}")
             return None
 
     def clear_history(self, chat_id):
