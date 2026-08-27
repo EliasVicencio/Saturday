@@ -40,9 +40,10 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per minute"]
 
 # ===== API KEY AUTH =====
 API_KEY = os.getenv("SATURDAY_API_KEY", "")
+logger.info(f"API key loaded: {'yes' if API_KEY else 'NO - auth disabled'}")
 
 def require_api_key(f):
-    """Decorador que exige X-API-Key válida. Si no hay API_KEY configurada, rechaza."""
+    """Decorador que exige X-API-Key valida. Si no hay API_KEY configurada, rechaza."""
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -51,7 +52,7 @@ def require_api_key(f):
             return jsonify({"error": "Server misconfigured"}), 503
         key = request.headers.get("X-API-Key", "")
         if not hmac.compare_digest(key, API_KEY):
-            logger.warning(f"API key inválida desde {request.remote_addr}")
+            logger.warning(f"API key invalida desde {request.remote_addr} path={request.path}")
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
