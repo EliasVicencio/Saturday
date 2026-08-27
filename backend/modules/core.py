@@ -107,7 +107,15 @@ try:
     from modules.gemini_chat import GeminiChat
     GEMINI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False    
+    GEMINI_AVAILABLE = False
+
+try:
+    from modules.memory.store import MemoryStore
+    from modules.memory.retrieval import MemoryRetriever
+    from modules.memory.summarizer import MemorySummarizer
+    MEMORY_AVAILABLE = True
+except ImportError:
+    MEMORY_AVAILABLE = False
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
 
@@ -311,6 +319,19 @@ class SaturdayCore:
             except Exception as e:
                 print(f"âš ï¸ Error inicializando ConversationManager: {e}")
         
+        # Inicializar memoria persistente (SQLite)
+        self.memory_store = None
+        self.memory_retriever = None
+        self.memory_summarizer = None
+        if MEMORY_AVAILABLE:
+            try:
+                self.memory_store = MemoryStore()
+                self.memory_retriever = MemoryRetriever(self.memory_store)
+                self.memory_summarizer = MemorySummarizer(self.memory_store)
+                print("[OK] MemoryStore inicializado (SQLite)")
+            except Exception as e:
+                print(f"[WARN] Error inicializando MemoryStore: {e}")
+
         # Inicializar GeminiChat (LLM conversacional)
         self.gemini = None
         if GEMINI_AVAILABLE:
@@ -439,7 +460,21 @@ class SaturdayCore:
             # === GEMINI FALLBACK: respuesta conversacional ===
             if self.gemini:
                 try:
-                    gemini_response = self.gemini.chat(text, chat_id=chat_id)
+                    # Inyectar contexto de memoria antes de responder
+                    memory_context = ""
+                    if self.memory_retriever:
+                        memory_context = self.memory_retriever.before_respond(text, chat_id)
+
+                    # Combinar contexto historial + memoria
+                    full_context = text
+                    if memory_context:
+                        full_context = memory_context + "\n\nMensaje del usuario: " + text
+
+                    # Extraer y guardar recuerdos del usuario
+                    if self.memory_summarizer:
+                        self.memory_summarizer.process_and_save(text, chat_id)
+
+                    gemini_response = self.gemini.chat(full_context, chat_id=chat_id)
                     if gemini_response:
                         response = gemini_response
                     else:

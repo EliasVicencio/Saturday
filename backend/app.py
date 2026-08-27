@@ -233,6 +233,98 @@ def get_conversation(session_id):
     })
 
 
+# ===== MEMORY ENDPOINTS =====
+
+@app.route('/api/memory', methods=['GET'])
+@require_api_key
+def memory_list():
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    mem_type = request.args.get('type', '')
+    query = request.args.get('q', '')
+    limit = min(int(request.args.get('limit', 20)), 100)
+    if query:
+        results = saturday.memory_store.search(query=query, mem_type=mem_type, limit=limit)
+    else:
+        results = saturday.memory_store.recent(limit=limit)
+    return jsonify({'memories': [m.to_dict() for m in results], 'total': saturday.memory_store.count()})
+
+@app.route('/api/memory', methods=['POST'])
+@require_api_key
+def memory_save():
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    data = request.json
+    content_val = data.get('content', '').strip()
+    if not content_val:
+        return jsonify({'error': 'content es requerido'}), 400
+    session_id = data.get('session_id', '')
+    chat_id = None
+    if session_id:
+        chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
+    mid = saturday.memory_store.save(mem_type=data.get('type', 'note'), content=content_val, source=data.get('source', 'manual'), confidence=float(data.get('confidence', 1.0)), chat_id=chat_id, tags=data.get('tags', ''))
+    return jsonify({'id': mid, 'saved': True})
+
+@app.route('/api/memory/<int:memory_id>', methods=['GET'])
+@require_api_key
+def memory_get(memory_id):
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    mem = saturday.memory_store.get(memory_id)
+    if not mem:
+        return jsonify({'error': 'Recuerdo no encontrado'}), 404
+    return jsonify(mem.to_dict())
+
+@app.route('/api/memory/<int:memory_id>', methods=['PUT'])
+@require_api_key
+def memory_update(memory_id):
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    data = request.json
+    updates = {}
+    for key in ('content', 'type', 'confidence', 'tags', 'source'):
+        if key in data:
+            updates['mem_type' if key == 'type' else key] = data[key]
+    ok = saturday.memory_store.update(memory_id, **updates)
+    return jsonify({'updated': ok})
+
+@app.route('/api/memory/<int:memory_id>', methods=['DELETE'])
+@require_api_key
+def memory_delete(memory_id):
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    ok = saturday.memory_store.delete(memory_id)
+    return jsonify({'deleted': ok})
+
+@app.route('/api/memory/forget', methods=['POST'])
+@require_api_key
+def memory_forget():
+    if not saturday.memory_store:
+        return jsonify({'error': 'MemoryStore no disponible'}), 503
+    data = request.json
+    query = data.get('query', '')
+    session_id = data.get('session_id', '')
+    if session_id:
+        chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
+        count = saturday.memory_store.delete_by_chat(chat_id)
+        return jsonify({'deleted': count, 'scope': 'session'})
+    if query:
+        count = saturday.memory_store.delete_by_content(query)
+        return jsonify({'deleted': count, 'scope': 'query'})
+    return jsonify({'error': 'Se requiere query o session_id'}), 400
+
+@app.route('/api/memory/context/<session_id>', methods=['GET'])
+@require_api_key
+def memory_context(session_id):
+    if not saturday.memory_retriever:
+        return jsonify({'error': 'MemoryRetriever no disponible'}), 503
+    chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
+    query = request.args.get('q', 'contexto general del usuario')
+    context = saturday.memory_retriever.before_respond(query, chat_id)
+    facts = saturday.memory_retriever.get_user_facts(chat_id)
+    prefs = saturday.memory_retriever.get_user_preferences(chat_id)
+    return jsonify({'context': context, 'facts': [f.to_dict() for f in facts], 'preferences': [p.to_dict() for p in prefs]})
+
 @limiter.limit('10 per minute')
 @app.route('/api/speak', methods=['POST'])
 @require_api_key
