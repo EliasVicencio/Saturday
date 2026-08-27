@@ -152,8 +152,11 @@ def chat():
         # Usar hash del session_id como chat_id para web users
         chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
         result = saturday.process_intent(message, chat_id=chat_id)
+        response_text = result['response']
+        if response_text and saturday.voice:
+            response_text = saturday.voice._fix_mojibake(response_text)
         response_payload = {
-            'response': result['response'],
+            'response': response_text,
             'intent': result.get('intent', 'general'),
             'action': result.get('action', False)
         }

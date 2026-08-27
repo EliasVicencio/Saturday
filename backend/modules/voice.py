@@ -133,11 +133,31 @@ class VoiceManager:
     
     # ============ TTS (Text-to-Speech) ============
     
+    @staticmethod
+    def _fix_mojibake(text: str) -> str:
+        """Fix common mojibake patterns from UTF-8/Latin-1 misinterpretation"""
+        replacements = {
+            '\u00c2\u00bf': '\u00bf',  # Â¿ -> ¿
+            '\u00c2\u00a1': '\u00a1',  # Â¡ -> ¡
+            '\u00c3\u00b3': '\u00f3',  # Ã³ -> ó
+            '\u00c3\u00a1': '\u00e1',  # Ã¡ -> á
+            '\u00c3\u00a9': '\u00e9',  # Ã© -> é
+            '\u00c3\u00ad': '\u00ed',  # Ã­ -> í
+            '\u00c3\u00ba': '\u00fa',  # Ãº -> ú
+            '\u00c3\u00b1': '\u00f1',  # Ã± -> ñ
+            '\u00c3\u00bc': '\u00fc',  # Ã¼ -> ü
+            '\u00c2': '',              # stray Â
+        }
+        for wrong, right in replacements.items():
+            text = text.replace(wrong, right)
+        return text
+    
     def speak(self, text: str) -> bool:
         """Sintetiza y reproduce texto usando Google TTS o fallback local"""
         if not text:
             return False
         
+        text = self._fix_mojibake(text)
         print(f" Saturday: {text}")
         
         # Intentar con Google TTS
