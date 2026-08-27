@@ -1,4 +1,4 @@
-﻿# modules/voice.py - VERSIÃ“N COMPLETA CON CONVERSIÃ“N
+# modules/voice.py - VERSIN COMPLETA CON CONVERSIN
 import os
 import base64
 import requests
@@ -12,23 +12,23 @@ try:
     SR_AVAILABLE = True
 except ImportError:
     SR_AVAILABLE = False
-    print("âš ï¸ speech_recognition no disponible")
+    print(" speech_recognition no disponible")
 
 try:
     from pydub import AudioSegment
     PYDUB_AVAILABLE = True
-    print("âœ… pydub disponible")
+    print(" pydub disponible")
 except ImportError:
     PYDUB_AVAILABLE = False
-    print("âš ï¸ pydub no disponible (instalar: pip install pydub)")
+    print(" pydub no disponible (instalar: pip install pydub)")
 
 
 def _configure_ffmpeg_path():
     """
-    Busca ffmpeg/ffprobe y se los indica a pydub explÃ­citamente, sin
+    Busca ffmpeg/ffprobe y se los indica a pydub explcitamente, sin
     depender de que el PATH del proceso de Python (que puede venir
-    'cacheado' de una terminal vieja, VS Code, un launcher, etc.) estÃ©
-    actualizado. Si no encuentra nada, no hace nada (pydub seguirÃ¡
+    'cacheado' de una terminal vieja, VS Code, un launcher, etc.) est
+    actualizado. Si no encuentra nada, no hace nada (pydub seguir
     intentando 'ffmpeg' a secas, como antes).
     """
     if not PYDUB_AVAILABLE:
@@ -37,15 +37,15 @@ def _configure_ffmpeg_path():
     import shutil
 
     # 1. Permitir que el usuario fije la ruta manualmente en el .env
-    #    si por algÃºn motivo la auto-detecciÃ³n no funciona.
+    #    si por algn motivo la auto-deteccin no funciona.
     manual_dir = os.getenv("FFMPEG_DIR")
 
     candidates_dirs = []
     if manual_dir:
         candidates_dirs.append(manual_dir)
 
-    # 2. Rutas tÃ­picas donde queda instalado ffmpeg en Windows/Linux/Mac
-    #    cuando se sigue la guÃ­a de instalaciÃ³n manual (zip descomprimido).
+    # 2. Rutas tpicas donde queda instalado ffmpeg en Windows/Linux/Mac
+    #    cuando se sigue la gua de instalacin manual (zip descomprimido).
     candidates_dirs += [
         r"C:\ffmpeg\bin",
         r"C:\Program Files\ffmpeg\bin",
@@ -71,17 +71,17 @@ def _configure_ffmpeg_path():
 
     if ffmpeg_path:
         AudioSegment.converter = ffmpeg_path
-        print(f"ðŸŽ¬ ffmpeg encontrado en: {ffmpeg_path}")
+        print(f" ffmpeg encontrado en: {ffmpeg_path}")
     else:
-        print("âš ï¸ No se encontrÃ³ ffmpeg (ni en PATH ni en rutas tÃ­picas). "
-              "Si ya lo instalaste, ponÃ© la carpeta 'bin' en la variable "
+        print(" No se encontr ffmpeg (ni en PATH ni en rutas tpicas). "
+              "Si ya lo instalaste, pon la carpeta 'bin' en la variable "
               "FFMPEG_DIR del .env, ej: FFMPEG_DIR=C:\\ffmpeg\\bin")
 
     if ffprobe_path:
         AudioSegment.ffprobe = ffprobe_path
-        print(f"ðŸ”Ž ffprobe encontrado en: {ffprobe_path}")
+        print(f" ffprobe encontrado en: {ffprobe_path}")
     else:
-        print("âš ï¸ No se encontrÃ³ ffprobe (ni en PATH ni en rutas tÃ­picas).")
+        print(" No se encontr ffprobe (ni en PATH ni en rutas tpicas).")
 
 
 _configure_ffmpeg_path()
@@ -96,10 +96,10 @@ class VoiceManager:
         self.use_google = bool(self.api_key)
         
         print(f"API Key: {'configured' if self.api_key else 'NOT configured'}")
-        print(f"ðŸŽ¤ Voz TTS: {self.voice_name}")
-        print(f"ðŸŒ Idioma: {self.language_code}")
-        print(f"ðŸ“¡ Google TTS: {'HABILITADO' if self.use_google else 'DESHABILITADO'}")
-        print(f"ðŸ“¡ Google STT: {'HABILITADO' if self.use_google else 'DESHABILITADO'}")
+        print(f" Voz TTS: {self.voice_name}")
+        print(f" Idioma: {self.language_code}")
+        print(f" Google TTS: {'HABILITADO' if self.use_google else 'DESHABILITADO'}")
+        print(f" Google STT: {'HABILITADO' if self.use_google else 'DESHABILITADO'}")
         
         # TTS local (fallback)
         self.local_engine = None
@@ -108,11 +108,11 @@ class VoiceManager:
             self.local_engine = pyttsx3.init()
             self.local_engine.setProperty('rate', 170)
             self.local_engine.setProperty('volume', 0.9)
-            print("âœ… TTS local inicializado")
+            print(" TTS local inicializado")
         except Exception as e:
-            print(f"âš ï¸ Error inicializando TTS local: {e}")
+            print(f" Error inicializando TTS local: {e}")
         
-        # STT - Solo si speech_recognition estÃ¡ disponible
+        # STT - Solo si speech_recognition est disponible
         self.recognizer = None
         self.microphone = None
         self.stt_available = False
@@ -124,12 +124,12 @@ class VoiceManager:
                 with self.microphone as source:
                     self.recognizer.adjust_for_ambient_noise(source, duration=1)
                 self.stt_available = True
-                print("âœ… MicrÃ³fono calibrado")
+                print(" Micrfono calibrado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando micrÃ³fono: {e}")
+                print(f" Error inicializando micrfono: {e}")
                 self.stt_available = False
         else:
-            print("âš ï¸ speech_recognition no disponible")
+            print(" speech_recognition no disponible")
     
     # ============ TTS (Text-to-Speech) ============
     
@@ -138,7 +138,7 @@ class VoiceManager:
         if not text:
             return False
         
-        print(f"ðŸ—£ï¸ Saturday: {text}")
+        print(f" Saturday: {text}")
         
         # Intentar con Google TTS
         if self.use_google:
@@ -148,9 +148,9 @@ class VoiceManager:
                     self._play_audio(audio_data)
                     return True
                 else:
-                    print("âš ï¸ Google TTS no generÃ³ audio, usando fallback local")
+                    print(" Google TTS no gener audio, usando fallback local")
             except Exception as e:
-                print(f"âš ï¸ Error en Google TTS: {e}")
+                print(f" Error en Google TTS: {e}")
         
         # Fallback local
         if self.local_engine:
@@ -159,17 +159,17 @@ class VoiceManager:
                 self.local_engine.runAndWait()
                 return True
             except Exception as e:
-                print(f"âŒ Error en TTS local: {e}")
+                print(f" Error en TTS local: {e}")
                 return False
         
-        # Ãšltimo recurso: solo imprimir
-        print(f"ðŸ“ Saturday (texto): {text}")
+        # ltimo recurso: solo imprimir
+        print(f" Saturday (texto): {text}")
         return False
     
     def _synthesize_google_tts(self, text: str) -> Optional[bytes]:
         """Sintetiza texto usando Google Cloud TTS API"""
         if not self.api_key:
-            print("âš ï¸ No hay API key de Google")
+            print(" No hay API key de Google")
             return None
         
         url = "https://texttospeech.googleapis.com/v1/text:synthesize"
@@ -192,28 +192,28 @@ class VoiceManager:
         }
         
         try:
-            print(f"ðŸ“¤ Enviando a Google TTS: {self.voice_name}")
+            print(f" Enviando a Google TTS: {self.voice_name}")
             response = requests.post(url, headers=headers, json=payload, timeout=15)
             
             if response.status_code != 200:
-                print(f"âš ï¸ Error en Google TTS: {response.status_code}")
+                print(f" Error en Google TTS: {response.status_code}")
                 print(f"   {response.text[:200]}")
                 return None
             
             data = response.json()
             audio_content = data.get("audioContent")
             if audio_content:
-                print(f"âœ… Audio generado ({len(audio_content)} caracteres base64)")
+                print(f" Audio generado ({len(audio_content)} caracteres base64)")
                 return base64.b64decode(audio_content)
             else:
-                print("âš ï¸ No se recibiÃ³ contenido de audio")
+                print(" No se recibi contenido de audio")
                 return None
                 
         except requests.exceptions.Timeout:
-            print("âš ï¸ Timeout en Google TTS")
+            print(" Timeout en Google TTS")
             return None
         except Exception as e:
-            print(f"âš ï¸ Error en Google TTS: {e}")
+            print(f" Error en Google TTS: {e}")
             return None
     
     def _play_audio(self, audio_data: bytes) -> bool:
@@ -241,7 +241,7 @@ class VoiceManager:
             threading.Thread(target=cleanup, daemon=True).start()
             return True
         except Exception as e:
-            print(f"âš ï¸ Error reproduciendo audio: {e}")
+            print(f" Error reproduciendo audio: {e}")
             return False
     
     # ============ STT (Speech-to-Text) con Google Cloud ============
@@ -249,11 +249,11 @@ class VoiceManager:
     def convert_to_wav(self, input_path: str) -> Optional[str]:
         """Convierte cualquier audio a WAV (16kHz, mono, 16-bit)"""
         if not PYDUB_AVAILABLE:
-            print("âš ï¸ pydub no disponible, no se puede convertir")
+            print(" pydub no disponible, no se puede convertir")
             return None
         
         try:
-            print(f"ðŸ”„ Convirtiendo {input_path} a WAV...")
+            print(f" Convirtiendo {input_path} a WAV...")
             
             # Cargar audio (auto-detectar formato)
             audio = AudioSegment.from_file(input_path)
@@ -267,27 +267,27 @@ class VoiceManager:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
                 output_path = tmp_wav.name
                 audio.export(output_path, format="wav")
-                print(f"âœ… Convertido a: {output_path}")
+                print(f" Convertido a: {output_path}")
                 return output_path
                 
         except Exception as e:
-            print(f"âš ï¸ Error convirtiendo audio: {e}")
+            print(f" Error convirtiendo audio: {e}")
             return None
 
     def _build_stt_config(self, audio_path: str, converted_to_wav: bool, use_enhanced: bool = False) -> dict:
-        """Arma el bloque 'config' de Google STT segÃºn el formato real del archivo."""
+        """Arma el bloque 'config' de Google STT segn el formato real del archivo."""
         ext = os.path.splitext(audio_path)[1].lower()
 
         base_config = {
             "languageCode": self.language_code,
             "enableAutomaticPunctuation": True,
-            # "command_and_search" estÃ¡ pensado para frases cortas de comando
+            # "command_and_search" est pensado para frases cortas de comando
             # (justo lo que dice un asistente de voz), a diferencia de
             # "latest_long" que es para audio largo tipo discurso/video.
             "model": "command_and_search",
             "audioChannelCount": 1,
             # Vocabulario esperado del asistente: ayuda a Google a inclinarse
-            # hacia estas palabras cuando hay ambigÃ¼edad.
+            # hacia estas palabras cuando hay ambigedad.
             "speechContexts": [{
                 "phrases": [
                     "dashboard", "proyectos", "noticias", "inicio", "tareas",
@@ -299,9 +299,9 @@ class VoiceManager:
         }
 
         # useEnhanced pide un modelo "enhanced" que puede no estar habilitado
-        # en el proyecto de Google Cloud; si no estÃ¡ disponible, Google no
-        # tira error, simplemente devuelve resultados vacÃ­os. Lo dejamos
-        # apagado por defecto y solo se prueba explÃ­citamente si se pide.
+        # en el proyecto de Google Cloud; si no est disponible, Google no
+        # tira error, simplemente devuelve resultados vacos. Lo dejamos
+        # apagado por defecto y solo se prueba explcitamente si se pide.
         if use_enhanced:
             base_config["useEnhanced"] = True
 
@@ -330,11 +330,11 @@ class VoiceManager:
         """
         Reconoce voz desde un archivo de audio.
         Soporta WEBM/OGG (Opus, nativo del navegador) sin necesitar ffmpeg,
-        y WAV/FLAC directamente. Solo convierte con pydub como Ãºltimo recurso
+        y WAV/FLAC directamente. Solo convierte con pydub como ltimo recurso
         para formatos que Google no soporta de forma nativa.
         """
         if not self.api_key:
-            print("âš ï¸ No hay API key de Google")
+            print(" No hay API key de Google")
             return None
 
         wav_path = None
@@ -348,7 +348,7 @@ class VoiceManager:
             # 1. Solo convertir si el formato no es soportado nativamente por Google STT
             if ext not in NATIVE_FORMATS and PYDUB_AVAILABLE:
                 try:
-                    print(f"ðŸ”„ Formato '{ext}' no nativo, convirtiendo a WAV con pydub...")
+                    print(f" Formato '{ext}' no nativo, convirtiendo a WAV con pydub...")
                     audio = AudioSegment.from_file(audio_path)
                     audio = audio.set_frame_rate(16000)
                     audio = audio.set_channels(1)
@@ -357,13 +357,13 @@ class VoiceManager:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
                         wav_path = tmp_wav.name
                         audio.export(wav_path, format="wav")
-                        print(f"âœ… Convertido a WAV: {wav_path}")
+                        print(f" Convertido a WAV: {wav_path}")
 
                     audio_path_to_use = wav_path
                     converted_to_wav = True
                 except Exception as e:
-                    print(f"âš ï¸ Error en conversiÃ³n (Â¿falta ffmpeg?): {e}")
-                    print("   Se intentarÃ¡ mandar el archivo original tal cual.")
+                    print(f" Error en conversin (falta ffmpeg?): {e}")
+                    print("   Se intentar mandar el archivo original tal cual.")
                     audio_path_to_use = audio_path
 
             # 2. Leer el archivo de audio
@@ -373,18 +373,18 @@ class VoiceManager:
             # 3. Codificar en base64
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
 
-            # DEBUG: tamaÃ±o real del audio que se manda. Un archivo webm
+            # DEBUG: tamao real del audio que se manda. Un archivo webm
             # de una frase hablada normal suele pesar varias decenas de KB;
-            # si esto da muy pocos bytes (ej. <3-5 KB), es seÃ±al de que el
-            # clip capturado es casi vacÃ­o aunque al reproducirlo "suene"
-            # a algo (Opus comprime muchÃ­simo el silencio/ruido de fondo).
-            print(f"ðŸ“ TamaÃ±o del audio: {len(audio_data)} bytes ({len(audio_data)/1024:.1f} KB), "
+            # si esto da muy pocos bytes (ej. <3-5 KB), es seal de que el
+            # clip capturado es casi vaco aunque al reproducirlo "suene"
+            # a algo (Opus comprime muchsimo el silencio/ruido de fondo).
+            print(f" Tamao del audio: {len(audio_data)} bytes ({len(audio_data)/1024:.1f} KB), "
                   f"base64: {len(audio_base64)} chars")
 
             # 4. Enviar a Google STT con la config correcta para el formato real.
             # Ya confirmamos que el sample rate (48000 para WEBM_OPUS del
             # navegador) NO es el problema: con la tasa correcta Google
-            # respondÃ­a 200 OK pero sin resultados. Ahora probamos variantes
+            # responda 200 OK pero sin resultados. Ahora probamos variantes
             # de MODELO en vez de sample rate.
             url = "https://speech.googleapis.com/v1/speech:recognize"
             headers = {
@@ -393,9 +393,9 @@ class VoiceManager:
             }
 
             # Variantes a probar en orden: primero el modelo pensado para
-            # comandos cortos (lo normal para un asistente de voz), despuÃ©s
-            # sin modelo especÃ­fico (deja que Google elija el default), y
-            # por Ãºltimo con el modelo "enhanced" por si el proyecto sÃ­ lo
+            # comandos cortos (lo normal para un asistente de voz), despus
+            # sin modelo especfico (deja que Google elija el default), y
+            # por ltimo con el modelo "enhanced" por si el proyecto s lo
             # tiene habilitado.
             attempts = [
                 {"model": "command_and_search", "use_enhanced": False},
@@ -415,28 +415,28 @@ class VoiceManager:
                     config["model"] = attempt["model"]
 
                 payload = {"config": config, "audio": {"content": audio_base64}}
-                print(f"ðŸ“¤ Enviando a Google STT (model={attempt['model']}, useEnhanced={attempt['use_enhanced']})...")
+                print(f" Enviando a Google STT (model={attempt['model']}, useEnhanced={attempt['use_enhanced']})...")
                 response = requests.post(url, headers=headers, json=payload, timeout=30)
                 last_response = response
 
                 if response.status_code != 200:
-                    print(f"âš ï¸ Error en Google STT: {response.status_code}")
+                    print(f" Error en Google STT: {response.status_code}")
                     print(f"   {response.text[:300]}")
                     continue
 
                 data = response.json()
                 if "results" in data and data["results"]:
                     transcript = data["results"][0].get("alternatives", [{}])[0].get("transcript", "")
-                    print(f"âœ… Reconocido con model={attempt['model']}: '{transcript}'")
+                    print(f" Reconocido con model={attempt['model']}: '{transcript}'")
                     return transcript.strip()
 
-                print(f"   âš ï¸ 200 OK pero sin resultados con model={attempt['model']}, probando otra variante...")
+                print(f"    200 OK pero sin resultados con model={attempt['model']}, probando otra variante...")
 
-            # Ãšltimo recurso: convertir a WAV con pydub/ffmpeg si no lo
-            # habÃ­amos hecho ya (requiere ffmpeg Y ffprobe instalados).
+            # ltimo recurso: convertir a WAV con pydub/ffmpeg si no lo
+            # habamos hecho ya (requiere ffmpeg Y ffprobe instalados).
             if not converted_to_wav and PYDUB_AVAILABLE:
                 try:
-                    print("ðŸ”„ Ninguna variante funcionÃ³ con Opus, probando conversiÃ³n a WAV como Ãºltimo recurso...")
+                    print(" Ninguna variante funcion con Opus, probando conversin a WAV como ltimo recurso...")
                     audio = AudioSegment.from_file(audio_path)
                     audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
@@ -462,21 +462,21 @@ class VoiceManager:
                         data = response.json()
                         if "results" in data and data["results"]:
                             transcript = data["results"][0].get("alternatives", [{}])[0].get("transcript", "")
-                            print(f"âœ… Reconocido tras convertir a WAV: '{transcript}'")
+                            print(f" Reconocido tras convertir a WAV: '{transcript}'")
                             return transcript.strip()
                     last_response = response
                 except Exception as e:
-                    print(f"âš ï¸ FallÃ³ tambiÃ©n la conversiÃ³n a WAV: {e}")
+                    print(f" Fall tambin la conversin a WAV: {e}")
 
             if last_response is not None and last_response.status_code != 200:
-                print(f"âš ï¸ Error final en Google STT: {last_response.status_code}")
+                print(f" Error final en Google STT: {last_response.status_code}")
                 print(f"   {last_response.text[:300]}")
             else:
-                print("âš ï¸ No se reconociÃ³ texto en ninguna variante probada (Google no detectÃ³ habla)")
+                print(" No se reconoci texto en ninguna variante probada (Google no detect habla)")
             return None
 
         except Exception as e:
-            print(f"âš ï¸ Error en Google STT: {e}")
+            print(f" Error en Google STT: {e}")
             return None
         finally:
             try:
@@ -488,16 +488,16 @@ class VoiceManager:
     def listen_google(self, timeout: int = 5) -> Tuple[bool, str]:
         """Escucha y reconoce voz usando Google Cloud STT"""
         if not self.stt_available:
-            print("âš ï¸ STT no disponible")
+            print(" STT no disponible")
             return False, ""
         
-        print(f"ðŸŽ¤ Escuchando (Google STT)...")
+        print(f" Escuchando (Google STT)...")
         
         try:
             import tempfile
             import wave
             
-            # Grabar audio desde el micrÃ³fono
+            # Grabar audio desde el micrfono
             with self.microphone as source:
                 audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=10)
             
@@ -519,48 +519,48 @@ class VoiceManager:
                 return False, ""
                 
         except sr.WaitTimeoutError:
-            print("â° Tiempo de espera agotado")
+            print(" Tiempo de espera agotado")
             return False, ""
         except Exception as e:
-            print(f"âŒ Error al escuchar: {e}")
+            print(f" Error al escuchar: {e}")
             return False, ""
     
     def listen(self, timeout: int = 5) -> Tuple[bool, str]:
-        """Escucha y reconoce voz usando el mÃ©todo disponible"""
+        """Escucha y reconoce voz usando el mtodo disponible"""
         # Intentar con Google STT
         if self.use_google and self.stt_available:
             try:
                 return self.listen_google(timeout)
             except Exception as e:
-                print(f"âš ï¸ Error en Google STT, usando fallback: {e}")
+                print(f" Error en Google STT, usando fallback: {e}")
         
         # Fallback: speech_recognition local
         if self.stt_available:
             try:
-                print(f"ðŸŽ¤ Escuchando (fallback local)...")
+                print(f" Escuchando (fallback local)...")
                 with self.microphone as source:
                     audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=10)
                 
                 try:
                     text = self.recognizer.recognize_google(audio, language=self.language_code)
-                    print(f"ðŸ“ EscuchÃ©: '{text}'")
+                    print(f" Escuch: '{text}'")
                     return True, text
                 except sr.UnknownValueError:
-                    print("âŒ No entendÃ­ lo que dijiste")
+                    print(" No entend lo que dijiste")
                     return False, ""
                 except sr.RequestError:
-                    print("âŒ Error de conexiÃ³n con el servicio de reconocimiento")
+                    print(" Error de conexin con el servicio de reconocimiento")
                     return False, ""
             except sr.WaitTimeoutError:
-                print("â° Tiempo de espera agotado")
+                print(" Tiempo de espera agotado")
                 return False, ""
             except Exception as e:
-                print(f"âŒ Error al escuchar: {e}")
+                print(f" Error al escuchar: {e}")
                 return False, ""
         
-        print("âš ï¸ No hay mÃ©todo de reconocimiento de voz disponible")
+        print(" No hay mtodo de reconocimiento de voz disponible")
         return False, ""
 
     def recognize_webm_file(self, audio_path: str) -> Optional[str]:
-        """MÃ©todo legacy para compatibilidad"""
+        """Mtodo legacy para compatibilidad"""
         return self.recognize_audio_file(audio_path)
