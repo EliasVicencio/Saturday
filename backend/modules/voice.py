@@ -256,7 +256,7 @@ class VoiceManager:
                 time.sleep(5)
                 try:
                     os.unlink(filename)
-                except:
+                except OSError:
                     pass
             threading.Thread(target=cleanup, daemon=True).start()
             return True
@@ -502,7 +502,7 @@ class VoiceManager:
             try:
                 if wav_path and os.path.exists(wav_path):
                     os.unlink(wav_path)
-            except:
+            except OSError:
                 pass
     
     def listen_google(self, timeout: int = 5) -> Tuple[bool, str]:

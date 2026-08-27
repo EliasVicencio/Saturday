@@ -90,7 +90,7 @@ def build_welcome_message(core):
                     temp = data['main']['temp']
                     desc = data['weather'][0]['description']
                     clima_info = f" Hoy en {city} hace {temp}Â°C con {desc}."
-        except:
+        except (requests.RequestException, KeyError, TypeError):
             pass
 
         mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
@@ -344,6 +344,10 @@ def send_whatsapp():
     """EnvÃ­a mensaje por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
+    
+    valid, err = validate_message(message)
+    if not valid:
+        return jsonify({'error': err}), 400
 
     if not saturday.communication:
         return jsonify({'error': 'CommunicationManager no disponible'}), 500
@@ -362,6 +366,10 @@ def send_whatsapp_voice():
     """EnvÃ­a mensaje de voz por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
+    
+    valid, err = validate_message(message)
+    if not valid:
+        return jsonify({'error': err}), 400
 
     if not saturday.communication:
         return jsonify({'error': 'CommunicationManager no disponible'}), 500
@@ -660,8 +668,9 @@ def vault_search():
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     query = request.args.get('q', '').strip()
-    if not query:
-        return jsonify({'error': "Falta el parametro 'q'"}), 400
+    valid, err = validate_search_query(query)
+    if not valid:
+        return jsonify({'error': err}), 400
     return jsonify({'query': query, 'results': saturday.vault.search(query)})
 
 

@@ -70,7 +70,7 @@ class CalendarManager:
                 try:
                     dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
                     date_str = dt.strftime('%d/%m %H:%M')
-                except:
+                except (ValueError, TypeError):
                     date_str = start
             else:
                 date_str = 'Sin fecha'
@@ -88,7 +88,7 @@ class CalendarManager:
                     dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
                     if dt.date() == today:
                         today_events.append(event)
-                except:
+                except (ValueError, TypeError):
                     pass
         
         if not today_events:

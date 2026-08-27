@@ -1,8 +1,8 @@
 # modules/notion_manager.py
 import os
-import requests
 from datetime import datetime
 from typing import List, Dict, Optional
+from modules.http_utils import post_with_retry, patch_with_retry
 
 class NotionManager:
     """Gestor de tareas con Notion - Versión MVP"""
@@ -19,7 +19,7 @@ class NotionManager:
         
         # Verificar conexión
         try:
-            response = requests.post(
+            response = post_with_retry(
                 f"{self.base_url}/databases/{self.database_id}/query",
                 headers=self.headers,
                 json={"page_size": 1}
@@ -50,8 +50,9 @@ class NotionManager:
                     "checkbox": {"equals": True}
                 }
             
-            response = requests.post(url, headers=self.headers, json=payload)
-            response.raise_for_status()
+            response = post_with_retry(url, headers=self.headers, json=payload)
+            if not response or response.status_code != 200:
+                return []
             
             data = response.json()
             tasks = []
@@ -144,10 +145,11 @@ class NotionManager:
                 }
             }
             
-            response = requests.post(url, headers=self.headers, json=payload)
-            response.raise_for_status()
+            response = post_with_retry(url, headers=self.headers, json=payload)
+            if not response or response.status_code != 200:
+                return f"Error creando tarea"
             
-            return f"✅ Tarea '{name}' creada"
+            return f"Tarea '{name}' creada"
         except Exception as e:
             return f"❌ Error creando tarea: {e}"
     
@@ -171,8 +173,8 @@ class NotionManager:
                         "Hecho": {"checkbox": True}
                     }
                 }
-                requests.patch(url, headers=self.headers, json=payload)
-                return f"✅ Tarea '{matching[0]['name']}' completada"
+                patch_with_retry(url, headers=self.headers, json=payload)
+                return f"Tarea '{matching[0]['name']}' completada"
             except Exception as e:
                 return f"❌ Error: {e}"
         else:
@@ -197,8 +199,8 @@ class NotionManager:
                 task_id = matching[0]['id']
                 url = f"{self.base_url}/pages/{task_id}"
                 payload = {"archived": True}
-                requests.patch(url, headers=self.headers, json=payload)
-                return f"🗑️ Tarea '{matching[0]['name']}' eliminada"
+                patch_with_retry(url, headers=self.headers, json=payload)
+                return f"Tarea '{matching[0]['name']}' eliminada"
             except Exception as e:
                 return f"❌ Error: {e}"
         else:

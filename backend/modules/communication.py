@@ -1,8 +1,8 @@
 # modules/communication.py
 import os
-import requests
 import urllib.parse
 from typing import Dict, Any, Optional
+from modules.http_utils import get_with_retry
 
 class CommunicationManager:
     """Gestor de comunicaciones para Saturday (WhatsApp + Notificaciones)"""
@@ -40,10 +40,10 @@ class CommunicationManager:
             encoded_message = urllib.parse.quote_plus(message)
             url = f"https://api.callmebot.com/whatsapp.php?phone={target_phone}&apikey={self.whatsapp_api_key}&text={encoded_message}"
             
-            print(f"📤 Enviando WhatsApp a {target_phone}: {message}")
-            response = requests.get(url, timeout=30)
+            print(f"Enviando WhatsApp a {target_phone}: {message}")
+            response = get_with_retry(url, timeout=30)
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 print(f"✅ WhatsApp enviado")
                 return {'success': True, 'message': 'WhatsApp enviado'}
             else:
@@ -71,10 +71,10 @@ class CommunicationManager:
             encoded_message = urllib.parse.quote_plus(message)
             url = f"https://api.callmebot.com/whatsapp.php?phone={target_phone}&apikey={self.whatsapp_api_key}&text={encoded_message}&voice=es-ES-Standard-A"
             
-            print(f"🎤 Enviando WhatsApp con voz a {target_phone}: {message}")
-            response = requests.get(url, timeout=30)
+            print(f"Enviando WhatsApp con voz a {target_phone}: {message}")
+            response = get_with_retry(url, timeout=30)
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 print(f"✅ WhatsApp con voz enviado")
                 return {'success': True, 'message': 'WhatsApp con voz enviado'}
             else:

@@ -192,7 +192,7 @@ class ConversationManager:
                 minutes = int(diff.total_seconds() / 60)
                 if minutes < 5:
                     return f"Contexto: Último tema '{ctx.last_topic}' (hace {minutes} min)"
-            except:
+            except (ValueError, TypeError):
                 pass
         
         return ""

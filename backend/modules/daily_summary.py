@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
-import requests
+from modules.http_utils import get_with_retry
 
 class DailySummary:
     """Genera y envÃ­a resÃºmenes diarios desde Saturday"""
@@ -105,14 +105,14 @@ class DailySummary:
                 return None
             city = os.getenv("SATURDAY_CITY", "Santiago")
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
+            response = get_with_retry(url, timeout=10)
+            if response and response.status_code == 200:
                 data = response.json()
                 temp = data['main']['temp']
                 desc = data['weather'][0]['description']
                 return f"{desc}, {temp}Â°C"
             return None
-        except:
+        except (requests.RequestException, KeyError, TypeError):
             return None
     
     def _get_tasks(self) -> List[str]:
@@ -122,7 +122,7 @@ class DailySummary:
         try:
             tasks = self.core.notion.get_tasks(status="Todo", limit=5)
             return [f"{t['name']}" for t in tasks]
-        except:
+        except Exception:
             return []
     
     def _get_events(self) -> List[str]:
@@ -138,7 +138,7 @@ class DailySummary:
                     start = start.split('T')[1][:5]  # HH:MM
                 formatted.append(f"{e.get('summary', 'Sin tÃ­tulo')} - {start}")
             return formatted
-        except:
+        except Exception:
             return []
     
     def _get_reminders(self) -> List[str]:
@@ -148,7 +148,7 @@ class DailySummary:
         try:
             reminders = self.core.data.get_reminders_for_today()
             return [f"{r['text']} - {r['time']}" for r in reminders]
-        except:
+        except Exception:
             return []
     
     def _get_autonomous_emails(self) -> Optional[str]:
@@ -158,11 +158,10 @@ class DailySummary:
         try:
             results = self.core.vault.search("Correos no leÃ­dos")
             if results:
-                # Tomar el mÃ¡s reciente
                 latest = results[0]
                 return latest.get('snippet', 'Correos revisados hoy')
             return None
-        except:
+        except Exception:
             return None
     
     def _get_autonomous_news(self) -> Optional[str]:
@@ -172,7 +171,6 @@ class DailySummary:
         try:
             results = self.core.vault.search("Noticias")
             if results:
-                # Tomar las mÃ¡s recientes
                 news_items = []
                 for r in results[:3]:
                     snippet = r.get('snippet', '')
@@ -180,7 +178,7 @@ class DailySummary:
                         news_items.append(snippet[:100])
                 return '\n'.join(news_items) if news_items else None
             return None
-        except:
+        except Exception:
             return None
     
     def send(self, via: str = "whatsapp") -> Dict[str, Any]:

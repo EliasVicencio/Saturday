@@ -1,11 +1,11 @@
-﻿# modules/core.py - NÃºcleo de Saturday COMPLETO
+﻿# modules/core.py - Nucleo de Saturday COMPLETO
 import os
 import webbrowser
 import re
 from datetime import datetime
 from typing import Dict, Any
 import networkx as nx
-import requests
+from modules.http_utils import get_with_retry
 
 # Importar mÃ³dulos
 try:
@@ -526,7 +526,7 @@ class SaturdayCore:
             cpu = psutil.cpu_percent(interval=0.3)
             mem = psutil.virtual_memory()
             sys_info = f"ðŸ’» CPU: {cpu}% | RAM: {mem.percent}%"
-        except:
+        except (ImportError, Exception):
             sys_info = ""
         
         response = "ðŸŸ£ **ESTADO DE SATURDAY**\n\n"
@@ -575,8 +575,8 @@ class SaturdayCore:
                 return "âŒ No configuraste la API del clima"
             city = os.getenv("SATURDAY_CITY", "Santiago")
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
+            response = get_with_retry(url, timeout=10)
+            if response and response.status_code == 200:
                 data = response.json()
                 return f"ðŸŒ¤ï¸ El clima en {city} es {data['weather'][0]['description']} con {data['main']['temp']}Â°C"
             return "âŒ Error obteniendo el clima"

@@ -1,8 +1,8 @@
 # modules/news_manager.py - Usando NewsData.io
 import os
-import requests
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
+from modules.http_utils import get_with_retry
 
 class NewsManager:
     """Gestor de noticias para Saturday usando NewsData.io"""
@@ -50,23 +50,24 @@ class NewsManager:
             elif self.category:
                 params['category'] = self.category
             
-            print(f"📤 Solicitando noticias a NewsData.io...")
+            print(f"Solicitando noticias a NewsData.io...")
             
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            
+            response = get_with_retry(url, params=params, timeout=10)
+            if not response:
+                return []
             data = response.json()
             
             if data.get('status') == 'success':
                 articles = data.get('results', [])
                 if not articles:
-                    print(f"⚠️ No hay artículos. Respuesta: {data.get('message', 'Sin resultados')}")
-                    # Intentar sin país
+                    print(f"No hay articulos. Respuesta: {data.get('message', 'Sin resultados')}")
+                    # Intentar sin pais
                     if 'country' in params:
-                        print("🔄 Intentando sin filtro de país...")
+                        print("Intentando sin filtro de pais...")
                         del params['country']
-                        response = requests.get(url, params=params, timeout=10)
-                        data = response.json()
+                        response = get_with_retry(url, params=params, timeout=10)
+                        if response:
+                            data = response.json()
                         if data.get('status') == 'success':
                             articles = data.get('results', [])
                 
@@ -110,10 +111,10 @@ class NewsManager:
                 'removeduplicate': 1
             }
             
-            print(f"🔍 Buscando: {query}")
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            
+            print(f"Buscando: {query}")
+            response = get_with_retry(url, params=params, timeout=10)
+            if not response:
+                return []
             data = response.json()
             
             if data.get('status') == 'success':

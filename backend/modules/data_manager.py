@@ -109,7 +109,7 @@ class DataManager:
         try:
             with open(self.stats_file, 'r', encoding='utf-8') as f:
                 stats = json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             stats = {}
         
         if not stats:
@@ -125,7 +125,7 @@ class DataManager:
         try:
             with open(self.notes_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             return []
     
     def _save_notes(self, notes: List[Dict]):
@@ -136,7 +136,7 @@ class DataManager:
         try:
             with open(self.reminders_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             return []
     
     def _save_reminders(self, reminders: List[Dict]):

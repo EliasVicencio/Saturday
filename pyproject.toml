@@ -1,0 +1,30 @@
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit (security)
+    "T20",  # flake8-print
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (Flask route pattern)
+    "S101",   # assert usage (tests)
+    "T201",   # print found (will fix later)
+    "RUF012", # mutable class attributes
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["S101", "T201"]
+"backend/app.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["modules"]
