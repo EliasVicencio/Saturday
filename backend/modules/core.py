@@ -54,7 +54,7 @@ except ImportError:
 
 # IMPORTAR COMMUNICATION MANAGER (WhatsApp)
 try:
-    from backend.modules.communication import CommunicationManager
+    from modules.communication import CommunicationManager
     COMMUNICATION_AVAILABLE = True
     print("âœ… CommunicationManager importado correctamente")
 except ImportError as e:
@@ -102,10 +102,76 @@ try:
     CONVERSATION_AVAILABLE = True
 except ImportError:
     CONVERSATION_AVAILABLE = False
-    print("âš ï¸ ConversationManager no disponible")
-    
+
+try:
+    from modules.gemini_chat import GeminiChat
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False    
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
+
+    # Tool definitions for Gemini function calling
+    GEMINI_TOOLS = [
+        {
+            "name": "get_weather",
+            "description": "Obtiene el clima actual de una ciudad",
+            "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": []}
+        },
+        {
+            "name": "get_time",
+            "description": "Obtiene la hora y fecha actual",
+            "parameters": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "get_tasks",
+            "description": "Lista tareas pendientes del usuario en Notion",
+            "parameters": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "create_task",
+            "description": "Crea una nueva tarea en Notion",
+            "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
+        },
+        {
+            "name": "get_news",
+            "description": "Obtiene noticias actuales",
+            "parameters": {"type": "object", "properties": {"category": {"type": "string"}}}
+        },
+        {
+            "name": "get_events",
+            "description": "Obtiene eventos del calendario de hoy",
+            "parameters": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "search_vault",
+            "description": "Busca en la boveda de conocimiento del usuario",
+            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+        },
+    ]
+
+    def _execute_tool(self, tool_name, tool_args):
+        """Execute a tool by name with arguments. Returns string result."""
+        try:
+            if tool_name == "get_weather":
+                city = tool_args.get("city", os.getenv("SATURDAY_CITY", "Santiago"))
+                return self.get_weather()
+            elif tool_name == "get_time":
+                return self.get_time()
+            elif tool_name == "get_tasks":
+                return self.get_tasks()
+            elif tool_name == "create_task":
+                return self.create_task(tool_args.get("name", ""))
+            elif tool_name == "get_news":
+                return self.get_news()
+            elif tool_name == "get_events":
+                return self.get_events()
+            elif tool_name == "search_vault":
+                return self.search_notes(tool_args.get("query", ""))
+            else:
+                return f"Tool desconocida: {tool_name}"
+        except Exception as e:
+            return f"Error ejecutando {tool_name}: {str(e)}"
     
     def __init__(self):
         print("ðŸ§  Inicializando nÃºcleo de Saturday...")
@@ -245,6 +311,15 @@ class SaturdayCore:
             except Exception as e:
                 print(f"âš ï¸ Error inicializando ConversationManager: {e}")
         
+        # Inicializar GeminiChat (LLM conversacional)
+        self.gemini = None
+        if GEMINI_AVAILABLE:
+            try:
+                self.gemini = GeminiChat()
+                print("[OK] GeminiChat inicializado")
+            except Exception as e:
+                print(f"[WARN] Error inicializando GeminiChat: {e}")
+
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
@@ -361,20 +436,18 @@ class SaturdayCore:
         match = self.intent_engine.classify(text)
 
         if match is None:
-            # Respuesta contextual en vez de "No entendÃ­" genÃ©rico
-            if chat_id and self.conversation:
-                ctx = self.conversation.get_context(chat_id)
-                hint = self.conversation.get_context_hint(chat_id)
-                
-                # Si hay tema reciente, preguntar si quiere seguir con eso
-                if ctx.last_topic and ctx.pending_question:
-                    response = f"No estoy seguro de quÃ© quieres con eso. {ctx.pending_question}"
-                elif ctx.last_topic:
-                    response = f"Hmm, no te entendÃ­ bien. Â¿Seguimos hablando de {ctx.last_topic} o quieres otra cosa?"
-                else:
-                    response = "No entendÃ­ tu peticiÃ³n. Â¿Puedes repetirla o decir 'ayuda' para ver quÃ© puedo hacer?"
+            # === GEMINI FALLBACK: respuesta conversacional ===
+            if self.gemini:
+                try:
+                    gemini_response = self.gemini.chat(text, chat_id=chat_id)
+                    if gemini_response:
+                        response = gemini_response
+                    else:
+                        response = "No pude procesar tu mensaje. Intenta de nuevo."
+                except Exception as e:
+                    response = "Hubo un error procesando tu mensaje. Intenta de nuevo."
             else:
-                response = "No entendÃ­ tu peticiÃ³n. Â¿Puedes repetirla?"
+                response = "No entendí tu petición. ¿Puedes repetirla o decir 'ayuda' para ver qué puedo hacer?"
             
             if chat_id and self.conversation:
                 self.conversation.add_assistant_message(chat_id, response, "general")
