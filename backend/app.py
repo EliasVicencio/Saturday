@@ -2,6 +2,8 @@
 import sys
 import os
 import base64
+import hmac
+import logging
 import requests
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -16,6 +18,14 @@ from datetime import datetime
 
 # Cargar variables de entorno
 load_dotenv()
+
+# ===== LOGGING ESTRUCTURADO =====
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger('saturday')
 
 # Agregar la carpeta principal al path para importar modules
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,13 +42,16 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per minute"]
 API_KEY = os.getenv("SATURDAY_API_KEY", "")
 
 def require_api_key(f):
+    """Decorador que exige X-API-Key válida. Si no hay API_KEY configurada, rechaza."""
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
         if not API_KEY:
-            return f(*args, **kwargs)
+            logger.warning("API key no configurada - rechazando request")
+            return jsonify({"error": "Server misconfigured"}), 503
         key = request.headers.get("X-API-Key", "")
-        if key != API_KEY:
+        if not hmac.compare_digest(key, API_KEY):
+            logger.warning(f"API key inválida desde {request.remote_addr}")
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
@@ -81,18 +94,19 @@ def build_welcome_message(core):
         mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
         _greeting_message["text"] = mensaje
         _greeting_message["ready"] = True
-        print(f"ðŸ—£ï¸ Saludo listo para el frontend: {mensaje}")
+        logger.info(f"Saludo listo: {mensaje[:60]}...")
     except Exception as e:
-        print(f"âš ï¸ Error preparando saludo: {e}")
+        logger.error(f"Error preparando saludo: {e}")
 
 # ===== INICIALIZAR SATURDAY =====
-print("=" * 50)
-print("ðŸŸ£ SATURDAY - Backend API")
-print("=" * 50)
-print("â³ Inicializando Saturday Core...")
+logger.info("=" * 50)
+logger.info("SATURDAY - Backend API")
+logger.info("=" * 50)
+logger.info("Inicializando Saturday Core...")
+_start_time = time.time()
 saturday = SaturdayCore()
-print("âœ… Saturday Core inicializado correctamente")
-print("=" * 50)
+logger.info("Saturday Core inicializado correctamente")
+logger.info("=" * 50)
 
 # ===== PREPARAR SALUDO (sin tocar el audio del servidor) =====
 saludo_thread = threading.Thread(target=build_welcome_message, args=(saturday,), daemon=True)
@@ -111,6 +125,7 @@ def greeting():
 
 # ===== ENDPOINTS =====
 
+@require_api_key
 @app.route('/api/status', methods=['GET'])
 def status():
     """Verifica el estado del sistema"""
@@ -137,19 +152,20 @@ def status():
     })
 
 
+@require_api_key
 @limiter.limit('30 per minute')
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Procesa un mensaje y devuelve respuesta con contexto conversacional"""
     data = request.json
     message = data.get('message', '').strip()
-    session_id = data.get('session_id', 'web_user')  # ID de sesiÃ³n del frontend
+    session_id = data.get('session_id', 'web_user')
     
-    if not message:
-        return jsonify({'error': 'Mensaje vacÃ­o'}), 400
+    valid, err = validate_message(message)
+    if not valid:
+        return jsonify({'error': err}), 400
     
     try:
-        # Usar hash del session_id como chat_id para web users
         chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
         result = saturday.process_intent(message, chat_id=chat_id)
         response_text = result['response']
@@ -164,9 +180,11 @@ def chat():
             response_payload['navigate'] = result['navigate']
         return jsonify(response_payload)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/chat: {e}")
+        return jsonify({'error': 'Error procesando mensaje'}), 500
 
 
+@require_api_key
 @app.route('/api/conversation/<session_id>', methods=['GET'])
 def get_conversation(session_id):
     """Obtiene el historial de conversaciÃ³n de una sesiÃ³n"""
@@ -184,6 +202,7 @@ def get_conversation(session_id):
     })
 
 
+@require_api_key
 @limiter.limit('10 per minute')
 @app.route('/api/speak', methods=['POST'])
 def speak():
@@ -191,8 +210,9 @@ def speak():
     data = request.json
     text = data.get('text', '').strip()
     
-    if not text:
-        return jsonify({'error': 'Texto vacÃ­o'}), 400
+    valid, err = validate_text(text)
+    if not valid:
+        return jsonify({'error': err}), 400
     
     try:
         if not saturday.voice:
@@ -210,21 +230,22 @@ def speak():
             return jsonify({'error': 'No se pudo generar el audio'}), 500
             
     except Exception as e:
-        print(f"âŒ Error en /api/speak: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/speak: {e}")
+        return jsonify({'error': 'Error generando audio'}), 500
 
 
+@require_api_key
 @limiter.limit('10 per minute')
 @app.route('/api/stt', methods=['POST'])
 def stt():
     """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
     try:
         if 'audio' not in request.files:
-            return jsonify({'error': 'No se enviÃ³ archivo de audio'}), 400
+            return jsonify({'error': 'No se envio archivo de audio'}), 400
         
         audio_file = request.files['audio']
         if audio_file.filename == '':
-            return jsonify({'error': 'Archivo vacÃ­o'}), 400
+            return jsonify({'error': 'Archivo vacio'}), 400
         
         import tempfile
         import os
@@ -232,11 +253,15 @@ def stt():
         filename = audio_file.filename.lower()
         ext = os.path.splitext(filename)[1]
         
+        valid_audio, audio_err = validate_audio_file(audio_file.filename, 0)
+        if not valid_audio:
+            return jsonify({'error': audio_err}), 400
+        
         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
             tmp_path = tmp_file.name
             audio_file.save(tmp_path)
         
-        print(f"ðŸ“ Archivo guardado: {tmp_path} (ext: {ext})")
+        logger.info(f"Audio guardado: {tmp_path} (ext: {ext})")
         
         if not saturday.voice:
             return jsonify({'error': 'VoiceManager no disponible'}), 500
@@ -246,7 +271,7 @@ def stt():
         try:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
-        except:
+        except Exception:
             pass
         
         if text:
@@ -255,12 +280,11 @@ def stt():
             return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
             
     except Exception as e:
-        print(f"âŒ Error en /api/stt: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/stt: {e}")
+        return jsonify({'error': 'Error procesando audio'}), 500
 
 
+@require_api_key
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     """Obtiene tareas de Notion (texto, para el chat/voz)"""
@@ -268,6 +292,7 @@ def get_tasks():
     return jsonify({'response': result['response']})
 
 
+@require_api_key
 @app.route('/api/tasks/list', methods=['GET'])
 def get_tasks_list():
     """Tareas pendientes de Notion en formato estructurado (para el dashboard)"""
@@ -275,11 +300,13 @@ def get_tasks_list():
         return jsonify({'tasks': []})
     try:
         tasks = saturday.notion.get_tasks(status="Todo", limit=8)
-        return jsonify({'tasks': [{'title': t.get('name', 'Sin tÃ­tulo')} for t in tasks]})
+        return jsonify({'tasks': [{'title': t.get('name', 'Sin titulo')} for t in tasks]})
     except Exception as e:
-        return jsonify({'tasks': [], 'error': str(e)})
+        logger.error(f"Error obteniendo tareas: {e}")
+        return jsonify({'tasks': [], 'error': 'Error obteniendo tareas'})
 
 
+@require_api_key
 @app.route('/api/events', methods=['GET'])
 def get_events():
     """Obtiene eventos del calendario (texto, para el chat/voz)"""
@@ -287,6 +314,7 @@ def get_events():
     return jsonify({'response': result['response']})
 
 
+@require_api_key
 @app.route('/api/events/today', methods=['GET'])
 def get_events_today():
     """Eventos de hoy en formato estructurado (para el dashboard)"""
@@ -296,9 +324,11 @@ def get_events_today():
         events = saturday.calendar.get_events_today_list()
         return jsonify({'events': events})
     except Exception as e:
-        return jsonify({'events': [], 'error': str(e)})
+        logger.error(f"Error obteniendo eventos: {e}")
+        return jsonify({'events': [], 'error': 'Error obteniendo eventos'})
 
 
+@require_api_key
 @app.route('/api/notes', methods=['GET'])
 def get_notes():
     """Obtiene notas guardadas"""
@@ -383,6 +413,7 @@ def stop_scheduler():
     return jsonify({'success': True, 'message': 'Scheduler detenido'})
 
 
+@require_api_key
 @app.route('/api/weather', methods=['GET'])
 def weather():
     """Devuelve el clima actual en formato estructurado para el dashboard"""
@@ -390,7 +421,7 @@ def weather():
         api_key = os.getenv("WEATHER_API_KEY")
         city = os.getenv("SATURDAY_CITY", "Santiago")
         if not api_key:
-            return jsonify({'error': 'No configuraste WEATHER_API_KEY'}), 500
+            return jsonify({'error': 'WEATHER_API_KEY no configurada'}), 500
 
         import requests
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
@@ -409,9 +440,11 @@ def weather():
             'country': data.get('sys', {}).get('country', ''),
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/weather: {e}")
+        return jsonify({'error': 'Error obteniendo clima'}), 500
 
 
+@require_api_key
 @app.route('/api/system', methods=['GET'])
 def system_stats():
     """Devuelve uso real de CPU, RAM y disco del servidor"""
@@ -430,10 +463,12 @@ def system_stats():
             'disk_total_gb': round(disk.total / (1024 ** 3), 1),
         })
     except ImportError:
-        return jsonify({'error': 'psutil no estÃ¡ instalado en el backend'}), 500
+        return jsonify({'error': 'psutil no disponible'}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/system: {e}")
+        return jsonify({'error': 'Error obteniendo metricas'}), 500
     
+@require_api_key
 @app.route('/api/news', methods=['GET'])
 def news():
     """Devuelve las noticias principales"""
@@ -441,26 +476,29 @@ def news():
         result = saturday.get_news()
         return jsonify({'response': result})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/news: {e}")
+        return jsonify({'error': 'Error obteniendo noticias'}), 500
 
 
+@require_api_key
 @app.route('/api/news/headlines', methods=['GET'])
 def news_headlines():
-    """
-    Titulares en formato estructurado (tÃ­tulo, fuente, url, imagen, categorÃ­a),
-    sin pasar por texto formateado. ?category=technology&limit=8
-    """
+    """Titulares en formato estructurado"""
     if not saturday.news or not saturday.news.is_available():
         return jsonify({'articles': [], 'available': False})
     try:
         category = request.args.get('category')
-        limit = int(request.args.get('limit', 8))
+        valid, limit, err = validate_limit(request.args.get('limit', 8))
+        if not valid:
+            return jsonify({'articles': [], 'error': err}), 400
         articles = saturday.news.get_top_headlines(category=category, limit=limit)
         return jsonify({'articles': articles, 'available': True})
     except Exception as e:
-        return jsonify({'articles': [], 'available': True, 'error': str(e)})
+        logger.error(f"Error en /api/news/headlines: {e}")
+        return jsonify({'articles': [], 'available': True, 'error': 'Error obteniendo titulares'})
 
 
+@require_api_key
 @app.route('/api/crypto/bitcoin', methods=['GET'])
 def crypto_bitcoin():
     """Precio actual de Bitcoin (CoinGecko, sin necesidad de API key)"""
@@ -486,22 +524,27 @@ def crypto_bitcoin():
             'last_updated_at': data.get('last_updated_at'),
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/crypto: {e}")
+        return jsonify({'error': 'Error obteniendo precio Bitcoin'}), 500
 
     
+@require_api_key
 @limiter.limit('20 per minute')
 @app.route('/api/youtube/search', methods=['GET'])
 def youtube_search():
     """Busca videos en YouTube. ?q=termino&max_results=5"""
     api_key = os.getenv('YOUTUBE_API_KEY')
     if not api_key:
-        return jsonify({'error': 'YOUTUBE_API_KEY no configurada en .env'}), 500
+        return jsonify({'error': 'YOUTUBE_API_KEY no configurada'}), 500
     
+    valid_q, err_q = validate_search_query(request.args.get('q', ''))
+    if not valid_q:
+        return jsonify({'error': err_q}), 400
     query = request.args.get('q', '').strip()
-    if not query:
-        return jsonify({'error': 'ParÃ¡metro q requerido'}), 400
     
-    max_results = min(int(request.args.get('max_results', 5)), 10)
+    valid_limit, max_results, err_limit = validate_limit(request.args.get('max_results', 5), max_val=10)
+    if not valid_limit:
+        max_results = 5
     
     try:
         url = 'https://www.googleapis.com/youtube/v3/search'
@@ -531,39 +574,49 @@ def youtube_search():
         
         return jsonify({'videos': videos, 'query': query})
     except requests.exceptions.HTTPError as e:
-        return jsonify({'error': f'Error de YouTube API: {e.response.text}'}), 502
+        logger.error(f"Error YouTube API: {e}")
+        return jsonify({'error': 'Error de YouTube API'}), 502
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/youtube: {e}")
+        return jsonify({'error': 'Error buscando videos'}), 500
 
 
+@require_api_key
 @app.route('/api/camera', methods=['GET'])
 def camera():
-    """Devuelve el estado de la cÃ¡mara"""
+    """Devuelve el estado de la camara"""
     try:
         if saturday.camera:
             result = saturday.camera.get_status()
             return jsonify({'success': True, 'data': result})
         return jsonify({'success': False, 'error': 'CameraManager no disponible'})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error en /api/camera: {e}")
+        return jsonify({'error': 'Error obteniendo estado de camara'}), 500
 
+@require_api_key
 @app.route('/api/vault/stats', methods=['GET'])
 def vault_stats():
-    """Resumen de la bÃ³veda: cuÃ¡ntas notas hay en raw/, wiki/, outputs/ y el grafo"""
+    """Resumen de la boveda"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     return jsonify(saturday.vault.get_stats())
 
 
+@require_api_key
 @app.route('/api/vault/notes', methods=['GET'])
 def vault_notes():
     """Lista las notas de una capa: ?layer=raw|wiki|outputs"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     layer = request.args.get('layer', 'wiki')
+    valid, err = validate_vault_layer(layer)
+    if not valid:
+        return jsonify({'error': err}), 400
     return jsonify({'layer': layer, 'notes': saturday.vault.list_notes(layer)})
 
 
+@require_api_key
 @app.route('/api/vault/note', methods=['GET'])
 def vault_note():
     """Devuelve el contenido de una nota: ?path=wiki/mi-nota.md"""
@@ -571,39 +624,46 @@ def vault_note():
         return jsonify({'error': 'VaultManager no disponible'}), 500
     path = request.args.get('path')
     if not path:
-        return jsonify({'error': "Falta el parÃ¡metro 'path'"}), 400
+        return jsonify({'error': "Falta el parametro 'path'"}), 400
+    valid, err = validate_vault_path(path)
+    if not valid:
+        return jsonify({'error': err}), 400
     content = saturday.vault.read_note(path)
     if content is None:
         return jsonify({'error': 'Nota no encontrada'}), 404
     return jsonify({'path': path, 'content': content})
 
 
+@require_api_key
 @app.route('/api/vault/note', methods=['POST'])
 def vault_create_note():
     """Crea/actualiza una nota en wiki/. Body: {title, content, tags?}"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     data = request.json or {}
+    valid, err = validate_note_input(data)
+    if not valid:
+        return jsonify({'error': err}), 400
     title = data.get('title', '').strip()
     content = data.get('content', '').strip()
     tags = data.get('tags', [])
-    if not title or not content:
-        return jsonify({'error': "Se requieren 'title' y 'content'"}), 400
     path = saturday.vault.create_wiki_note(title, content, tags)
     return jsonify({'success': True, 'path': path})
 
 
+@require_api_key
 @app.route('/api/vault/search', methods=['GET'])
 def vault_search():
-    """Busca texto en toda la bÃ³veda: ?q=tÃ©rmino"""
+    """Busca texto en toda la boveda: ?q=termino"""
     if not saturday.vault:
         return jsonify({'error': 'VaultManager no disponible'}), 500
     query = request.args.get('q', '').strip()
     if not query:
-        return jsonify({'error': "Falta el parÃ¡metro 'q'"}), 400
+        return jsonify({'error': "Falta el parametro 'q'"}), 400
     return jsonify({'query': query, 'results': saturday.vault.search(query)})
 
 
+@require_api_key
 @app.route('/api/vault/graph', methods=['GET'])
 def vault_graph():
     """Grafo de notas enlazadas (nodes/edges) para visualizar en el frontend"""
@@ -614,43 +674,41 @@ def vault_graph():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Health check para despliegue"""
-    return jsonify({'status': 'ok'})
+    """Health check con metricas del sistema"""
+    import psutil
+    uptime = time.time() - _start_time if '_start_time' in dir() else 0
+    health_data = {
+        'status': 'ok',
+        'version': '3.2.0',
+        'uptime_seconds': int(uptime),
+        'modules': {
+            'notion': saturday.notion is not None,
+            'voice': saturday.voice is not None,
+            'calendar': saturday.calendar is not None,
+            'conversation': saturday.conversation is not None,
+        }
+    }
+    try:
+        health_data['cpu_percent'] = psutil.cpu_percent(interval=0.1)
+        health_data['ram_percent'] = psutil.virtual_memory().percent
+    except Exception:
+        pass
+    return jsonify(health_data)
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     
-    # Iniciar scheduler automÃ¡ticamente
+    # Iniciar scheduler
     if saturday.scheduler:
         saturday.scheduler.start()
         hour = int(os.getenv('SUMMARY_HOUR', 20))
         minute = int(os.getenv('SUMMARY_MINUTE', 0))
         saturday.scheduler.schedule_daily_summary(hour, minute)
-        print(f"ðŸ“‹ Resumen diario programado para las {hour:02d}:{minute:02d}")
+        logger.info(f"Resumen diario programado para las {hour:02d}:{minute:02d}")
     
-    print("\n" + "=" * 50)
-    print("ðŸš€ SATURDAY API INICIADA")
-    print("=" * 50)
-    print(f"ðŸ“¡ Puerto: {port}")
-    print(f"ðŸ“± WhatsApp: {'âœ… Activado' if saturday.communication and saturday.communication.whatsapp_enabled else 'âŒ Inactivo'}")
-    print(f"â° Scheduler: {'âœ… Activo' if saturday.scheduler else 'âŒ Inactivo'}")
-    print(f"ðŸ“‹ Resumen diario: {'âœ… Programado' if saturday.scheduler else 'âŒ No programado'}")
-    print("=" * 50)
-    print("\nðŸ“‹ Endpoints disponibles:")
-    print("  GET  /api/status      - Estado del sistema")
-    print("  GET  /api/greeting    - Texto de saludo (lo habla el frontend)")
-    print("  POST /api/chat        - Enviar mensaje")
-    print("  POST /api/speak       - Generar voz")
-    print("  POST /api/stt         - Reconocer voz")
-    print("  POST /api/whatsapp    - Enviar WhatsApp")
-    print("  POST /api/whatsapp/voice - Enviar voz WhatsApp")
-    print("  POST /api/summary     - Enviar resumen diario")
-    print("  POST /api/scheduler/start - Iniciar scheduler")
-    print("  POST /api/scheduler/stop  - Detener scheduler")
-    print("  GET  /api/tasks       - Tareas de Notion")
-    print("  GET  /api/events      - Eventos del calendario")
-    print("  GET  /api/notes       - Notas guardadas")
-    print("  GET  /api/health      - Health check")
-    print("=" * 50)
+    logger.info("SATURDAY API INICIADA")
+    logger.info(f"Puerto: {port}")
+    logger.info(f"WhatsApp: {'Activo' if saturday.communication and saturday.communication.whatsapp_enabled else 'Inactivo'}")
+    logger.info(f"Scheduler: {'Activo' if saturday.scheduler else 'Inactivo'}")
     
     app.run(host="127.0.0.1", port=port, debug=False)

@@ -1,11 +1,15 @@
 import subprocess
 import os
+import hmac
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import threading
 import logging
 
-TOKEN = os.environ.get('WEBHOOK_TOKEN', 'sat-deploy-9x7k2m')
+TOKEN = os.environ.get('WEBHOOK_TOKEN', '')
+if not TOKEN:
+    logging.warning('WARNING: WEBHOOK_TOKEN no configurado - webhook deshabilitado')
+
 PORT = 9000
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
@@ -16,7 +20,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         query = self.path.split('?')[-1] if '?' in self.path else ''
         params = dict(q.split('=') for q in query.split('&') if '=' in q)
 
-        if self.path.startswith('/webhook') and params.get('token') == TOKEN:
+        if self.path.startswith('/webhook') and TOKEN and hmac.compare_digest(params.get('token', ''), TOKEN):
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
 
@@ -37,7 +41,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 logger.error(f'Error: {e}')
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(str(e).encode())
+                self.wfile.write(b'Internal error')
         else:
             self.send_response(403)
             self.end_headers()
