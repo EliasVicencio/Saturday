@@ -40,22 +40,56 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per minute"]
 
 # ===== API KEY AUTH =====
 API_KEY = os.getenv("SATURDAY_API_KEY", "")
-logger.info(f"API key loaded: {'yes' if API_KEY else 'NO - auth disabled'}")
+logger.info("API key loaded: %s", "yes" if API_KEY else "NO - auth disabled")
+
+# ===== SESSION TOKENS (para frontend, reemplaza API key en bundle) =====
+_session_tokens = {}
+SESSION_SECRET = os.getenv("SESSION_SECRET", API_KEY + "-session")
+SESSION_TTL = 3600
+
+def _generate_session_token(ip):
+    import os as _os, time as _time
+    raw = "{}-{}-{}".format(ip, _time.time(), _os.urandom(8).hex())
+    token = hmac.new(SESSION_SECRET.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    _session_tokens[token] = {"expires": _time.time() + SESSION_TTL, "ip": ip}
+    return token
+
+def _is_valid_session(token):
+    import time as _time
+    if not token or token not in _session_tokens:
+        return False
+    sess = _session_tokens[token]
+    if _time.time() > sess["expires"]:
+        del _session_tokens[token]
+        return False
+    return True
+
+def _cleanup_sessions():
+    import time as _time
+    now = _time.time()
+    expired = [t for t, s in _session_tokens.items() if now > s["expires"]]
+    for t in expired:
+        del _session_tokens[t]
+
+@app.route('/api/auth/session', methods=['POST'])
+@limiter.limit("5 per minute")
+def create_session():
+    _cleanup_sessions()
+    token = _generate_session_token(request.remote_addr)
+    return jsonify({"token": token, "ttl": SESSION_TTL})
 
 def require_api_key(f):
-    """Decorador que exige X-API-Key valida. Si no hay API_KEY configurada, rechaza."""
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
-        print(f"[AUTH] require_api_key called for {f.__name__}", flush=True)
         if not API_KEY:
             logger.warning("API key no configurada - rechazando request")
             return jsonify({"error": "Server misconfigured"}), 503
         key = request.headers.get("X-API-Key", "")
-        if not hmac.compare_digest(key, API_KEY):
-            logger.warning(f"API key invalida desde {request.remote_addr} path={request.path}")
-            return jsonify({"error": "Unauthorized"}), 401
-        return f(*args, **kwargs)
+        if hmac.compare_digest(key, API_KEY) or _is_valid_session(key):
+            return f(*args, **kwargs)
+        logger.warning("API key invalida desde %s path=%s", request.remote_addr, request.path)
+        return jsonify({"error": "Unauthorized"}), 401
     return decorated
 
 # ===== SALUDO DE BIENVENIDA =====

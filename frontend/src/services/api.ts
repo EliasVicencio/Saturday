@@ -1,24 +1,62 @@
 ﻿import axios from 'axios';
 
 const isDev = import.meta.env.DEV;
-const devLog = (...args: unknown[]) => isDev && devLog(...args);
-const devWarn = (...args: unknown[]) => isDev && devWarn(...args);
-const devError = (...args: unknown[]) => isDev && devError(...args);
+const devError = (...args: unknown[]) => { if (isDev) console.error(...args); };
+const devWarn = (...args: unknown[]) => { if (isDev) console.warn(...args); };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const API_BASE_URL = API_URL;
 
-const SATURDAY_API_KEY = import.meta.env.VITE_SATURDAY_API_KEY || '';
+let sessionToken: string | null = null;
+
+async function fetchSessionToken(): Promise<string | null> {
+  try {
+    const res = await axios.post(API_URL + '/auth/session', {}, { timeout: 10000 });
+    if (res.data && res.data.token) {
+      sessionToken = res.data.token;
+      return sessionToken;
+    }
+  } catch (e) {
+    devError('Failed to fetch session token:', e);
+  }
+  return null;
+}
 
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
-    ...(SATURDAY_API_KEY ? { 'X-API-Key': SATURDAY_API_KEY } : {}),
   },
 });
+
+api.interceptors.request.use(async (config) => {
+  if (!sessionToken) {
+    await fetchSessionToken();
+  }
+  if (sessionToken) {
+    config.headers['X-API-Key'] = sessionToken;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    if (error.response && error.response.status === 401 && sessionToken) {
+      sessionToken = null;
+      const newToken = await fetchSessionToken();
+      if (newToken) {
+        error.config.headers['X-API-Key'] = newToken;
+        return api.request(error.config);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+fetchSessionToken();
 
 // ===== INTERFACES BASICAS =====
 
