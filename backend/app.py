@@ -47,6 +47,7 @@ def require_api_key(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
+        print(f"[AUTH] require_api_key called for {f.__name__}", flush=True)
         if not API_KEY:
             logger.warning("API key no configurada - rechazando request")
             return jsonify({"error": "Server misconfigured"}), 503
@@ -126,14 +127,14 @@ def greeting():
 
 # ===== ENDPOINTS =====
 
-@require_api_key
 @app.route('/api/status', methods=['GET'])
+@require_api_key
 def status():
     """Verifica el estado del sistema"""
     scheduler_running = False
     if saturday.scheduler:
         scheduler_running = saturday.scheduler.is_running
-    
+
     return jsonify({
         'status': 'online',
         'version': '3.2.0',
@@ -153,19 +154,19 @@ def status():
     })
 
 
-@require_api_key
 @limiter.limit('30 per minute')
 @app.route('/api/chat', methods=['POST'])
+@require_api_key
 def chat():
     """Procesa un mensaje y devuelve respuesta con contexto conversacional"""
     data = request.json
     message = data.get('message', '').strip()
     session_id = data.get('session_id', 'web_user')
-    
+
     valid, err = validate_message(message)
     if not valid:
         return jsonify({'error': err}), 400
-    
+
     try:
         chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
         result = saturday.process_intent(message, chat_id=chat_id)
@@ -185,17 +186,17 @@ def chat():
         return jsonify({'error': 'Error procesando mensaje'}), 500
 
 
-@require_api_key
 @app.route('/api/conversation/<session_id>', methods=['GET'])
+@require_api_key
 def get_conversation(session_id):
     """Obtiene el historial de conversaciÃ³n de una sesiÃ³n"""
     if not saturday.conversation:
         return jsonify({'error': 'ConversationManager no disponible'}), 503
-    
+
     chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
     ctx = saturday.conversation.get_context(chat_id)
     stats = saturday.conversation.get_stats(chat_id)
-    
+
     return jsonify({
         'messages': ctx.get_recent_context(20),
         'stats': stats,
@@ -203,24 +204,24 @@ def get_conversation(session_id):
     })
 
 
-@require_api_key
 @limiter.limit('10 per minute')
 @app.route('/api/speak', methods=['POST'])
+@require_api_key
 def speak():
     """Genera audio a partir de texto usando Google TTS"""
     data = request.json
     text = data.get('text', '').strip()
-    
+
     valid, err = validate_text(text)
     if not valid:
         return jsonify({'error': err}), 400
-    
+
     try:
         if not saturday.voice:
             return jsonify({'error': 'VoiceManager no disponible'}), 500
-        
+
         audio_data = saturday.voice._synthesize_google_tts(text)
-        
+
         if audio_data:
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
             return jsonify({
@@ -229,72 +230,72 @@ def speak():
             })
         else:
             return jsonify({'error': 'No se pudo generar el audio'}), 500
-            
+
     except Exception as e:
         logger.error(f"Error en /api/speak: {e}")
         return jsonify({'error': 'Error generando audio'}), 500
 
 
-@require_api_key
 @limiter.limit('10 per minute')
 @app.route('/api/stt', methods=['POST'])
+@require_api_key
 def stt():
     """Reconoce voz desde un archivo de audio usando Google Cloud STT"""
     try:
         if 'audio' not in request.files:
             return jsonify({'error': 'No se envio archivo de audio'}), 400
-        
+
         audio_file = request.files['audio']
         if audio_file.filename == '':
             return jsonify({'error': 'Archivo vacio'}), 400
-        
+
         import tempfile
         import os
-        
+
         filename = audio_file.filename.lower()
         ext = os.path.splitext(filename)[1]
-        
+
         valid_audio, audio_err = validate_audio_file(audio_file.filename, 0)
         if not valid_audio:
             return jsonify({'error': audio_err}), 400
-        
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
             tmp_path = tmp_file.name
             audio_file.save(tmp_path)
-        
+
         logger.info(f"Audio guardado: {tmp_path} (ext: {ext})")
-        
+
         if not saturday.voice:
             return jsonify({'error': 'VoiceManager no disponible'}), 500
-        
+
         text = saturday.voice.recognize_audio_file(tmp_path)
-        
+
         try:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
         except Exception:
             pass
-        
+
         if text:
             return jsonify({'text': text, 'success': True})
         else:
             return jsonify({'error': 'No se pudo reconocer el audio', 'success': False}), 400
-            
+
     except Exception as e:
         logger.error(f"Error en /api/stt: {e}")
         return jsonify({'error': 'Error procesando audio'}), 500
 
 
-@require_api_key
 @app.route('/api/tasks', methods=['GET'])
+@require_api_key
 def get_tasks():
     """Obtiene tareas de Notion (texto, para el chat/voz)"""
     result = saturday.process_intent('tareas')
     return jsonify({'response': result['response']})
 
 
-@require_api_key
 @app.route('/api/tasks/list', methods=['GET'])
+@require_api_key
 def get_tasks_list():
     """Tareas pendientes de Notion en formato estructurado (para el dashboard)"""
     if not saturday.notion:
@@ -307,16 +308,16 @@ def get_tasks_list():
         return jsonify({'tasks': [], 'error': 'Error obteniendo tareas'})
 
 
-@require_api_key
 @app.route('/api/events', methods=['GET'])
+@require_api_key
 def get_events():
     """Obtiene eventos del calendario (texto, para el chat/voz)"""
     result = saturday.process_intent('eventos')
     return jsonify({'response': result['response']})
 
 
-@require_api_key
 @app.route('/api/events/today', methods=['GET'])
+@require_api_key
 def get_events_today():
     """Eventos de hoy en formato estructurado (para el dashboard)"""
     if not saturday.calendar:
@@ -329,59 +330,59 @@ def get_events_today():
         return jsonify({'events': [], 'error': 'Error obteniendo eventos'})
 
 
-@require_api_key
 @app.route('/api/notes', methods=['GET'])
+@require_api_key
 def get_notes():
     """Obtiene notas guardadas"""
     result = saturday.process_intent('ver notas')
     return jsonify({'response': result['response']})
 
 
-@require_api_key
 @app.route('/api/whatsapp', methods=['POST'])
+@require_api_key
 def send_whatsapp():
     """EnvÃ­a mensaje por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
-    
+
     if not saturday.communication:
         return jsonify({'error': 'CommunicationManager no disponible'}), 500
-    
+
     result = saturday.communication.send_whatsapp_message(message)
-    
+
     if result.get('success'):
         return jsonify({'success': True, 'message': 'WhatsApp enviado'})
     else:
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
-@require_api_key
 @app.route('/api/whatsapp/voice', methods=['POST'])
+@require_api_key
 def send_whatsapp_voice():
     """EnvÃ­a mensaje de voz por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
-    
+
     if not saturday.communication:
         return jsonify({'error': 'CommunicationManager no disponible'}), 500
-    
+
     result = saturday.communication.send_whatsapp_voice(message)
-    
+
     if result.get('success'):
         return jsonify({'success': True, 'message': 'WhatsApp con voz enviado'})
     else:
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
-@require_api_key
 @app.route('/api/summary', methods=['POST'])
+@require_api_key
 def send_summary():
     """EnvÃ­a el resumen del dÃ­a por WhatsApp"""
     if not saturday.daily_summary:
         return jsonify({'error': 'DailySummary no disponible'}), 500
-    
+
     result = saturday.daily_summary.send(via="whatsapp")
-    
+
     if result.get('success'):
         return jsonify({
             'success': True,
@@ -392,30 +393,30 @@ def send_summary():
         return jsonify({'success': False, 'error': result.get('error')}), 500
 
 
-@require_api_key
 @app.route('/api/scheduler/start', methods=['POST'])
+@require_api_key
 def start_scheduler():
     """Inicia el scheduler"""
     if not saturday.scheduler:
         return jsonify({'error': 'Scheduler no disponible'}), 500
-    
+
     saturday.scheduler.start()
     return jsonify({'success': True, 'message': 'Scheduler iniciado'})
 
 
-@require_api_key
 @app.route('/api/scheduler/stop', methods=['POST'])
+@require_api_key
 def stop_scheduler():
     """Detiene el scheduler"""
     if not saturday.scheduler:
         return jsonify({'error': 'Scheduler no disponible'}), 500
-    
+
     saturday.scheduler.stop()
     return jsonify({'success': True, 'message': 'Scheduler detenido'})
 
 
-@require_api_key
 @app.route('/api/weather', methods=['GET'])
+@require_api_key
 def weather():
     """Devuelve el clima actual en formato estructurado para el dashboard"""
     try:
@@ -445,8 +446,8 @@ def weather():
         return jsonify({'error': 'Error obteniendo clima'}), 500
 
 
-@require_api_key
 @app.route('/api/system', methods=['GET'])
+@require_api_key
 def system_stats():
     """Devuelve uso real de CPU, RAM y disco del servidor"""
     try:
@@ -468,9 +469,9 @@ def system_stats():
     except Exception as e:
         logger.error(f"Error en /api/system: {e}")
         return jsonify({'error': 'Error obteniendo metricas'}), 500
-    
-@require_api_key
+
 @app.route('/api/news', methods=['GET'])
+@require_api_key
 def news():
     """Devuelve las noticias principales"""
     try:
@@ -481,8 +482,8 @@ def news():
         return jsonify({'error': 'Error obteniendo noticias'}), 500
 
 
-@require_api_key
 @app.route('/api/news/headlines', methods=['GET'])
+@require_api_key
 def news_headlines():
     """Titulares en formato estructurado"""
     if not saturday.news or not saturday.news.is_available():
@@ -499,8 +500,8 @@ def news_headlines():
         return jsonify({'articles': [], 'available': True, 'error': 'Error obteniendo titulares'})
 
 
-@require_api_key
 @app.route('/api/crypto/bitcoin', methods=['GET'])
+@require_api_key
 def crypto_bitcoin():
     """Precio actual de Bitcoin (CoinGecko, sin necesidad de API key)"""
     try:
@@ -528,25 +529,25 @@ def crypto_bitcoin():
         logger.error(f"Error en /api/crypto: {e}")
         return jsonify({'error': 'Error obteniendo precio Bitcoin'}), 500
 
-    
-@require_api_key
+
 @limiter.limit('20 per minute')
 @app.route('/api/youtube/search', methods=['GET'])
+@require_api_key
 def youtube_search():
     """Busca videos en YouTube. ?q=termino&max_results=5"""
     api_key = os.getenv('YOUTUBE_API_KEY')
     if not api_key:
         return jsonify({'error': 'YOUTUBE_API_KEY no configurada'}), 500
-    
+
     valid_q, err_q = validate_search_query(request.args.get('q', ''))
     if not valid_q:
         return jsonify({'error': err_q}), 400
     query = request.args.get('q', '').strip()
-    
+
     valid_limit, max_results, err_limit = validate_limit(request.args.get('max_results', 5), max_val=10)
     if not valid_limit:
         max_results = 5
-    
+
     try:
         url = 'https://www.googleapis.com/youtube/v3/search'
         params = {
@@ -561,7 +562,7 @@ def youtube_search():
         resp = requests.get(url, params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-        
+
         videos = []
         for item in data.get('items', []):
             snippet = item['snippet']
@@ -572,7 +573,7 @@ def youtube_search():
                 'thumbnail': snippet['thumbnails']['medium']['url'],
                 'published': snippet['publishedAt'],
             })
-        
+
         return jsonify({'videos': videos, 'query': query})
     except requests.exceptions.HTTPError as e:
         logger.error(f"Error YouTube API: {e}")
@@ -582,8 +583,8 @@ def youtube_search():
         return jsonify({'error': 'Error buscando videos'}), 500
 
 
-@require_api_key
 @app.route('/api/camera', methods=['GET'])
+@require_api_key
 def camera():
     """Devuelve el estado de la camara"""
     try:
@@ -595,8 +596,8 @@ def camera():
         logger.error(f"Error en /api/camera: {e}")
         return jsonify({'error': 'Error obteniendo estado de camara'}), 500
 
-@require_api_key
 @app.route('/api/vault/stats', methods=['GET'])
+@require_api_key
 def vault_stats():
     """Resumen de la boveda"""
     if not saturday.vault:
@@ -604,8 +605,8 @@ def vault_stats():
     return jsonify(saturday.vault.get_stats())
 
 
-@require_api_key
 @app.route('/api/vault/notes', methods=['GET'])
+@require_api_key
 def vault_notes():
     """Lista las notas de una capa: ?layer=raw|wiki|outputs"""
     if not saturday.vault:
@@ -617,8 +618,8 @@ def vault_notes():
     return jsonify({'layer': layer, 'notes': saturday.vault.list_notes(layer)})
 
 
-@require_api_key
 @app.route('/api/vault/note', methods=['GET'])
+@require_api_key
 def vault_note():
     """Devuelve el contenido de una nota: ?path=wiki/mi-nota.md"""
     if not saturday.vault:
@@ -635,8 +636,8 @@ def vault_note():
     return jsonify({'path': path, 'content': content})
 
 
-@require_api_key
 @app.route('/api/vault/note', methods=['POST'])
+@require_api_key
 def vault_create_note():
     """Crea/actualiza una nota en wiki/. Body: {title, content, tags?}"""
     if not saturday.vault:
@@ -652,8 +653,8 @@ def vault_create_note():
     return jsonify({'success': True, 'path': path})
 
 
-@require_api_key
 @app.route('/api/vault/search', methods=['GET'])
+@require_api_key
 def vault_search():
     """Busca texto en toda la boveda: ?q=termino"""
     if not saturday.vault:
@@ -664,8 +665,8 @@ def vault_search():
     return jsonify({'query': query, 'results': saturday.vault.search(query)})
 
 
-@require_api_key
 @app.route('/api/vault/graph', methods=['GET'])
+@require_api_key
 def vault_graph():
     """Grafo de notas enlazadas (nodes/edges) para visualizar en el frontend"""
     if not saturday.vault:
@@ -698,7 +699,7 @@ def health():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
-    
+
     # Iniciar scheduler
     if saturday.scheduler:
         saturday.scheduler.start()
@@ -706,10 +707,10 @@ if __name__ == '__main__':
         minute = int(os.getenv('SUMMARY_MINUTE', 0))
         saturday.scheduler.schedule_daily_summary(hour, minute)
         logger.info(f"Resumen diario programado para las {hour:02d}:{minute:02d}")
-    
+
     logger.info("SATURDAY API INICIADA")
     logger.info(f"Puerto: {port}")
     logger.info(f"WhatsApp: {'Activo' if saturday.communication and saturday.communication.whatsapp_enabled else 'Inactivo'}")
     logger.info(f"Scheduler: {'Activo' if saturday.scheduler else 'Inactivo'}")
-    
+
     app.run(host="127.0.0.1", port=port, debug=False)
