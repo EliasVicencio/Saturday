@@ -35,7 +35,7 @@ sudo chown -R www-data:www-data dist
 cd ..
 
 echo "[5/6] Actualizando config nginx..." >> $LOG
-sudo cp $REPO_DIR/config/saturday.nginx /etc/nginx/sites-available/saturday.nginx
+sudo cp $REPO_DIR/config/saturday.nginx /etc/nginx/sites-available/saturday
 sudo nginx -t >> $LOG 2>&1 && sudo systemctl reload nginx || echo "⚠️ Error en config nginx" >> $LOG
 
 echo "[6/6] Reiniciando servicios..." >> $LOG
