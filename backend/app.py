@@ -48,33 +48,28 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", API_KEY + "-session")
 SESSION_TTL = 3600
 
 def _generate_session_token(ip):
-    import os as _os, time as _time
-    raw = "{}-{}-{}".format(ip, _time.time(), _os.urandom(8).hex())
-    token = hmac.new(SESSION_SECRET.encode(), raw.encode(), hashlib.sha256).hexdigest()
-    _session_tokens[token] = {"expires": _time.time() + SESSION_TTL, "ip": ip}
-    return token
+    import base64 as _b64
+    expire = int(time.time()) + SESSION_TTL
+    payload = f"{ip}|{expire}|{os.urandom(8).hex()}"
+    sig = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return _b64.urlsafe_b64encode(f"{payload}|{sig}".encode()).decode()
 
 def _is_valid_session(token):
-    import time as _time
-    if not token or token not in _session_tokens:
+    try:
+        import base64 as _b64
+        decoded = _b64.urlsafe_b64decode(token.encode()).decode()
+        payload, sig = decoded.rsplit("|", 1)
+        expected = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return False
+        ip, expire_str, _ = payload.split("|", 2)
+        return time.time() <= int(expire_str)
+    except Exception:
         return False
-    sess = _session_tokens[token]
-    if _time.time() > sess["expires"]:
-        del _session_tokens[token]
-        return False
-    return True
-
-def _cleanup_sessions():
-    import time as _time
-    now = _time.time()
-    expired = [t for t, s in _session_tokens.items() if now > s["expires"]]
-    for t in expired:
-        del _session_tokens[t]
 
 @app.route('/api/auth/session', methods=['POST'])
 @limiter.limit("5 per minute")
 def create_session():
-    _cleanup_sessions()
     token = _generate_session_token(request.remote_addr)
     return jsonify({"token": token, "ttl": SESSION_TTL})
 
