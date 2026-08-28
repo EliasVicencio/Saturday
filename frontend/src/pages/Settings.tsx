@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Shield, Camera, Mic, MapPin, Activity, Eye, Zap, ChevronRight, RotateCcw } from "lucide-react";
+import { Shield, Camera, Mic, MapPin, Activity, Eye, Zap, RotateCcw } from "lucide-react";
 import {
   getPrivacy, setPrivacy, getVisionStatus, captureVision, getEvents,
   type PrivacyState, type VisionStatus, type VisionCapture, type EventItem2,
@@ -30,7 +30,7 @@ export default function Settings() {
 
   const togglePrivacy = async (feature: string) => {
     if (!privacy) return;
-    const current = (privacy as Record<string, boolean>)[feature];
+    const current = privacy[feature as keyof PrivacyState] as boolean;
     const res = await setPrivacy(feature, !current);
     setPrivacyState(res.state);
   };
