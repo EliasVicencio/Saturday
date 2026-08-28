@@ -1,0 +1,21 @@
+{
+  "name": "Saturday - Asistente Personal",
+  "short_name": "Saturday",
+  "description": "Tu asistente personal de IA, disponible en cualquier momento y lugar.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#863bff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "es",
+  "dir": "ltr"
+}

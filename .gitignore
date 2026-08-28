@@ -86,7 +86,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 frontend/node_modules/
-frontend/dist/
 frontend/build/
 frontend/.vite/
 frontend/.env
