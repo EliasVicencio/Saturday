@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Shield, Camera, Mic, MapPin, Activity, Eye, Zap, RotateCcw, ChevronLeft } from "lucide-react";
 import {
-  getPrivacy, setPrivacy, getVisionStatus, captureVision, getEvents,
+  getPrivacy, setPrivacy, getVisionStatus, captureVision, captureFromDevice as captureFromDeviceApi, getEvents,
   type PrivacyState, type VisionStatus, type VisionCapture, type EventItem2,
 } from "../services/api";
 
@@ -97,9 +97,7 @@ export default function Settings({ onBack }: Props) {
     }
     const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
     try {
-      const api = (await import("../services/api")).default || (await import("../services/api"));
-      // Send base64 to backend
-      const response = await (await import("../services/api")).captureFromDevice(base64, "Describe brevemente lo que ves");
+      const response = await captureFromDeviceApi(base64, "Describe brevemente lo que ves");
       setCapture(response);
       const evts = await getEvents(10);
       setEvents(evts);
@@ -242,7 +240,7 @@ export default function Settings({ onBack }: Props) {
           {capture && (
             <div style={C.captureResult}>
               <div style={{ fontSize: 9, color: "var(--text-dim)", marginBottom: 4 }}>
-                {capture.simulado ? "SIMULADO" : "REAL"} {capture.timestamp ? `- ${new Date(capture.timestamp).toLocaleTimeString()}` : ""}
+                {capture.simulated ? "SIMULADO" : "REAL"} {capture.timestamp ? `- ${new Date(capture.timestamp).toLocaleTimeString()}` : ""}
               </div>
               {capture.description && (
                 <div style={{ fontSize: 12, lineHeight: 1.5 }}>{capture.description}</div>
