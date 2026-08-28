@@ -77,6 +77,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [statusError, setStatusError] = useState(false);
@@ -211,7 +212,8 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatClock(new Date()) },
       ]);
 
-      speakText(replyText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim());
+      speakText(replyText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
+      setSpeaking(true);
 
       // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
@@ -353,7 +355,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         {/* ===== COLUMNA CENTRAL ===== */}
         <main className="vault-col vault-col--center">
           <div className="vault-sphere-wrap">
-            <VaultGraph active={speech.listening || sending} size={460} />
+            <VaultGraph active={speech.listening || sending || speaking} size={460} />
             <div className="vault-sphere-count">
               <span className="vault-sphere-count__num">
                 {vaultStats
