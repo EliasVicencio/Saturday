@@ -41,7 +41,7 @@ class MemoryOpAgent(BaseAgent):
                 memories = self.core.memory_store.search(subject, limit=5)
                 if memories:
                     for m in memories:
-                        self.core.memory_store.delete(m["id"])
+                        self.core.memory_store.delete(m.id)
                     tools_log.append({"tool": "memory_delete", "args": {"query": subject, "deleted": len(memories)}})
                     duration = (__import__("time").time() - start) * 1000
                     return AgentResult(
