@@ -581,7 +581,6 @@ def permissions_set():
         saturday.permissions.revoke(capability, permission)
     return jsonify({"permissions": saturday.permissions.list_all()})
 
-@app.route('/api/health', methods=['GET'])
 def health_check():
     checks = {
         "status": "ok",
