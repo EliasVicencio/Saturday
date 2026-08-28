@@ -198,18 +198,38 @@ def chat():
 
     try:
         chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
-        result = saturday.process_intent(message, chat_id=chat_id)
-        response_text = result['response']
-        if response_text and saturday.voice:
-            response_text = saturday.voice._fix_mojibake(response_text)
-        response_payload = {
-            'response': response_text,
-            'intent': result.get('intent', 'general'),
-            'action': result.get('action', False)
-        }
-        if result.get('navigate'):
-            response_payload['navigate'] = result['navigate']
-        return jsonify(response_payload)
+        # Usar Agent Router (Level 5) si está disponible
+        if saturday.agent_router:
+            result = saturday.process_via_router(message, chat_id=chat_id, session_id=session_id)
+            response_text = result.get('response', '')
+            if response_text and saturday.voice:
+                response_text = saturday.voice._fix_mojibake(response_text)
+            response_payload = {
+                'response': response_text,
+                'intent': result.get('agent', 'general'),
+                'action': False,
+                'agent': result.get('agent'),
+                'route_score': result.get('route_score'),
+                'tools_called': result.get('tools_called', []),
+                'duration_ms': result.get('duration_ms'),
+                'checkpoint_id': result.get('checkpoint_id'),
+            }
+            if result.get('navigate'):
+                response_payload['navigate'] = result['navigate']
+            return jsonify(response_payload)
+        else:
+            result = saturday.process_intent(message, chat_id=chat_id)
+            response_text = result['response']
+            if response_text and saturday.voice:
+                response_text = saturday.voice._fix_mojibake(response_text)
+            response_payload = {
+                'response': response_text,
+                'intent': result.get('intent', 'general'),
+                'action': result.get('action', False)
+            }
+            if result.get('navigate'):
+                response_payload['navigate'] = result['navigate']
+            return jsonify(response_payload)
     except Exception as e:
         logger.error(f"Error en /api/chat: {e}")
         return jsonify({'error': 'Error procesando mensaje'}), 500
@@ -456,6 +476,71 @@ def events_publish():
         return jsonify({'error': 'name es requerido'}), 400
     saturday.event_bus.publish(event_name, event_data, source="api")
     return jsonify({"published": True, "event": event_name})
+
+
+# ===== AGENT ROUTER ENDPOINTS (Level 5) =====
+
+@app.route('/api/agents', methods=['GET'])
+@require_api_key
+def agents_list():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    return jsonify({"agents": saturday.agent_router.list_agents()})
+
+@app.route('/api/agents/stats', methods=['GET'])
+@require_api_key
+def agents_stats():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    return jsonify(saturday.agent_router.get_stats())
+
+@app.route('/api/agents/checkpoints', methods=['GET'])
+@require_api_key
+def agents_checkpoints():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    session_id = request.args.get("session_id", "")
+    limit = min(int(request.args.get("limit", 20)), 100)
+    return jsonify({"checkpoints": saturday.agent_router.get_checkpoints(session_id, limit)})
+
+@app.route('/api/agents/confirm', methods=['POST'])
+@require_api_key
+def agents_confirm():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    data = request.json
+    confirmation_id = data.get("confirmation_id", "")
+    action = data.get("action", "confirm")
+    if action == "confirm":
+        result = saturday.agent_router.confirm_action(confirmation_id)
+        if result:
+            return jsonify({"confirmed": True, "action": result["action"], "agent": result["agent"]})
+        return jsonify({"error": "Confirmación expirada o no encontrada"}), 404
+    elif action == "cancel":
+        ok = saturday.agent_router.cancel_action(confirmation_id)
+        return jsonify({"cancelled": ok})
+    return jsonify({"error": "action debe ser 'confirm' o 'cancel'"}), 400
+
+@app.route('/api/agents/pending', methods=['GET'])
+@require_api_key
+def agents_pending():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    return jsonify({"pending": saturday.agent_router.get_pending_confirmations()})
+
+@app.route('/api/agents/route', methods=['POST'])
+@require_api_key
+def agents_route():
+    if not saturday.agent_router:
+        return jsonify({'error': 'AgentRouter no disponible'}), 503
+    data = request.json
+    message = data.get("message", "")
+    session_id = data.get("session_id", "api")
+    if not message:
+        return jsonify({'error': 'message es requerido'}), 400
+    chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
+    result = saturday.agent_router.route(message, chat_id=chat_id, session_id=session_id)
+    return jsonify(result)
 
 
 @limiter.limit('10 per minute')

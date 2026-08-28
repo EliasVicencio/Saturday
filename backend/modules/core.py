@@ -135,6 +135,12 @@ try:
 except ImportError:
     VISION_AVAILABLE = False
 
+try:
+    from modules.agents.router import AgentRouter
+    AGENTS_AVAILABLE = True
+except ImportError:
+    AGENTS_AVAILABLE = False
+
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
 
@@ -400,6 +406,15 @@ class SaturdayCore:
             except Exception as e:
                 print(f"[WARN] Error inicializando VisionDescriber: {e}")
 
+        # Inicializar Agent Router (Level 5)
+        self.agent_router = None
+        if AGENTS_AVAILABLE:
+            try:
+                self.agent_router = AgentRouter(core=self)
+                print("[OK] AgentRouter inicializado (Level 5)")
+            except Exception as e:
+                print(f"[WARN] Error inicializando AgentRouter: {e}")
+
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
@@ -622,6 +637,16 @@ class SaturdayCore:
                     return {"intent": "error", "response": f"âŒ Error: {str(e)}", "action": False}
 
         return {"intent": "general", "response": "No entendÃ­ tu peticiÃ³n. Â¿Puedes repetirla?", "action": False}
+
+    def process_via_router(self, text: str, chat_id: int = None, session_id: str = "") -> Dict[str, Any]:
+        """
+        Procesa usando el AgentRouter (Level 5).
+        Retorna resultado estructurado con info de routing.
+        """
+        if self.agent_router:
+            return self.agent_router.route(text, chat_id=chat_id, session_id=session_id)
+        # Fallback al metodo legacy
+        return self.process_intent(text, chat_id=chat_id)
     
     def _enrich_response(self, intent: str, result: str, chat_id: int) -> str:
         """
