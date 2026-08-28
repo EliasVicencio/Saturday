@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict, Any
 import networkx as nx
 from modules.http_utils import get_with_retry
+from modules.config import config
 
 # Importar mÃ³dulos
 try:
@@ -165,7 +166,7 @@ class SaturdayCore:
         """Execute a tool by name with arguments. Returns string result."""
         try:
             if tool_name == "get_weather":
-                city = tool_args.get("city", os.getenv("SATURDAY_CITY", "Santiago"))
+                city = tool_args.get("city", config.saturday_city)
                 return self.get_weather()
             elif tool_name == "get_time":
                 return self.get_time()
@@ -217,15 +218,13 @@ class SaturdayCore:
         self.notion = None
         if NOTION_AVAILABLE:
             try:
-                api_key = os.getenv("NOTION_API_KEY")
-                db_id = os.getenv("NOTION_DB_ID")
-                if api_key and db_id:
-                    self.notion = NotionManager(api_key, db_id)
+                if config.notion_api_key and config.notion_db_id:
+                    self.notion = NotionManager(config.notion_api_key, config.notion_db_id)
                     print("âœ… Notion conectado")
                 else:
-                    print("âš ï¸ NOTION_API_KEY o NOTION_DB_ID no configurados")
+                    print("âš ï¸ NOTION_API_KEY o NOTION_DB_ID no configurados")
             except Exception as e:
-                print(f"âš ï¸ Error conectando a Notion: {e}")
+                print(f"âš ï¸ Error conectando a Notion: {e}")
         
         # Inicializar VoiceManager
         self.voice = None
@@ -258,14 +257,13 @@ class SaturdayCore:
         self.telegram = None
         if TELEGRAM_AVAILABLE:
             try:
-                token = os.getenv("TELEGRAM_BOT_TOKEN")
-                if token:
-                    self.telegram = TelegramBot(self, token)
+                if config.telegram_bot_token:
+                    self.telegram = TelegramBot(self, config.telegram_bot_token)
                     print("âœ… TelegramBot inicializado")
                 else:
-                    print("âš ï¸ TELEGRAM_BOT_TOKEN no configurado")
+                    print("âš ï¸ TELEGRAM_BOT_TOKEN no configurado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando TelegramBot: {e}")
+                print(f"âš ï¸ Error inicializando TelegramBot: {e}")
         
         # Inicializar Communication (WhatsApp)
         self.communication = None
@@ -414,7 +412,6 @@ class SaturdayCore:
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
-        self.say_welcome()
         
         # Auto-iniciar scheduler y programar tareas autÃ³nomas
         self._setup_autonomous_tasks()
@@ -490,6 +487,7 @@ class SaturdayCore:
             
             # EstadÃ­sticas
             "estadisticas": self.get_stats,
+            "system_info": self.get_system_info,
             
             # ComunicaciÃ³n (WhatsApp)
             "enviar_whatsapp": self.send_whatsapp,
@@ -519,7 +517,7 @@ class SaturdayCore:
             "noticias_resumen": self.get_news_summary,
             
             # CÃ¡mara
-            "ver_cÃ¡mara": self.get_camera,
+            "get_camera": self.get_camera,
 
             # BÃ³veda (memoria en Markdown)
             "guardar_boveda": self.guardar_en_boveda,
@@ -788,10 +786,10 @@ class SaturdayCore:
     
     def get_weather(self, **kwargs) -> str:
         try:
-            api_key = os.getenv("WEATHER_API_KEY")
+            api_key = config.weather_api_key
             if not api_key:
-                return "âŒ No configuraste la API del clima"
-            city = os.getenv("SATURDAY_CITY", "Santiago")
+                return "âŒ No configuraste la API del clima"
+            city = config.saturday_city
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
             response = get_with_retry(url, timeout=10)
             if response and response.status_code == 200:
@@ -1096,36 +1094,6 @@ class SaturdayCore:
         else:
             return f"âŒ Error al enviar resumen: {result.get('error')}"
         
-    def start_scheduler(self) -> str:
-        """Inicia el planificador de tareas"""
-        if not self.scheduler:
-            return "âŒ Scheduler no disponible"
-        
-        if self.scheduler.is_running:
-            return "â° El scheduler ya estÃ¡ en ejecuciÃ³n"
-        
-        self.scheduler.start()
-        return "â° Scheduler iniciado correctamente"
-
-    def stop_scheduler(self) -> str:
-        """Detiene el planificador de tareas"""
-        if not self.scheduler:
-            return "âŒ Scheduler no disponible"
-        
-        if not self.scheduler.is_running:
-            return "â° El scheduler ya estÃ¡ detenido"
-        
-        self.scheduler.stop()
-        return "â° Scheduler detenido"
-
-    def schedule_summary(self, hour: int = 8, minute: int = 0) -> str:
-        """Programa el resumen diario"""
-        if not self.scheduler:
-            return "âŒ Scheduler no disponible"
-        
-        self.scheduler.schedule_daily_summary(hour, minute)
-        return f"ðŸ“‹ Resumen diario programado para las {hour:02d}:{minute:02d}"
-    
     def open_spotify(self, **kwargs) -> str:
         """Abre Spotify Web"""
         if not self.spotify:
@@ -1228,33 +1196,6 @@ class SaturdayCore:
             return "ðŸ“° Resumen de noticias enviado por WhatsApp"
         else:
             return self.news.format_news(articles)
-        
-    def say_welcome(self):
-        """Saluda con voz al iniciar el sistema"""
-        try:
-            import time
-            # Esperar 1 segundo para que todo estÃ© listo
-            time.sleep(1)
-            
-            hora = datetime.now().hour
-            if hora < 12:
-                saludo = "Buenos dÃ­as"
-            elif hora < 19:
-                saludo = "Buenas tardes"
-            else:
-                saludo = "Buenas noches"
-            
-            mensaje = f"{saludo}! Soy Saturday, tu asistente personal. Estoy listo para ayudarte."
-            
-            # Hablar con Google TTS
-            if self.voice:
-                self.voice.speak(mensaje)
-                print(f"ðŸ—£ï¸ Saturday: {mensaje}")
-            else:
-                print(f"ðŸ“ Saturday: {mensaje}")
-                
-        except Exception as e:
-            print(f"âš ï¸ Error en saludo de voz: {e}")
 
 
 
