@@ -1306,3 +1306,4 @@ class SaturdayCore:
                 
         except Exception as e:
             print(f"âš ï¸ Error en saludo de voz: {e}")
+
