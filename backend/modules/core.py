@@ -116,6 +116,25 @@ try:
     MEMORY_AVAILABLE = True
 except ImportError:
     MEMORY_AVAILABLE = False
+
+try:
+    from modules.events.bus import EventBus
+    EVENTS_AVAILABLE = True
+except ImportError:
+    EVENTS_AVAILABLE = False
+
+try:
+    from modules.security.privacy import PrivacyManager
+    PRIVACY_AVAILABLE = True
+except ImportError:
+    PRIVACY_AVAILABLE = False
+
+try:
+    from modules.vision.describer import VisionDescriber
+    VISION_AVAILABLE = True
+except ImportError:
+    VISION_AVAILABLE = False
+
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
 
@@ -156,6 +175,16 @@ class SaturdayCore:
             "description": "Busca en la boveda de conocimiento del usuario",
             "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
         },
+        {
+            "name": "describe_scene",
+            "description": "Captura y describe lo que ve la camara",
+            "parameters": {"type": "object", "properties": {"question": {"type": "string"}}}
+        },
+        {
+            "name": "privacy_status",
+            "description": "Muestra el estado de privacidad del sistema",
+            "parameters": {"type": "object", "properties": {}}
+        },
     ]
 
     def _execute_tool(self, tool_name, tool_args):
@@ -176,6 +205,10 @@ class SaturdayCore:
                 return self.get_events()
             elif tool_name == "search_vault":
                 return self.search_notes(tool_args.get("query", ""))
+            elif tool_name == "describe_scene":
+                return self._describe_scene(tool_args.get("question", "Que hay en la imagen?"))
+            elif tool_name == "privacy_status":
+                return self._privacy_status()
             else:
                 return f"Tool desconocida: {tool_name}"
         except Exception as e:
@@ -341,6 +374,32 @@ class SaturdayCore:
             except Exception as e:
                 print(f"[WARN] Error inicializando GeminiChat: {e}")
 
+        # Inicializar Event Bus
+        self.event_bus = None
+        if EVENTS_AVAILABLE:
+            try:
+                self.event_bus = EventBus()
+                print("[OK] EventBus inicializado")
+            except Exception as e:
+                print(f"[WARN] Error inicializando EventBus: {e}")
+
+        # Inicializar Privacy Manager
+        self.privacy = None
+        if PRIVACY_AVAILABLE:
+            try:
+                self.privacy = PrivacyManager()
+                print("[OK] PrivacyManager inicializado")
+            except Exception as e:
+                print(f"[WARN] Error inicializando PrivacyManager: {e}")
+
+        # Inicializar Vision Describer
+        self.vision = None
+        if VISION_AVAILABLE:
+            try:
+                self.vision = VisionDescriber()
+            except Exception as e:
+                print(f"[WARN] Error inicializando VisionDescriber: {e}")
+
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
@@ -351,6 +410,36 @@ class SaturdayCore:
         
         print("âœ… NÃºcleo inicializado correctamente")
     
+    def _describe_scene(self, question: str = "Que hay en la imagen?") -> str:
+        if not self.privacy or not self.privacy.is_enabled("camera_enabled"):
+            return "La camara esta desactivada por privacidad"
+        if not self.camera:
+            return "Camara no disponible"
+        img_b64 = self.camera.capture()
+        if not img_b64:
+            return "No se pudo capturar imagen"
+        if self.vision and self.vision.is_available:
+            import tempfile, base64
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+                f.write(base64.b64decode(img_b64))
+                tmp_path = f.name
+            try:
+                desc = self.vision.describe(tmp_path, question)
+                return desc or "No pude describir la imagen"
+            finally:
+                os.unlink(tmp_path)
+        return "Vision no disponible (requiere GROQ_API_KEY)"
+
+    def _privacy_status(self) -> str:
+        if not self.privacy:
+            return "PrivacyManager no disponible"
+        state = self.privacy.get_state()
+        lines = ["ESTADO DE PRIVACIDAD:"]
+        for k, v in state.items():
+            icon = "ON" if v else "OFF"
+            lines.append(f"  {icon} {k}")
+        return "\n".join(lines)
+
     def build_knowledge_graph(self):
         """Construye el mapa de nodos de conocimiento"""
         actions = {

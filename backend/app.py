@@ -325,6 +325,108 @@ def memory_context(session_id):
     prefs = saturday.memory_retriever.get_user_preferences(chat_id)
     return jsonify({'context': context, 'facts': [f.to_dict() for f in facts], 'preferences': [p.to_dict() for p in prefs]})
 
+
+# ===== VISION ENDPOINTS =====
+
+@app.route('/api/vision/capture', methods=['POST'])
+@require_api_key
+def vision_capture():
+    if not saturday.camera:
+        return jsonify({'error': 'CameraManager no disponible'}), 503
+    if not saturday.privacy or not saturday.privacy.is_enabled("camera_enabled"):
+        return jsonify({'error': 'Camara desactivada por privacidad'}), 403
+    data = request.json or {}
+    question = data.get("question", "Que hay en esta imagen?")
+    img_b64 = saturday.camera.capture()
+    if not img_b64:
+        return jsonify({'error': 'No se pudo capturar imagen'}), 500
+    description = None
+    if saturday.vision and saturday.vision.is_available:
+        import tempfile, base64 as b64mod
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b64mod.b64decode(img_b64))
+            tmp_path = f.name
+        try:
+            description = saturday.vision.describe(tmp_path, question)
+        finally:
+            os.unlink(tmp_path)
+    if saturday.event_bus:
+        saturday.event_bus.publish("vision.captured", {"description": description or "sin descripcion"}, source="api")
+    return jsonify({
+        'captured': True,
+        'simulated': saturday.camera.last_capture.get("simulated", True) if saturday.camera.last_capture else True,
+        'description': description,
+        'timestamp': saturday.camera.last_capture.get("timestamp") if saturday.camera.last_capture else None,
+    })
+
+
+@app.route('/api/vision/status', methods=['GET'])
+@require_api_key
+def vision_status():
+    camera_status = saturday.camera.get_status() if saturday.camera else {"available": False}
+    vision_available = saturday.vision.is_available if saturday.vision else False
+    return jsonify({'camera': camera_status, 'vision_model': vision_available})
+
+
+# ===== PRIVACY ENDPOINTS =====
+
+@app.route('/api/privacy', methods=['GET'])
+@require_api_key
+def privacy_get():
+    if not saturday.privacy:
+        return jsonify({'error': 'PrivacyManager no disponible'}), 503
+    return jsonify(saturday.privacy.get_state())
+
+
+@app.route('/api/privacy', methods=['POST'])
+@require_api_key
+def privacy_set():
+    if not saturday.privacy:
+        return jsonify({'error': 'PrivacyManager no disponible'}), 503
+    data = request.json
+    feature = data.get("feature", "")
+    enabled = data.get("enabled", True)
+    if feature == "kill_all":
+        count = saturday.privacy.kill_all()
+        if saturday.event_bus:
+            saturday.event_bus.publish("privacy.kill_all", {"deactivated": count}, source="api")
+        return jsonify({"killed": count, "state": saturday.privacy.get_state()})
+    if feature == "restore_all":
+        count = saturday.privacy.restore_all()
+        if saturday.event_bus:
+            saturday.event_bus.publish("privacy.restore_all", {"activated": count}, source="api")
+        return jsonify({"restored": count, "state": saturday.privacy.get_state()})
+    ok = saturday.privacy.set_enabled(feature, enabled)
+    return jsonify({"updated": ok, "state": saturday.privacy.get_state()})
+
+
+# ===== EVENTS ENDPOINTS =====
+
+@app.route('/api/events', methods=['GET'])
+@require_api_key
+def events_list():
+    if not saturday.event_bus:
+        return jsonify({'error': 'EventBus no disponible'}), 503
+    event_name = request.args.get("name", "")
+    limit = min(int(request.args.get("limit", 20)), 100)
+    events = saturday.event_bus.recent(event_name, limit)
+    return jsonify({"events": [e.to_dict() for e in events]})
+
+
+@app.route('/api/events', methods=['POST'])
+@require_api_key
+def events_publish():
+    if not saturday.event_bus:
+        return jsonify({'error': 'EventBus no disponible'}), 503
+    data = request.json
+    event_name = data.get("name", "")
+    event_data = data.get("data", {})
+    if not event_name:
+        return jsonify({'error': 'name es requerido'}), 400
+    saturday.event_bus.publish(event_name, event_data, source="api")
+    return jsonify({"published": True, "event": event_name})
+
+
 @limiter.limit('10 per minute')
 @app.route('/api/speak', methods=['POST'])
 @require_api_key

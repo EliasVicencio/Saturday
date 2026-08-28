@@ -1,47 +1,72 @@
-import base64
-import random
-from datetime import datetime
+# camera_manager.py - Captura de snapshots bajo demanda
 import os
+import time
+import base64
+from datetime import datetime
+from typing import Optional
 
 class CameraManager:
-    """Gestor de cámara para Saturday"""
-    
     def __init__(self):
-        self.is_available = True  # Simulado - en realidad verificaría hardware
+        self.is_available = False
         self.last_capture = None
-        print("📷 CameraManager inicializado (modo simulado)")
-    
-    def capture(self):
-        """Captura una imagen de la cámara (simuleada)"""
+        self._cv2 = None
+        self._capture_dir = os.path.join(os.path.dirname(__file__), "..", "data", "snapshots")
+        os.makedirs(self._capture_dir, exist_ok=True)
         try:
-            # Generar una imagen simulada en base64 (patrones eléctricos)
-            # En producción real, aquí iría: cv2.VideoCapture(0).read()
-            width, height = 300, 200
-            # Crear un patrón simulado con colores electricos
-            import struct
-            image_data = bytearray()
-            for y in range(height):
-                for x in range(width):
-                    # Patrón aleatorio eléctrico
-                    r = random.randint(100, 255)
-                    g = random.randint(50, 150) 
-                    b = random.randint(200, 255)
-                    image_data.extend([b, g, r])  # BGR para JPEG
-            
-            # Convertir a base64 "imagen"
-            simulated_image = base64.b64encode(bytes(image_data)).decode('utf-8')
-            self.last_capture = {
-                'timestamp': datetime.now().isoformat(),
-                'simulated': True,
-                'data': simulated_image[:50] + "..." + simulated_image[-50:]  # Truncado para el ejemplo
-            }
-            return f"✅ Cámara capturada (simulada)"
+            import cv2
+            self._cv2 = cv2
+            self.is_available = True
+            print("[Camera] OK - OpenCV disponible")
+        except ImportError:
+            self.is_available = False
+            print("[Camera] WARN - OpenCV no disponible, modo sin camara")
+
+    def capture(self, save: bool = False) -> Optional[str]:
+        if not self.is_available or not self._cv2:
+            return self._placeholder()
+        try:
+            cap = self._cv2.VideoCapture(0)
+            if not cap.isOpened():
+                return self._placeholder()
+            ret, frame = cap.read()
+            cap.release()
+            if not ret or frame is None:
+                return self._placeholder()
+            _, buf = self._cv2.imencode(".jpg", frame, [self._cv2.IMWRITE_JPEG_QUALITY, 85])
+            img_bytes = buf.tobytes()
+            img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+            self.last_capture = {"timestamp": datetime.now().isoformat(), "simulated": False, "size_bytes": len(img_bytes)}
+            if save:
+                path = os.path.join(self._capture_dir, f"snapshot_{int(time.time())}.jpg")
+                with open(path, "wb") as f:
+                    f.write(img_bytes)
+                self.last_capture["saved_to"] = path
+            return img_b64
         except Exception as e:
-            return f"❌ Error accediendo a cámara: {str(e)}"
-    
-    def get_status(self):
-        """Obtiene estado de la cámara"""
-        return {
-            'available': self.is_available,
-            'last_capture': self.last_capture
-        }
+            print(f"[Camera] ERROR: {e}")
+            return self._placeholder()
+
+    def capture_to_file(self) -> Optional[str]:
+        if not self.is_available or not self._cv2:
+            return None
+        try:
+            cap = self._cv2.VideoCapture(0)
+            if not cap.isOpened():
+                return None
+            ret, frame = cap.read()
+            cap.release()
+            if not ret or frame is None:
+                return None
+            path = os.path.join(self._capture_dir, f"snapshot_{int(time.time())}.jpg")
+            self._cv2.imwrite(path, frame)
+            self.last_capture = {"timestamp": datetime.now().isoformat(), "simulated": False, "saved_to": path}
+            return path
+        except Exception as e:
+            return None
+
+    def _placeholder(self) -> str:
+        self.last_capture = {"timestamp": datetime.now().isoformat(), "simulated": True}
+        return base64.b64encode(b"PLACEHOLDER").decode("utf-8")
+
+    def get_status(self) -> dict:
+        return {"available": self.is_available, "opencv": self._cv2 is not None, "last_capture": self.last_capture}
