@@ -112,7 +112,7 @@ class DailySummary:
                 desc = data['weather'][0]['description']
                 return f"{desc}, {temp}Â°C"
             return None
-        except (requests.RequestException, KeyError, TypeError):
+        except (KeyError, TypeError, Exception):
             return None
     
     def _get_tasks(self) -> List[str]:
@@ -146,7 +146,7 @@ class DailySummary:
         if not self.core.data:
             return []
         try:
-            reminders = self.core.data.get_reminders_for_today()
+            reminders = self.core.data.get_reminders_today()
             return [f"{r['text']} - {r['time']}" for r in reminders]
         except Exception:
             return []

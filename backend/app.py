@@ -10,7 +10,6 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
-import io
 import threading
 import hashlib
 import time
@@ -145,6 +144,7 @@ saludo_thread.start()
 
 
 @app.route('/api/greeting', methods=['GET'])
+@require_api_key
 def greeting():
     """Devuelve el texto de saludo para que el FRONTEND lo pida y lo hable
     en el navegador del usuario (usando /api/speak), en vez de sonar en el
@@ -1092,6 +1092,7 @@ def vault_graph():
 
 
 @app.route('/api/health', methods=['GET'])
+@require_api_key
 def health():
     """Health check con metricas del sistema"""
     import psutil
@@ -1131,4 +1132,6 @@ if __name__ == '__main__':
     logger.info(f"Scheduler: {'Activo' if saturday.scheduler else 'Inactivo'}")
 
     app.run(host="127.0.0.1", port=port, debug=False)
+
+
 

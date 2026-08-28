@@ -21,11 +21,31 @@ def _describe_scene(core=None, question="Que hay en la imagen?", **kw):
 def _privacy_status(core=None, **kw):
     return core._privacy_status() if core else "Privacy no disponible"
 def _get_bitcoin(core=None, **kw):
-    if core and hasattr(core, '_execute_tool'): return core._execute_tool("get_bitcoin", {})
-    return "Bitcoin no disponible"
+    try:
+        import httpx
+        r = httpx.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,clp&include_24hr_change=true", timeout=10)
+        d = r.json()["bitcoin"]
+        change = d.get("usd_24h_change", 0)
+        return f"Bitcoin: ${d['usd']:,.0f} USD / ${d['clp']:,.0f} CLP ({'+' if change > 0 else ''}{change:.1f}% 24h)"
+    except Exception as e:
+        return f"Error obteniendo Bitcoin: {e}"
 def _search_youtube(core=None, query="", **kw):
-    if core and hasattr(core, '_execute_tool'): return core._execute_tool("search_youtube", {"query": query})
-    return "YouTube no disponible"
+    try:
+        import httpx, os
+        key = os.getenv("YOUTUBE_API_KEY", "")
+        if not key: return "YouTube API key no configurada"
+        r = httpx.get(f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&maxResults=5&key={key}", timeout=10)
+        items = r.json().get("items", [])
+        if not items: return "No se encontraron videos"
+        lines = []
+        for i, item in enumerate(items[:5], 1):
+            title = item["snippet"]["title"]
+            channel = item["snippet"]["channelTitle"]
+            vid = item["id"]["videoId"]
+            lines.append(f"{i}. {title} ({channel}) - https://youtube.com/watch?v={vid}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error buscando en YouTube: {e}"
 
 ALL_TOOLS = [
     ToolDef("get_weather", "Obtiene el clima actual de una ciudad", {"type": "object", "properties": {"city": {"type": "string"}}, "required": []}, handler=_get_weather, capability="knowledge"),
@@ -44,3 +64,4 @@ ALL_TOOLS = [
 def register_all(registry):
     for t in ALL_TOOLS:
         registry.register(t)
+

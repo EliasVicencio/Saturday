@@ -1,7 +1,5 @@
 ﻿# modules/core.py - Nucleo de Saturday COMPLETO
 import os
-import webbrowser
-import re
 from datetime import datetime
 from typing import Dict, Any
 import networkx as nx
@@ -162,55 +160,6 @@ except ImportError:
 
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
-
-    # Tool definitions for Gemini function calling
-    GEMINI_TOOLS = [
-        {
-            "name": "get_weather",
-            "description": "Obtiene el clima actual de una ciudad",
-            "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": []}
-        },
-        {
-            "name": "get_time",
-            "description": "Obtiene la hora y fecha actual",
-            "parameters": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "get_tasks",
-            "description": "Lista tareas pendientes del usuario en Notion",
-            "parameters": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "create_task",
-            "description": "Crea una nueva tarea en Notion",
-            "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
-        },
-        {
-            "name": "get_news",
-            "description": "Obtiene noticias actuales",
-            "parameters": {"type": "object", "properties": {"category": {"type": "string"}}}
-        },
-        {
-            "name": "get_events",
-            "description": "Obtiene eventos del calendario de hoy",
-            "parameters": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "search_vault",
-            "description": "Busca en la boveda de conocimiento del usuario",
-            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
-        },
-        {
-            "name": "describe_scene",
-            "description": "Captura y describe lo que ve la camara",
-            "parameters": {"type": "object", "properties": {"question": {"type": "string"}}}
-        },
-        {
-            "name": "privacy_status",
-            "description": "Muestra el estado de privacidad del sistema",
-            "parameters": {"type": "object", "properties": {}}
-        },
-    ]
 
     def _execute_tool(self, tool_name, tool_args):
         """Execute a tool by name with arguments. Returns string result."""
@@ -1306,4 +1255,6 @@ class SaturdayCore:
                 
         except Exception as e:
             print(f"âš ï¸ Error en saludo de voz: {e}")
+
+
 
