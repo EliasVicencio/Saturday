@@ -360,6 +360,37 @@ def vision_capture():
     })
 
 
+@app.route('/api/vision/capture-device', methods=['POST'])
+@require_api_key
+def vision_capture_device():
+    data = request.json or {}
+    image_b64 = data.get("image", "")
+    question = data.get("question", "Que hay en esta imagen?")
+    if not image_b64:
+        return jsonify({'error': 'image es requerido (base64)'}), 400
+    if not saturday.privacy or not saturday.privacy.is_enabled("camera_enabled"):
+        return jsonify({'error': 'Camaras desactivadas por privacidad'}), 403
+    description = None
+    if saturday.vision and saturday.vision.is_available:
+        import tempfile, base64 as b64mod
+        img_bytes = b64mod.b64decode(image_b64)
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(img_bytes)
+            tmp_path = f.name
+        try:
+            description = saturday.vision.describe(tmp_path, question)
+        finally:
+            os.unlink(tmp_path)
+    if saturday.event_bus:
+        saturday.event_bus.publish("vision.captured_device", {"description": description or "sin descripcion"}, source="device")
+    return jsonify({
+        'captured': True,
+        'simulated': False,
+        'description': description,
+        'timestamp': __import__('datetime').datetime.now().isoformat(),
+    })
+
+
 @app.route('/api/vision/status', methods=['GET'])
 @require_api_key
 def vision_status():

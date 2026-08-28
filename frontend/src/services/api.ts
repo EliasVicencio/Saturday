@@ -620,6 +620,14 @@ export const getEvents = async (limit?: number): Promise<EventItem2[]> => {
   return response.data.events;
 };
 
+export const captureFromDevice = async (imageBase64: string, question?: string): Promise<VisionCapture> => {
+  const response = await api.post<VisionCapture>('/vision/capture-device', {
+    image: imageBase64,
+    question: question || 'Que hay en esta imagen?',
+  });
+  return response.data;
+};
+
 export const publishEvent = async (name: string, data?: Record<string, unknown>): Promise<{ published: boolean; event: string }> => {
   const response = await api.post('/events', { name, data: data || {} });
   return response.data;

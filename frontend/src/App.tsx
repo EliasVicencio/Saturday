@@ -21,7 +21,7 @@ function App() {
       {currentView === 'news' ? (
         <NewsPage />
       ) : currentView === 'settings' ? (
-        <SettingsPage />
+        <SettingsPage onBack={() => setCurrentView('home')} />
       ) : (
         <HomePage
           onNavigateNews={() => setCurrentView('news')}
