@@ -1,9 +1,9 @@
 ﻿# backend/requirements.txt
 flask==3.0.3
 flask-cors==4.0.1
+httpx==0.27.0
 flask-limiter==3.5.0
 python-dotenv==1.0.1
-requests==2.32.3
 networkx==3.3
 google-auth==2.34.0
 google-auth-oauthlib==1.2.1
@@ -17,4 +17,5 @@ schedule==1.2.2
 spotipy==2.24.0
 ruff==0.6.0
 pytest==8.3.2
+
 
