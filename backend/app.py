@@ -528,6 +528,76 @@ def agents_pending():
         return jsonify({'error': 'AgentRouter no disponible'}), 503
     return jsonify({"pending": saturday.agent_router.get_pending_confirmations()})
 
+
+# ===== CONFIG / AUDIT / PERMISSIONS ENDPOINTS (Level 6) =====
+
+@app.route('/api/config', methods=['GET'])
+@require_api_key
+def config_get():
+    from modules.config import config
+    return jsonify({
+        "city": config.saturday_city,
+        "language": config.saturday_language,
+        "timezone": config.saturday_timezone,
+        "groq_model": config.groq_model,
+        "vision_model": config.vision_model,
+    })
+
+@app.route('/api/audit', methods=['GET'])
+@require_api_key
+def audit_log():
+    if not saturday.audit:
+        return jsonify({'error': 'AuditLogger no disponible'}), 503
+    event_type = request.args.get("type", "")
+    limit = min(int(request.args.get("limit", 50)), 200)
+    return jsonify({"events": saturday.audit.recent(event_type, limit)})
+
+@app.route('/api/audit/stats', methods=['GET'])
+@require_api_key
+def audit_stats():
+    if not saturday.audit:
+        return jsonify({'error': 'AuditLogger no disponible'}), 503
+    return jsonify(saturday.audit.stats())
+
+@app.route('/api/permissions', methods=['GET'])
+@require_api_key
+def permissions_list():
+    if not saturday.permissions:
+        return jsonify({'error': 'PermissionManager no disponible'}), 503
+    return jsonify(saturday.permissions.list_all())
+
+@app.route('/api/permissions', methods=['POST'])
+@require_api_key
+def permissions_set():
+    if not saturday.permissions:
+        return jsonify({'error': 'PermissionManager no disponible'}), 503
+    data = request.json
+    capability = data.get("capability", "")
+    permission = data.get("permission", "")
+    action = data.get("action", "grant")
+    if action == "grant":
+        saturday.permissions.grant(capability, permission)
+    elif action == "revoke":
+        saturday.permissions.revoke(capability, permission)
+    return jsonify({"permissions": saturday.permissions.list_all()})
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    checks = {
+        "status": "ok",
+        "agents": saturday.agent_router is not None,
+        "memory": saturday.memory_store is not None,
+        "vision": saturday.vision is not None if hasattr(saturday, 'vision') else False,
+        "privacy": saturday.privacy is not None,
+        "events": saturday.event_bus is not None,
+        "audit": saturday.audit is not None,
+        "permissions": saturday.permissions is not None,
+        "tool_registry": saturday.tool_registry is not None,
+    }
+    all_ok = all(v for k, v in checks.items() if k != "status")
+    checks["status"] = "healthy" if all_ok else "degraded"
+    return jsonify(checks)
+
 @app.route('/api/agents/route', methods=['POST'])
 @require_api_key
 def agents_route():
@@ -1062,3 +1132,4 @@ if __name__ == '__main__':
     logger.info(f"Scheduler: {'Activo' if saturday.scheduler else 'Inactivo'}")
 
     app.run(host="127.0.0.1", port=port, debug=False)
+

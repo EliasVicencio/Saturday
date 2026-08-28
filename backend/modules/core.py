@@ -141,6 +141,25 @@ try:
 except ImportError:
     AGENTS_AVAILABLE = False
 
+try:
+    from modules.tools.registry import ToolRegistry
+    from modules.tools.builtin import register_all as register_builtin_tools
+    TOOLREG_AVAILABLE = True
+except ImportError:
+    TOOLREG_AVAILABLE = False
+
+try:
+    from modules.security.audit import AuditLogger
+    AUDIT_AVAILABLE = True
+except ImportError:
+    AUDIT_AVAILABLE = False
+
+try:
+    from modules.security.permissions import PermissionManager
+    PERMS_AVAILABLE = True
+except ImportError:
+    PERMS_AVAILABLE = False
+
 class SaturdayCore:
     """NÃºcleo de inteligencia de Saturday"""
 
@@ -414,6 +433,34 @@ class SaturdayCore:
                 print("[OK] AgentRouter inicializado (Level 5)")
             except Exception as e:
                 print(f"[WARN] Error inicializando AgentRouter: {e}")
+
+        # Inicializar Tool Registry
+        self.tool_registry = None
+        if TOOLREG_AVAILABLE:
+            try:
+                self.tool_registry = ToolRegistry()
+                register_builtin_tools(self.tool_registry)
+                print(f"[OK] ToolRegistry inicializado ({len(self.tool_registry.list_tools())} tools)")
+            except Exception as e:
+                print(f"[WARN] Error inicializando ToolRegistry: {e}")
+
+        # Inicializar Audit Logger
+        self.audit = None
+        if AUDIT_AVAILABLE:
+            try:
+                self.audit = AuditLogger()
+                print("[OK] AuditLogger inicializado")
+            except Exception as e:
+                print(f"[WARN] Error inicializando AuditLogger: {e}")
+
+        # Inicializar Permission Manager
+        self.permissions = None
+        if PERMS_AVAILABLE:
+            try:
+                self.permissions = PermissionManager()
+                print("[OK] PermissionManager inicializado")
+            except Exception as e:
+                print(f"[WARN] Error inicializando PermissionManager: {e}")
 
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
