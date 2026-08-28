@@ -70,9 +70,10 @@ const prettifyNoteName = (name: string) =>
 
 interface HomeProps {
   onNavigateNews?: () => void;
+  onNavigateSettings?: () => void;
 }
 
-export default function Home({ onNavigateNews }: HomeProps) {
+export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) {
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -262,6 +263,7 @@ export default function Home({ onNavigateNews }: HomeProps) {
           <span className="dim">·</span>
           <span>EN LÍNEA</span>
           <span className="vault-topbar__link" onClick={onNavigateNews}>NOTICIAS</span>
+          <span className="vault-topbar__link" onClick={onNavigateSettings}>SETTINGS</span>
           <span className="vault-topbar__active">ACTIVE</span>
         </nav>
         <div className="vault-topbar__clock">

@@ -565,5 +565,65 @@ export const searchYouTube = async (query: string, maxResults = 5): Promise<YouT
   return response.data.videos;
 };
 
+// ===== LEVEL 4: PRIVACY / VISION / EVENTS =====
+
+export interface PrivacyState {
+  camera_enabled: boolean;
+  microphone_enabled: boolean;
+  location_enabled: boolean;
+  ambient_sensors: boolean;
+  auto_save_images: boolean;
+}
+
+export const getPrivacy = async (): Promise<PrivacyState> => {
+  const response = await api.get<PrivacyState>('/privacy');
+  return response.data;
+};
+
+export const setPrivacy = async (feature: string, enabled?: boolean): Promise<{ state: PrivacyState; killed?: number; restored?: number }> => {
+  const payload = enabled !== undefined ? { feature, enabled } : { feature };
+  const response = await api.post('/privacy', payload);
+  return response.data;
+};
+
+export interface VisionStatus {
+  camera: { available: boolean; last_capture: unknown; opencv: boolean };
+  vision_model: boolean;
+}
+
+export interface VisionCapture {
+  captured: boolean;
+  simulated: boolean;
+  description: string | null;
+  timestamp: string | null;
+}
+
+export const getVisionStatus = async (): Promise<VisionStatus> => {
+  const response = await api.get<VisionStatus>('/vision/status');
+  return response.data;
+};
+
+export const captureVision = async (question?: string): Promise<VisionCapture> => {
+  const response = await api.post<VisionCapture>('/vision/capture', { question: question || 'Que hay en esta imagen?' });
+  return response.data;
+};
+
+export interface EventItem2 {
+  name: string;
+  data: Record<string, unknown>;
+  source: string;
+  timestamp: number;
+}
+
+export const getEvents = async (limit?: number): Promise<EventItem2[]> => {
+  const response = await api.get<{ events: EventItem2[] }>('/events', { params: { limit: limit || 20 } });
+  return response.data.events;
+};
+
+export const publishEvent = async (name: string, data?: Record<string, unknown>): Promise<{ published: boolean; event: string }> => {
+  const response = await api.post('/events', { name, data: data || {} });
+  return response.data;
+};
+
 // ... resto de los exports existentes que estaban en tu archivo original
 // (Send, Mic, MapPin, etc. interfaces si las tenÃ­as, pero las esenciales estÃ¡n arriba)

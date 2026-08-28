@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import HomePage from './pages/Home';
 import NewsPage from './pages/News';
+import SettingsPage from './pages/Settings';
 import './styles/App.css';
 
-type View = 'home' | 'news';
+type View = 'home' | 'news' | 'settings';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -19,8 +20,13 @@ function App() {
     <div className="app-container">
       {currentView === 'news' ? (
         <NewsPage />
+      ) : currentView === 'settings' ? (
+        <SettingsPage />
       ) : (
-        <HomePage onNavigateNews={() => setCurrentView('news')} />
+        <HomePage
+          onNavigateNews={() => setCurrentView('news')}
+          onNavigateSettings={() => setCurrentView('settings')}
+        />
       )}
     </div>
   );
