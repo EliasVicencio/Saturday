@@ -61,9 +61,9 @@ class MemoryOpAgent(BaseAgent):
                 prefs = self.core.memory_store.search(mem_type="preference", limit=10)
                 parts = []
                 if facts:
-                    parts.append("Hechos que recuerdo:\n" + "\n".join(f"  - {f['content']}" for f in facts[:5]))
+                    parts.append("Hechos que recuerdo:\n" + "\n".join(f"  - {f.content}" for f in facts[:5]))
                 if prefs:
-                    parts.append("Preferencias:\n" + "\n".join(f"  - {p['content']}" for p in prefs[:5]))
+                    parts.append("Preferencias:\n" + "\n".join(f"  - {p.content}" for p in prefs[:5]))
                 if parts:
                     response = "\n\n".join(parts)
                 else:
