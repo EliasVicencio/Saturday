@@ -57,8 +57,8 @@ class MemoryOpAgent(BaseAgent):
         # Que recuerdas / que sabes
         if any(kw in text_lower for kw in ["que recuerdas", "que sabes", "mis datos", "mi nombre", "como me llamo", "mis preferencias", "gustos", "memoria", "recuerdos"]):
             if self.core and self.core.memory_store:
-                facts = self.core.memory_store.get_by_type("fact", limit=10)
-                prefs = self.core.memory_store.get_by_type("preference", limit=10)
+                facts = self.core.memory_store.search(mem_type="fact", limit=10)
+                prefs = self.core.memory_store.search(mem_type="preference", limit=10)
                 parts = []
                 if facts:
                     parts.append("Hechos que recuerdo:\n" + "\n".join(f"  - {f['content']}" for f in facts[:5]))
