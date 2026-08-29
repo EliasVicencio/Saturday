@@ -53,5 +53,6 @@ def vault_search():
 @vault_bp.route("/api/vault/graph", methods=["GET"])
 def vault_graph():
     from api.auth import require_api_key
-    graph = _saturday.build_knowledge_graph()
-    return jsonify({"graph": graph})
+    if not _saturday or not _saturday.vault:
+        return jsonify({"nodes": [], "edges": []})
+    return jsonify(_saturday.vault.get_graph_json())
