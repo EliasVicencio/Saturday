@@ -70,14 +70,14 @@ class EmailManager:
         
         return result
     
-    def get_recent_emails(self, limit: int = 5) -> List[Dict[str, str]]:
-        """Obtiene los correos mas recientes."""
+    def _fetch_emails(self, criteria: str = "ALL", limit: int = 5) -> List[Dict[str, str]]:
+        """Metodo privado para buscar y fetchear correos."""
         mail = None
         try:
             mail = self._get_imap()
             mail.select("INBOX")
             
-            _, msg_nums = mail.search(None, "ALL")
+            _, msg_nums = mail.search(None, criteria)
             msg_list = msg_nums[0].split()
             
             recent = msg_list[-limit:] if len(msg_list) >= limit else msg_list
@@ -88,19 +88,11 @@ class EmailManager:
                 _, msg_data = mail.fetch(num, "(RFC822)")
                 msg = email.message_from_bytes(msg_data[0][1])
                 
-                subject = self._decode_header(msg["Subject"])
-                from_addr = self._decode_header(msg["From"])
-                date = msg["Date"]
-                
-                body = self._get_body(msg)
-                preview = body[:150] + "..." if len(body) > 150 else body
-                
                 emails.append({
-                    "from": from_addr,
-                    "subject": subject,
-                    "date": date,
-                    "body": body,
-                    "preview": preview,
+                    "from": self._decode_header(msg["From"]),
+                    "subject": self._decode_header(msg["Subject"]),
+                    "date": msg["Date"],
+                    "body": self._get_body(msg),
                 })
             
             return emails
@@ -115,50 +107,19 @@ class EmailManager:
                 except Exception:
                     pass
     
+    def get_recent_emails(self, limit: int = 5) -> List[Dict[str, str]]:
+        """Obtiene los correos mas recientes."""
+        emails = self._fetch_emails("ALL", limit)
+        for e in emails:
+            e["preview"] = e["body"][:150] + "..." if len(e["body"]) > 150 else e["body"]
+        return emails
+    
     def get_unread_emails(self, limit: int = 5) -> List[Dict[str, str]]:
         """Obtiene los correos no leidos."""
-        mail = None
-        try:
-            mail = self._get_imap()
-            mail.select("INBOX")
-            
-            _, msg_nums = mail.search(None, "UNSEEN")
-            msg_list = msg_nums[0].split()
-            
-            recent = msg_list[-limit:] if len(msg_list) >= limit else msg_list
-            recent.reverse()
-            
-            emails = []
-            for num in recent:
-                _, msg_data = mail.fetch(num, "(RFC822)")
-                msg = email.message_from_bytes(msg_data[0][1])
-                
-                subject = self._decode_header(msg["Subject"])
-                from_addr = self._decode_header(msg["From"])
-                date = msg["Date"]
-                
-                body = self._get_body(msg)
-                preview = body[:150] + "..." if len(body) > 150 else body
-                
-                emails.append({
-                    "from": from_addr,
-                    "subject": subject,
-                    "date": date,
-                    "body": body,
-                    "preview": preview,
-                })
-            
-            return emails
-        
-        except Exception as e:
-            print(f"Error leyendo correos no leidos: {e}")
-            return []
-        finally:
-            if mail:
-                try:
-                    mail.logout()
-                except Exception:
-                    pass
+        emails = self._fetch_emails("UNSEEN", limit)
+        for e in emails:
+            e["preview"] = e["body"][:150] + "..." if len(e["body"]) > 150 else e["body"]
+        return emails
     
     def _decode_header(self, header):
         """Decodifica headers de correo."""

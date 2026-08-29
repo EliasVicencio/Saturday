@@ -15,7 +15,6 @@ Filosofía (inspirada en el patrón "si no está en la bóveda, no pasó"):
 
 import os
 import re
-import json
 from datetime import datetime
 from typing import Dict, List, Optional
 import networkx as nx

@@ -1,4 +1,5 @@
 # agents/cap_knowledge.py - Agente de conocimiento: weather, news, crypto, vault, youtube
+import time
 from .base import BaseAgent, AgentResult
 
 
@@ -25,7 +26,7 @@ class KnowledgeAgent(BaseAgent):
         return score
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
-        start = __import__("time").time()
+        start = time.time()
         tools_log = []
         text_lower = text.lower()
 
@@ -33,14 +34,14 @@ class KnowledgeAgent(BaseAgent):
         if any(kw in text_lower for kw in ["clima", "temperatura", "lluvia", "tiempo", "hace calor", "hace frio"]):
             result = self.call_tool("get_weather")
             tools_log.append({"tool": "get_weather", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Noticias
         if any(kw in text_lower for kw in ["noticias", "noticia", "periodico", "titular"]):
             result = self.call_tool("get_news")
             tools_log.append({"tool": "get_news", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Bitcoin / Crypto
@@ -50,7 +51,7 @@ class KnowledgeAgent(BaseAgent):
                 tools_log.append({"tool": "get_bitcoin", "args": {}})
             else:
                 result = "Crypto no disponible"
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Buscar en boveda
@@ -62,7 +63,7 @@ class KnowledgeAgent(BaseAgent):
                     break
             result = self.call_tool("search_vault", {"query": query})
             tools_log.append({"tool": "search_vault", "args": {"query": query}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # YouTube
@@ -77,15 +78,15 @@ class KnowledgeAgent(BaseAgent):
                 tools_log.append({"tool": "search_youtube", "args": {"query": query}})
             else:
                 result = "YouTube no disponible"
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Tareas / Calendario
         if any(kw in text_lower for kw in ["tareas", "tarea", "calendario", "evento", "eventos"]):
             result = self.call_tool("get_events")
             tools_log.append({"tool": "get_events", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
-        duration = (__import__("time").time() - start) * 1000
+        duration = (time.time() - start) * 1000
         return AgentResult(response="No encontré información sobre eso.", agent=self.name, duration_ms=duration)

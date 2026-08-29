@@ -1,4 +1,5 @@
 # agents/cap_ambient.py - Agente ambiental: vision, camaras, sensores, presencia
+import time
 from .base import BaseAgent, AgentResult
 
 
@@ -25,7 +26,7 @@ class AmbientAgent(BaseAgent):
         return score
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
-        start = __import__("time").time()
+        start = time.time()
         tools_log = []
         text_lower = text.lower()
 
@@ -36,7 +37,7 @@ class AmbientAgent(BaseAgent):
                 tools_log.append({"tool": "privacy_kill_all", "args": {}})
                 if self.core.event_bus:
                     self.core.event_bus.publish("privacy.kill_all", {"killed": result}, source="agent")
-                duration = (__import__("time").time() - start) * 1000
+                duration = (time.time() - start) * 1000
                 return AgentResult(
                     response=f"Desactivados {result} sensores/permisos. Todo apagado por privacidad.",
                     agent=self.name, tools_called=tools_log, duration_ms=duration,
@@ -47,7 +48,7 @@ class AmbientAgent(BaseAgent):
             if self.core and self.core.privacy:
                 result = self.core.privacy.restore_all()
                 tools_log.append({"tool": "privacy_restore_all", "args": {}})
-                duration = (__import__("time").time() - start) * 1000
+                duration = (time.time() - start) * 1000
                 return AgentResult(
                     response=f"Restaurados {result} sensores/permisos.",
                     agent=self.name, tools_called=tools_log, duration_ms=duration,
@@ -57,7 +58,7 @@ class AmbientAgent(BaseAgent):
         if any(kw in text_lower for kw in ["privacidad", "permisos", "sensores"]):
             result = self.call_tool("privacy_status")
             tools_log.append({"tool": "privacy_status", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Vision / Camara
@@ -71,8 +72,8 @@ class AmbientAgent(BaseAgent):
                     question = "Que hay: " + question
             result = self.call_tool("describe_scene", {"question": question})
             tools_log.append({"tool": "describe_scene", "args": {"question": question}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
-        duration = (__import__("time").time() - start) * 1000
+        duration = (time.time() - start) * 1000
         return AgentResult(response="No pude interpretar qué acción ambiental necesitás.", agent=self.name, duration_ms=duration)

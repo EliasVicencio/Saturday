@@ -1,9 +1,7 @@
 # modules/spotify_manager.py
 import os
 import webbrowser
-import time
-from typing import Dict, Any, Optional
-import requests
+from typing import Optional
 import urllib.parse
 
 try:

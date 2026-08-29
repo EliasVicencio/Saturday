@@ -1,4 +1,5 @@
 # agents/cap_system.py - Agente de sistema: comandos SO, archivos, procesos, correo
+import time
 from .base import BaseAgent, AgentResult
 
 
@@ -26,7 +27,7 @@ class SystemAgent(BaseAgent):
         return score
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
-        start = __import__("time").time()
+        start = time.time()
         tools_log = []
         text_lower = text.lower()
 
@@ -34,20 +35,20 @@ class SystemAgent(BaseAgent):
         if any(kw in text_lower for kw in ["hora", "que hora es", "hora exacta"]):
             result = self.call_tool("get_time")
             tools_log.append({"tool": "get_time", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         if any(kw in text_lower for kw in ["fecha", "que fecha es", "que dia es"]):
             result = self.call_tool("get_time")
             tools_log.append({"tool": "get_time", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Stats del sistema
         if any(kw in text_lower for kw in ["sistema", "cpu", "ram", "disco", "procesos", "servidor"]):
             result = self.call_tool("get_system_stats")
             tools_log.append({"tool": "get_system_stats", "args": {}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Correo
@@ -69,11 +70,11 @@ class SystemAgent(BaseAgent):
             else:
                 result = "El correo no esta configurado."
             tools_log.append({"tool": "email", "args": {"text": text}})
-            duration = (__import__("time").time() - start) * 1000
+            duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Default
-        duration = (__import__("time").time() - start) * 1000
+        duration = (time.time() - start) * 1000
         return AgentResult(
             response="No pude determinar que accion de sistema necesitas. Podes ser mas especifico?",
             agent=self.name,

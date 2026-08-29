@@ -1,4 +1,5 @@
 # agents/cap_memory_op.py - Agente de operaciones de memoria: CRUD de recuerdos
+import time
 from .base import BaseAgent, AgentResult
 
 
@@ -25,7 +26,7 @@ class MemoryOpAgent(BaseAgent):
         return score
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
-        start = __import__("time").time()
+        start = time.time()
         tools_log = []
         text_lower = text.lower()
 
@@ -43,12 +44,12 @@ class MemoryOpAgent(BaseAgent):
                     for m in memories:
                         self.core.memory_store.delete(m.id)
                     tools_log.append({"tool": "memory_delete", "args": {"query": subject, "deleted": len(memories)}})
-                    duration = (__import__("time").time() - start) * 1000
+                    duration = (time.time() - start) * 1000
                     return AgentResult(
                         response=f"Olvidé {len(memories)} recuerdo(s) relacionado(s) con '{subject}'.",
                         agent=self.name, tools_called=tools_log, duration_ms=duration,
                     )
-                duration = (__import__("time").time() - start) * 1000
+                duration = (time.time() - start) * 1000
                 return AgentResult(
                     response=f"No encontré recuerdos para '{subject}'.",
                     agent=self.name, duration_ms=duration,
@@ -68,14 +69,14 @@ class MemoryOpAgent(BaseAgent):
                     response = "\n\n".join(parts)
                 else:
                     response = "Aún no tengo recuerdos guardados sobre vos."
-                duration = (__import__("time").time() - start) * 1000
+                duration = (time.time() - start) * 1000
                 return AgentResult(response=response, agent=self.name, duration_ms=duration)
 
         # Recordar algo nuevo (esto lo maneja el summarizer, pero podemos forzar)
         if any(kw in text_lower for kw in ["recuerda", "guarda", "remember"]):
             if self.core and self.core.memory_summarizer:
                 saved = self.core.memory_summarizer.process_and_save(text, chat_id)
-                duration = (__import__("time").time() - start) * 1000
+                duration = (time.time() - start) * 1000
                 if saved:
                     return AgentResult(
                         response=f"Guardé {len(saved)} detalle(s) de lo que me dijiste.",
@@ -86,5 +87,5 @@ class MemoryOpAgent(BaseAgent):
                     agent=self.name, duration_ms=duration,
                 )
 
-        duration = (__import__("time").time() - start) * 1000
+        duration = (time.time() - start) * 1000
         return AgentResult(response="No entendí qué querés hacer con la memoria.", agent=self.name, duration_ms=duration)

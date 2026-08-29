@@ -1,7 +1,6 @@
 # vision/describer.py - Describir imagenes con LLM multimodal
 import os
 import base64
-import json
 from typing import Optional
 import httpx
 

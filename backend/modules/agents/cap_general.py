@@ -1,4 +1,5 @@
 # agents/cap_general.py - Agente general: chat, preguntas, reflexiones
+import time
 from .base import BaseAgent, AgentResult
 
 
@@ -21,7 +22,7 @@ class GeneralAgent(BaseAgent):
         return 0.3  # Bajo score porque es el fallback
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
-        start = __import__("time").time()
+        start = time.time()
 
         # Inyectar contexto de memoria
         memory_context = ""
@@ -44,5 +45,5 @@ class GeneralAgent(BaseAgent):
         if not response:
             response = "No pude procesar tu mensaje. Intenta de nuevo."
 
-        duration = (__import__("time").time() - start) * 1000
+        duration = (time.time() - start) * 1000
         return AgentResult(response=response, agent=self.name, duration_ms=duration)
