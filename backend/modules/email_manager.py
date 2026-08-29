@@ -1,49 +1,188 @@
-# modules/email_manager.py - Gestion de correos via Gmail SMTP directo
+# modules/email_manager.py - Gestion de correos via Gmail SMTP/IMAP
 import os
 import smtplib
+import imaplib
+import email
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Dict, Any
+from email.header import decode_header
+from typing import Dict, Any, List
 import re
 
 
 class EmailManager:
-    """Gestiona correos electronicos via Gmail SMTP."""
+    """Gestiona correos electronicos via Gmail SMTP + IMAP."""
     
     def __init__(self):
         self.email = os.getenv("SATURDAY_EMAIL", "")
         self.password = os.getenv("SATURDAY_EMAIL_PASSWORD", "")
         self.smtp_server = "smtp.gmail.com"
         self.smtp_port = 587
+        self.imap_server = "imap.gmail.com"
+        self.imap_port = 993
         
         if self.email and self.password:
             print(f"  Email: configurado ({self.email})")
         else:
-            print("  Email: sin configurar (SATURDAY_EMAIL / SATURDAY_EMAIL_PASSWORD)")
+            print("  Email: sin configurar")
     
     def _is_configured(self) -> bool:
         return bool(self.email and self.password)
     
-    def get_emails_formatted(self) -> str:
-        if not self._is_configured():
-            return "El correo no esta configurado. Necesitas configurar SATURDAY_EMAIL y SATURDAY_EMAIL_PASSWORD en .env"
-        return (
-            "Puedo enviar correos desde tu Gmail.\n"
-            "Ejemplo: 'envia un correo a alguien@example.com sobre asunto'\n"
-            "Nota: Por ahora solo puedo enviar, no leer correos."
-        )
+    def _get_imap(self):
+        """Conexion IMAP segura."""
+        mail = imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
+        mail.login(self.email, self.password)
+        return mail
     
-    def get_unread_emails_formatted(self) -> str:
+    def get_emails_formatted(self) -> str:
+        """Obtiene los correos recientes formateados."""
         if not self._is_configured():
             return "El correo no esta configurado."
-        return "Por ahora solo puedo enviar correos. La lectura de correos requiere Gmail API."
+        
+        emails = self.get_recent_emails(limit=5)
+        if not emails:
+            return "No hay correos recientes."
+        
+        result = "Tus correos recientes:\n\n"
+        for i, e in enumerate(emails, 1):
+            result += f"{i}. De: {e['from']}\n"
+            result += f"   Asunto: {e['subject']}\n"
+            result += f"   Fecha: {e['date']}\n"
+            result += f"   {e['preview']}\n\n"
+        
+        return result
+    
+    def get_unread_emails_formatted(self) -> str:
+        """Obtiene los correos no leidos formateados."""
+        if not self._is_configured():
+            return "El correo no esta configurado."
+        
+        emails = self.get_unread_emails(limit=5)
+        if not emails:
+            return "No tienes correos no leidos."
+        
+        result = "Tus correos no leidos:\n\n"
+        for i, e in enumerate(emails, 1):
+            result += f"{i}. De: {e['from']}\n"
+            result += f"   Asunto: {e['subject']}\n"
+            result += f"   Fecha: {e['date']}\n"
+            result += f"   {e['preview']}\n\n"
+        
+        return result
+    
+    def get_recent_emails(self, limit: int = 5) -> List[Dict[str, str]]:
+        """Obtiene los correos mas recientes."""
+        try:
+            mail = self._get_imap()
+            mail.select("INBOX")
+            
+            _, msg_nums = mail.search(None, "ALL")
+            msg_list = msg_nums[0].split()
+            
+            recent = msg_list[-limit:] if len(msg_list) >= limit else msg_list
+            recent.reverse()
+            
+            emails = []
+            for num in recent:
+                _, msg_data = mail.fetch(num, "(RFC822)")
+                msg = email.message_from_bytes(msg_data[0][1])
+                
+                subject = self._decode_header(msg["Subject"])
+                from_addr = self._decode_header(msg["From"])
+                date = msg["Date"]
+                
+                body = self._get_body(msg)
+                preview = body[:150] + "..." if len(body) > 150 else body
+                
+                emails.append({
+                    "from": from_addr,
+                    "subject": subject,
+                    "date": date,
+                    "body": body,
+                    "preview": preview,
+                })
+            
+            mail.logout()
+            return emails
+        
+        except Exception as e:
+            print(f"Error leyendo correos: {e}")
+            return []
+    
+    def get_unread_emails(self, limit: int = 5) -> List[Dict[str, str]]:
+        """Obtiene los correos no leidos."""
+        try:
+            mail = self._get_imap()
+            mail.select("INBOX")
+            
+            _, msg_nums = mail.search(None, "UNSEEN")
+            msg_list = msg_nums[0].split()
+            
+            recent = msg_list[-limit:] if len(msg_list) >= limit else msg_list
+            recent.reverse()
+            
+            emails = []
+            for num in recent:
+                _, msg_data = mail.fetch(num, "(RFC822)")
+                msg = email.message_from_bytes(msg_data[0][1])
+                
+                subject = self._decode_header(msg["Subject"])
+                from_addr = self._decode_header(msg["From"])
+                date = msg["Date"]
+                
+                body = self._get_body(msg)
+                preview = body[:150] + "..." if len(body) > 150 else body
+                
+                emails.append({
+                    "from": from_addr,
+                    "subject": subject,
+                    "date": date,
+                    "body": body,
+                    "preview": preview,
+                })
+            
+            mail.logout()
+            return emails
+        
+        except Exception as e:
+            print(f"Error leyendo correos no leidos: {e}")
+            return []
+    
+    def _decode_header(self, header):
+        """Decodifica headers de correo."""
+        if not header:
+            return ""
+        decoded = decode_header(header)
+        result = []
+        for part, enc in decoded:
+            if isinstance(part, bytes):
+                result.append(part.decode(enc or "utf-8", errors="replace"))
+            else:
+                result.append(part)
+        return " ".join(result)
+    
+    def _get_body(self, msg):
+        """Extrae el cuerpo del correo."""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or "utf-8"
+                        return payload.decode(charset, errors="replace")
+        else:
+            payload = msg.get_payload(decode=True)
+            if payload:
+                charset = msg.get_content_charset() or "utf-8"
+                return payload.decode(charset, errors="replace")
+        return ""
     
     def send_email_from_text(self, text: str) -> str:
         if not text:
             return "Que correo quieres enviar? Dame el destinatario y el mensaje."
         
         if not self._is_configured():
-            return "El correo no esta configurado. Necesitas configurar SATURDAY_EMAIL y SATURDAY_EMAIL_PASSWORD en .env"
+            return "El correo no esta configurado."
         
         parsed = self._parse_email_text(text)
         if not parsed.get("to"):
@@ -83,7 +222,7 @@ class EmailManager:
             return {"success": True, "to": to}
         
         except smtplib.SMTPAuthenticationError:
-            return {"success": False, "error": "Error de autenticacion. Verifica la contrasena de aplicacion."}
+            return {"success": False, "error": "Error de autenticacion."}
         except smtplib.SMTPException as e:
             return {"success": False, "error": f"Error SMTP: {str(e)}"}
         except Exception as e:

@@ -53,16 +53,21 @@ class SystemAgent(BaseAgent):
         # Correo
         if any(kw in text_lower for kw in ["correo", "correos", "email"]):
             core = self.core
-            if core and hasattr(core, "email") and core.email:
-                if hasattr(core.email, "_is_configured") and core.email._is_configured():
-                    if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
-                        result = core.email.send_email_from_text(text)
-                    else:
-                        result = core.email.get_emails_formatted()
+            if core and hasattr(core, "email") and core.email and core.email._is_configured():
+                # Enviar correo
+                if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
+                    result = core.email.send_email_from_text(text)
+                # Correos no leidos
+                elif any(kw in text_lower for kw in ["no leidos", "sin leer", "nuevos"]):
+                    result = core.email.get_unread_emails_formatted()
+                # Leer/revisar correos
+                elif any(kw in text_lower for kw in ["leer", "revisar", "ver", "mostrar"]):
+                    result = core.email.get_emails_formatted()
+                # Default: mostrar recientes
                 else:
-                    result = "El correo no esta configurado. Necesitas configurar SATURDAY_EMAIL y SATURDAY_EMAIL_PASSWORD en .env"
+                    result = core.email.get_emails_formatted()
             else:
-                result = "El modulo de correo no esta disponible."
+                result = "El correo no esta configurado."
             tools_log.append({"tool": "email", "args": {"text": text}})
             duration = (__import__("time").time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
