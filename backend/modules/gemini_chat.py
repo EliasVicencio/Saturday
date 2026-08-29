@@ -1,4 +1,4 @@
-﻿# modules/gemini_chat.py - Chat con LLM via Groq (gratis, ultra-rapido)
+# modules/gemini_chat.py - Chat con LLM via Groq (gratis, ultra-rapido)
 import os
 import json
 from typing import Optional

@@ -1,4 +1,4 @@
-﻿# modules/input_validator.py - Validación centralizada de input
+# modules/input_validator.py - Validación centralizada de input
 import re
 from typing import Optional, Tuple
 

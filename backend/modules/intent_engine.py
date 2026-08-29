@@ -15,7 +15,7 @@ Este motor:
 3. Extrae parámetros de forma declarativa (param_mode) en vez de código repetido.
 4. Deja un "gancho" (`interpret_with_llm`) para más adelante reemplazar o
    complementar el matching con un modelo real (Claude, GPT, etc.) sin tener
-   que tocar el resto de `core.py` — la interfaz de salida (IntentMatch) no cambia.
+   que tocar el resto de `core.py` -- la interfaz de salida (IntentMatch) no cambia.
 """
 
 import re

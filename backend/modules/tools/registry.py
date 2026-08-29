@@ -1,4 +1,4 @@
-﻿# tools/registry.py - Registro central de herramientas de Saturday
+# tools/registry.py - Registro central de herramientas de Saturday
 from typing import Dict, Any, Callable, Optional, List
 from dataclasses import dataclass
 import time

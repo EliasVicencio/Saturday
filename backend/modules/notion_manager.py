@@ -25,11 +25,11 @@ class NotionManager:
                 json={"page_size": 1}
             )
             if response.status_code == 200:
-                print("✅ Notion conectado correctamente")
+                print(" Notion conectado correctamente")
             else:
-                print(f"⚠️ Error conectando a Notion: {response.status_code}")
+                print(f" Error conectando a Notion: {response.status_code}")
         except Exception as e:
-            print(f"⚠️ Error conectando a Notion: {e}")
+            print(f" Error conectando a Notion: {e}")
     
     # ============ OBTENER TAREAS ============
     
@@ -64,7 +64,7 @@ class NotionManager:
             return tasks
             
         except Exception as e:
-            print(f"❌ Error obteniendo tareas: {e}")
+            print(f" Error obteniendo tareas: {e}")
             return []
     
     def _parse_task(self, page: Dict) -> Optional[Dict]:
@@ -94,7 +94,7 @@ class NotionManager:
             
             return task
         except Exception as e:
-            print(f"⚠️ Error parseando tarea: {e}")
+            print(f" Error parseando tarea: {e}")
             return None
     
     # ============ COMANDOS DE TAREAS ============
@@ -103,9 +103,9 @@ class NotionManager:
         """Obtiene tareas pendientes formateadas"""
         tasks = self.get_tasks(status="Todo", limit=10)
         if not tasks:
-            return "🎉 ¡No tienes tareas pendientes!"
+            return " No tienes tareas pendientes!"
         
-        lines = ["📋 Tareas pendientes:"]
+        lines = [" Tareas pendientes:"]
         for i, task in enumerate(tasks, 1):
             lines.append(f"  {i}. {task['name']}")
         return "\n".join(lines)
@@ -113,7 +113,7 @@ class NotionManager:
     def search_task(self, name: str) -> str:
         """Busca una tarea por nombre"""
         if not name:
-            return "¿Qué tarea quieres buscar?"
+            return "Qué tarea quieres buscar?"
         
         tasks = self.get_tasks(limit=50)
         matching = [t for t in tasks if name.lower() in t['name'].lower()]
@@ -123,7 +123,7 @@ class NotionManager:
         
         if len(matching) == 1:
             task = matching[0]
-            return f"📋 Encontré: '{task['name']}' - Estado: {task['status']}"
+            return f" Encontré: '{task['name']}' - Estado: {task['status']}"
         else:
             lines = [f"Encontré {len(matching)} tareas:"]
             for i, task in enumerate(matching[:5], 1):
@@ -133,7 +133,7 @@ class NotionManager:
     def create_task(self, name: str) -> str:
         """Crea una nueva tarea"""
         if not name:
-            return "¿Qué tarea quieres crear?"
+            return "Qué tarea quieres crear?"
         
         try:
             url = f"{self.base_url}/pages"
@@ -151,12 +151,12 @@ class NotionManager:
             
             return f"Tarea '{name}' creada"
         except Exception as e:
-            return f"❌ Error creando tarea: {e}"
+            return f" Error creando tarea: {e}"
     
     def complete_task(self, name: str) -> str:
         """Completa una tarea"""
         if not name:
-            return "¿Qué tarea quieres completar?"
+            return "Qué tarea quieres completar?"
         
         tasks = self.get_tasks(limit=50)
         matching = [t for t in tasks if name.lower() in t['name'].lower()]
@@ -176,7 +176,7 @@ class NotionManager:
                 patch_with_retry(url, headers=self.headers, json=payload)
                 return f"Tarea '{matching[0]['name']}' completada"
             except Exception as e:
-                return f"❌ Error: {e}"
+                return f" Error: {e}"
         else:
             lines = [f"Encontré varias tareas:"]
             for i, task in enumerate(matching[:5], 1):
@@ -186,7 +186,7 @@ class NotionManager:
     def delete_task(self, name: str) -> str:
         """Elimina una tarea"""
         if not name:
-            return "¿Qué tarea quieres eliminar?"
+            return "Qué tarea quieres eliminar?"
         
         tasks = self.get_tasks(limit=50)
         matching = [t for t in tasks if name.lower() in t['name'].lower()]
@@ -202,7 +202,7 @@ class NotionManager:
                 patch_with_retry(url, headers=self.headers, json=payload)
                 return f"Tarea '{matching[0]['name']}' eliminada"
             except Exception as e:
-                return f"❌ Error: {e}"
+                return f" Error: {e}"
         else:
             lines = [f"Encontré varias tareas:"]
             for i, task in enumerate(matching[:5], 1):
@@ -218,7 +218,7 @@ class NotionManager:
         tasks = self.get_tasks(status="Completado", limit=10)
         if not tasks:
             return "No hay tareas completadas"
-        lines = ["📋 Tareas completadas:"]
+        lines = [" Tareas completadas:"]
         for i, task in enumerate(tasks, 1):
-            lines.append(f"  {i}. {task['name']} ✅")
+            lines.append(f"  {i}. {task['name']} ")
         return "\n".join(lines)

@@ -2,7 +2,7 @@
 """
 Sistema de memoria que mantiene contexto entre mensajes.
 Permite que Saturday recuerde qué habló, pregunte de seguimiento,
-y responda de forma natural (no solo comandos → respuestas).
+y responda de forma natural (no solo comandos  respuestas).
 """
 import json
 import os
@@ -92,7 +92,7 @@ class ConversationManager:
                         ctx.messages.append(Message(**msg_data))
                     self._conversations[chat_id] = ctx
         except Exception as e:
-            print(f"⚠️ Error cargando conversaciones: {e}")
+            print(f" Error cargando conversaciones: {e}")
     
     def _save(self):
         """Guarda conversaciones en disco"""
@@ -113,7 +113,7 @@ class ConversationManager:
             with open(self.SAVE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"⚠️ Error guardando conversaciones: {e}")
+            print(f" Error guardando conversaciones: {e}")
     
     def get_context(self, chat_id: int) -> ConversationContext:
         """Obtiene o crea el contexto de un chat"""

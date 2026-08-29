@@ -53,7 +53,7 @@ class SystemAgent(BaseAgent):
         # Default
         duration = (__import__("time").time() - start) * 1000
         return AgentResult(
-            response="No pude determinar qué acción de sistema necesitás. ¿Podés ser más específico?",
+            response="No pude determinar qué acción de sistema necesitás. Podés ser más específico?",
             agent=self.name,
             duration_ms=duration,
         )

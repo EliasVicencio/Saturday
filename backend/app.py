@@ -1,4 +1,4 @@
-﻿# backend/app.py - API para Saturday COMPLETA
+# backend/app.py - API para Saturday COMPLETA
 import sys
 import os
 import base64
@@ -87,11 +87,11 @@ def require_api_key(f):
     return decorated
 
 # ===== SALUDO DE BIENVENIDA =====
-# Guardamos el mensaje aquÃ­; el FRONTEND lo pide vÃ­a /api/greeting y lo
-# reproduce en el navegador (a travÃ©s de /api/speak), igual que cualquier
-# otra respuesta. Antes esto se reproducÃ­a en el propio servidor con
+# Guardamos el mensaje aqui; el FRONTEND lo pide via /api/greeting y lo
+# reproduce en el navegador (a traves de /api/speak), igual que cualquier
+# otra respuesta. Antes esto se reproducia en el propio servidor con
 # subprocess/mpg123 y dejaba un .mp3 temporal en el disco del backend,
-# lo cual no tiene relaciÃ³n con el navegador del usuario.
+# lo cual no tiene relacion con el navegador del usuario.
 _greeting_message = {"text": None, "ready": False}
 
 def build_welcome_message(core):
@@ -99,7 +99,7 @@ def build_welcome_message(core):
     try:
         hora = datetime.now().hour
         if hora < 12:
-            saludo = "Buenos dÃ­as"
+            saludo = "Buenos dias"
         elif hora < 19:
             saludo = "Buenas tardes"
         else:
@@ -117,7 +117,7 @@ def build_welcome_message(core):
                     data = response.json()
                     temp = data['main']['temp']
                     desc = data['weather'][0]['description']
-                    clima_info = f" Hoy en {city} hace {temp}Â°C con {desc}."
+                    clima_info = f" Hoy en {city} hace {temp}oC con {desc}."
         except (requests.RequestException, KeyError, TypeError):
             pass
 
@@ -129,14 +129,14 @@ def build_welcome_message(core):
         logger.error(f"Error preparando saludo: {e}")
 
 # ===== INICIALIZAR SATURDAY =====
-logger.info("=" * 50)
+logger.info("="* 50)
 logger.info("SATURDAY - Backend API")
-logger.info("=" * 50)
+logger.info("="* 50)
 logger.info("Inicializando Saturday Core...")
 _start_time = time.time()
 saturday = SaturdayCore()
 logger.info("Saturday Core inicializado correctamente")
-logger.info("=" * 50)
+logger.info("="* 50)
 
 # ===== PREPARAR SALUDO (sin tocar el audio del servidor) =====
 saludo_thread = threading.Thread(target=build_welcome_message, args=(saturday,), daemon=True)
@@ -238,7 +238,7 @@ def chat():
 @app.route('/api/conversation/<session_id>', methods=['GET'])
 @require_api_key
 def get_conversation(session_id):
-    """Obtiene el historial de conversaciÃ³n de una sesiÃ³n"""
+    """Obtiene el historial de conversacion de una sesion"""
     if not saturday.conversation:
         return jsonify({'error': 'ConversationManager no disponible'}), 503
 
@@ -749,7 +749,7 @@ def get_notes():
 @app.route('/api/whatsapp', methods=['POST'])
 @require_api_key
 def send_whatsapp():
-    """EnvÃ­a mensaje por WhatsApp"""
+    """Envia mensaje por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
     
@@ -771,7 +771,7 @@ def send_whatsapp():
 @app.route('/api/whatsapp/voice', methods=['POST'])
 @require_api_key
 def send_whatsapp_voice():
-    """EnvÃ­a mensaje de voz por WhatsApp"""
+    """Envia mensaje de voz por WhatsApp"""
     data = request.json
     message = data.get('message', 'Hola desde Saturday')
     
@@ -793,7 +793,7 @@ def send_whatsapp_voice():
 @app.route('/api/summary', methods=['POST'])
 @require_api_key
 def send_summary():
-    """EnvÃ­a el resumen del dÃ­a por WhatsApp"""
+    """Envia el resumen del dia por WhatsApp"""
     if not saturday.daily_summary:
         return jsonify({'error': 'DailySummary no disponible'}), 500
 

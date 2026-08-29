@@ -13,8 +13,8 @@ class CommunicationManager:
         self.whatsapp_api_key = os.getenv("WHATSAPP_API_KEY")
         self.whatsapp_enabled = bool(self.whatsapp_number and self.whatsapp_api_key)
         
-        print("📱 CommunicationManager inicializado")
-        print(f"   WhatsApp: {'✅ Activado' if self.whatsapp_enabled else '❌ No configurado'}")
+        print(" CommunicationManager inicializado")
+        print(f"   WhatsApp: {' Activado' if self.whatsapp_enabled else ' No configurado'}")
     
     # ================================================================
     # WHATSAPP (CallMeBot)
@@ -44,7 +44,7 @@ class CommunicationManager:
             response = get_with_retry(url, timeout=30)
             
             if response and response.status_code == 200:
-                print(f"✅ WhatsApp enviado")
+                print(f" WhatsApp enviado")
                 return {'success': True, 'message': 'WhatsApp enviado'}
             else:
                 return {'success': False, 'error': f'Error {response.status_code}: {response.text}'}
@@ -75,7 +75,7 @@ class CommunicationManager:
             response = get_with_retry(url, timeout=30)
             
             if response and response.status_code == 200:
-                print(f"✅ WhatsApp con voz enviado")
+                print(f" WhatsApp con voz enviado")
                 return {'success': True, 'message': 'WhatsApp con voz enviado'}
             else:
                 return {'success': False, 'error': f'Error {response.status_code}: {response.text}'}

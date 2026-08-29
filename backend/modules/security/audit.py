@@ -1,4 +1,4 @@
-﻿# security/audit.py - Audit logging para todas las acciones del sistema
+# security/audit.py - Audit logging para todas las acciones del sistema
 import sqlite3
 import os
 import time

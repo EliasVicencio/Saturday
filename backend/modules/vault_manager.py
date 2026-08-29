@@ -127,7 +127,7 @@ class VaultManager:
         item_path = os.path.join(self.wiki_dir, f"{item_slug}.md")
         item_body = item_summary.strip()
         if source_path:
-            item_body += f"\n\n📎 Fuente original: `{source_path}`"
+            item_body += f"\n\n Fuente original: `{source_path}`"
         item_body += f"\n\nParte de [[{hub_title}]]."
 
         item_frontmatter = (
@@ -300,8 +300,8 @@ class VaultManager:
     def get_stats_text(self) -> str:
         s = self.get_stats()
         return (
-            "🗂️ BÓVEDA:\n"
-            f"  📥 raw/: {s['raw_count']} archivos\n"
-            f"  📖 wiki/: {s['wiki_count']} notas ({s['graph_edges']} enlaces)\n"
-            f"  📤 outputs/: {s['outputs_count']} entregas"
+            " BÓVEDA:\n"
+            f"   raw/: {s['raw_count']} archivos\n"
+            f"   wiki/: {s['wiki_count']} notas ({s['graph_edges']} enlaces)\n"
+            f"   outputs/: {s['outputs_count']} entregas"
         )

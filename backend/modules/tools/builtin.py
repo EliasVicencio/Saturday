@@ -1,4 +1,4 @@
-﻿# tools/builtin.py - Todas las tools del sistema registradas
+# tools/builtin.py - Todas las tools del sistema registradas
 import os
 from .registry import ToolDef
 

@@ -82,7 +82,7 @@ class MemoryOpAgent(BaseAgent):
                         agent=self.name, duration_ms=duration,
                     )
                 return AgentResult(
-                    response="No detecté datos específicos para guardar. ¿Podés ser más explícito?",
+                    response="No detecté datos específicos para guardar. Podés ser más explícito?",
                     agent=self.name, duration_ms=duration,
                 )
 

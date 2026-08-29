@@ -15,10 +15,10 @@ class NewsManager:
         self.category = os.getenv("NEWSDATA_CATEGORY", "top")
         
         if not self.api_key:
-            print("⚠️ NEWSDATA_API_KEY no configurada.")
+            print(" NEWSDATA_API_KEY no configurada.")
             print("   Regístrate en: https://newsdata.io/")
         else:
-            print("📰 NewsManager inicializado (NewsData.io)")
+            print(" NewsManager inicializado (NewsData.io)")
     
     def is_available(self) -> bool:
         """Verifica si la API está configurada"""
@@ -89,11 +89,11 @@ class NewsManager:
                     })
                 return formatted
             else:
-                print(f"⚠️ Error en NewsData.io: {data.get('message', 'Error desconocido')}")
+                print(f" Error en NewsData.io: {data.get('message', 'Error desconocido')}")
                 return []
                 
         except Exception as e:
-            print(f"⚠️ Error obteniendo noticias: {e}")
+            print(f" Error obteniendo noticias: {e}")
             return []
     
     def search_news(self, query: str, limit: int = 5) -> List[Dict]:
@@ -133,11 +133,11 @@ class NewsManager:
                     })
                 return formatted
             else:
-                print(f"⚠️ Error en búsqueda: {data.get('message', 'Error desconocido')}")
+                print(f" Error en búsqueda: {data.get('message', 'Error desconocido')}")
                 return []
                 
         except Exception as e:
-            print(f"⚠️ Error buscando noticias: {e}")
+            print(f" Error buscando noticias: {e}")
             return []
     
     def get_news_by_category(self, category: str, limit: int = 5) -> List[Dict]:
@@ -147,9 +147,9 @@ class NewsManager:
     def format_news(self, articles: List[Dict]) -> str:
         """Formatea las noticias para mostrar"""
         if not articles:
-            return "📰 No hay noticias disponibles en este momento. Prueba con 'buscar noticias [tema]'"
+            return " No hay noticias disponibles en este momento. Prueba con 'buscar noticias [tema]'"
         
-        lines = ["📰 *NOTICIAS DE HOY*"]
+        lines = ["*NOTICIAS DE HOY*"]
         lines.append("")
         
         for i, article in enumerate(articles, 1):
@@ -162,34 +162,34 @@ class NewsManager:
                 title = title[:97] + "..."
             
             lines.append(f"**{i}. {title}**")
-            lines.append(f"📌 *Fuente:* {source}")
+            lines.append(f"*Fuente:* {source}")
             
             # Categoría
             if article.get('category'):
                 categories = ', '.join(article['category'][:2])
-                lines.append(f"🏷️ *Categoría:* {categories}")
+                lines.append(f"*Categoría:* {categories}")
             
             if description and len(description) > 0:
                 desc = description[:120] + "..." if len(description) > 120 else description
-                lines.append(f"📝 {desc}")
+                lines.append(f" {desc}")
             lines.append("")
         
-        lines.append("💡 *Comandos de noticias:*")
-        lines.append("  • 'noticias' - Noticias principales")
-        lines.append("  • 'noticias de [categoría]' - Filtrar")
-        lines.append("  • 'buscar noticias [tema]' - Buscar")
-        lines.append("  • 'noticias resumen' - Enviar por WhatsApp")
+        lines.append("*Comandos de noticias:*")
+        lines.append("  - 'noticias' - Noticias principales")
+        lines.append("  - 'noticias de [categoría]' - Filtrar")
+        lines.append("  - 'buscar noticias [tema]' - Buscar")
+        lines.append("  - 'noticias resumen' - Enviar por WhatsApp")
         lines.append("")
-        lines.append("📰 *Categorías:* business, entertainment, health, science, sports, technology, top, world")
+        lines.append("*Categorías:* business, entertainment, health, science, sports, technology, top, world")
         
         return "\n".join(lines)
     
     def format_news_for_whatsapp(self, articles: List[Dict]) -> str:
         """Formatea noticias para WhatsApp"""
         if not articles:
-            return "📰 No hay noticias disponibles."
+            return " No hay noticias disponibles."
         
-        lines = ["📰 *NOTICIAS DE HOY*"]
+        lines = ["*NOTICIAS DE HOY*"]
         lines.append("")
         
         for i, article in enumerate(articles[:5], 1):
@@ -199,7 +199,7 @@ class NewsManager:
             lines.append(f"{i}. {title}")
         
         lines.append("")
-        lines.append("💡 Usa 'noticias' para más detalles.")
+        lines.append(" Usa 'noticias' para más detalles.")
         
         return "\n".join(lines)
     

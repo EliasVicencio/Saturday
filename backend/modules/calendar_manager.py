@@ -1,4 +1,4 @@
-﻿# modules/calendar_manager.py
+# modules/calendar_manager.py
 import os
 import json
 from datetime import datetime, timedelta

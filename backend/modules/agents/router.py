@@ -89,7 +89,7 @@ class AgentRouter:
                 ))
 
                 return {
-                    "response": f"⚠️ Requiere confirmación: {result.confirmation_action}\n{result.response}",
+                    "response": f" Requiere confirmación: {result.confirmation_action}\n{result.response}",
                     "agent": result.agent,
                     "requires_confirmation": True,
                     "confirmation_id": conf.id,

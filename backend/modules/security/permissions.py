@@ -1,4 +1,4 @@
-﻿# security/permissions.py - Permisos por agente y capability
+# security/permissions.py - Permisos por agente y capability
 from typing import Dict, Set
 
 # Definicion de permisos por capability

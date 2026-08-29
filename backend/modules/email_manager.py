@@ -1,4 +1,4 @@
-﻿# modules/email_manager.py
+# modules/email_manager.py
 import os
 import json
 import base64

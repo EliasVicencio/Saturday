@@ -1,4 +1,4 @@
-﻿# modules/core.py - Nucleo de Saturday COMPLETO
+# modules/core.py - Nucleo de Saturday COMPLETO
 import os
 from datetime import datetime
 from typing import Dict, Any
@@ -6,7 +6,7 @@ import networkx as nx
 from modules.http_utils import get_with_retry
 from modules.config import config
 
-# Importar mÃ³dulos
+# Importar modulos
 try:
     from modules.notion_manager import NotionManager
     NOTION_AVAILABLE = True
@@ -55,46 +55,46 @@ except ImportError:
 try:
     from modules.communication import CommunicationManager
     COMMUNICATION_AVAILABLE = True
-    print("âœ… CommunicationManager importado correctamente")
+    print(" CommunicationManager importado correctamente")
 except ImportError as e:
     COMMUNICATION_AVAILABLE = False
-    print(f"âš ï¸ CommunicationManager no disponible: {e}")
+    print(f" CommunicationManager no disponible: {e}")
 
 try:
     from modules.daily_summary import DailySummary
     DAILY_SUMMARY_AVAILABLE = True
 except ImportError:
     DAILY_SUMMARY_AVAILABLE = False
-    print("âš ï¸ DailySummary no disponible")
+    print(" DailySummary no disponible")
     
 try:
     from modules.scheduler import Scheduler
     SCHEDULER_AVAILABLE = True
 except ImportError:
     SCHEDULER_AVAILABLE = False
-    print("âš ï¸ Scheduler no disponible")
+    print(" Scheduler no disponible")
     
 try:
     from modules.spotify_manager import SpotifyManager
     SPOTIFY_AVAILABLE = True
 except ImportError:
     SPOTIFY_AVAILABLE = False
-    print("âš ï¸ SpotifyManager no disponible")
+    print(" SpotifyManager no disponible")
     
 try:
     from modules.news_manager import NewsManager
     NEWS_AVAILABLE = True
 except ImportError:
     NEWS_AVAILABLE = False
-    print("âš ï¸ NewsManager no disponible")
+    print(" NewsManager no disponible")
     
 try:
     from modules.camera_manager import CameraManager
     CAMERA_AVAILABLE = True
-    print("âœ… CameraManager importado correctamente")
+    print(" CameraManager importado correctamente")
 except ImportError as e:
     CAMERA_AVAILABLE = False
-    print(f"âš ï¸ CameraManager no disponible: {e}")
+    print(f" CameraManager no disponible: {e}")
 
 try:
     from modules.conversation_manager import ConversationManager
@@ -160,7 +160,7 @@ except ImportError:
     PERMS_AVAILABLE = False
 
 class SaturdayCore:
-    """NÃºcleo de inteligencia de Saturday"""
+    """Nucleo de inteligencia de Saturday"""
 
     def _execute_tool(self, tool_name, tool_args):
         """Execute a tool by name with arguments. Returns string result."""
@@ -190,27 +190,27 @@ class SaturdayCore:
             return f"Error ejecutando {tool_name}: {str(e)}"
     
     def __init__(self):
-        print("ðŸ§  Inicializando nÃºcleo de Saturday...")
+        print(" Inicializando nucleo de Saturday...")
         
         # Inicializar DataManager
         self.data = None
         if DATA_AVAILABLE:
             try:
                 self.data = DataManager()
-                print("âœ… DataManager inicializado")
+                print(" DataManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando DataManager: {e}")
+                print(f" Error inicializando DataManager: {e}")
         
-        # Inicializar VaultManager (memoria en Markdown, "bÃ³veda/")
+        # Inicializar VaultManager (memoria en Markdown, "boveda/")
         self.vault = None
         if VAULT_AVAILABLE:
             try:
                 self.vault = VaultManager()
-                print("âœ… VaultManager inicializado")
+                print(" VaultManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando VaultManager: {e}")
+                print(f" Error inicializando VaultManager: {e}")
 
-        # Motor de interpretaciÃ³n de intenciones (sinÃ³nimos + fuzzy matching,
+        # Motor de interpretacion de intenciones (sinonimos + fuzzy matching,
         # ver modules/intent_engine.py)
         self.intent_engine = build_default_engine()
 
@@ -220,38 +220,38 @@ class SaturdayCore:
             try:
                 if config.notion_api_key and config.notion_db_id:
                     self.notion = NotionManager(config.notion_api_key, config.notion_db_id)
-                    print("âœ… Notion conectado")
+                    print(" Notion conectado")
                 else:
-                    print("âš ï¸ NOTION_API_KEY o NOTION_DB_ID no configurados")
+                    print("  NOTION_API_KEY o NOTION_DB_ID no configurados")
             except Exception as e:
-                print(f"âš ï¸ Error conectando a Notion: {e}")
+                print(f"  Error conectando a Notion: {e}")
         
         # Inicializar VoiceManager
         self.voice = None
         if VOICE_AVAILABLE:
             try:
                 self.voice = VoiceManager()
-                print("âœ… VoiceManager inicializado")
+                print(" VoiceManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando VoiceManager: {e}")
+                print(f" Error inicializando VoiceManager: {e}")
         
         # Inicializar Calendar
         self.calendar = None
         if CALENDAR_AVAILABLE:
             try:
                 self.calendar = CalendarManager()
-                print("âœ… CalendarManager inicializado")
+                print(" CalendarManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando CalendarManager: {e}")
+                print(f" Error inicializando CalendarManager: {e}")
         
         # Inicializar Email
         self.email = None
         if EMAIL_AVAILABLE:
             try:
                 self.email = EmailManager()
-                print("âœ… EmailManager inicializado")
+                print(" EmailManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando EmailManager: {e}")
+                print(f" Error inicializando EmailManager: {e}")
         
         # Inicializar Telegram
         self.telegram = None
@@ -259,70 +259,70 @@ class SaturdayCore:
             try:
                 if config.telegram_bot_token:
                     self.telegram = TelegramBot(self, config.telegram_bot_token)
-                    print("âœ… TelegramBot inicializado")
+                    print(" TelegramBot inicializado")
                 else:
-                    print("âš ï¸ TELEGRAM_BOT_TOKEN no configurado")
+                    print("  TELEGRAM_BOT_TOKEN no configurado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando TelegramBot: {e}")
+                print(f"  Error inicializando TelegramBot: {e}")
         
         # Inicializar Communication (WhatsApp)
         self.communication = None
         if COMMUNICATION_AVAILABLE:
             try:
                 self.communication = CommunicationManager()
-                print("âœ… CommunicationManager inicializado")
+                print(" CommunicationManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando CommunicationManager: {e}")
+                print(f" Error inicializando CommunicationManager: {e}")
                 
         self.daily_summary = None
         if DAILY_SUMMARY_AVAILABLE:
             try:
                 self.daily_summary = DailySummary(self)
-                print("âœ… DailySummary inicializado")
+                print(" DailySummary inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando DailySummary: {e}")
+                print(f" Error inicializando DailySummary: {e}")
                 
         self.scheduler = None
         if SCHEDULER_AVAILABLE:
             try:
                 self.scheduler = Scheduler(self)
-                print("âœ… Scheduler inicializado")
+                print(" Scheduler inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando Scheduler: {e}")
+                print(f" Error inicializando Scheduler: {e}")
         
         self.spotify = None
         if SPOTIFY_AVAILABLE:
             try:
                 self.spotify = SpotifyManager()
-                print("âœ… SpotifyManager inicializado")
+                print(" SpotifyManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando SpotifyManager: {e}")
+                print(f" Error inicializando SpotifyManager: {e}")
                 
         self.news = None
         if NEWS_AVAILABLE:
             try:
                 self.news = NewsManager()
-                print("âœ… NewsManager inicializado")
+                print(" NewsManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando NewsManager: {e}")
+                print(f" Error inicializando NewsManager: {e}")
                 
-        # Inicializar CÃ¡mara
+        # Inicializar Camara
         self.camera = None
         if CAMERA_AVAILABLE:
             try:
                 self.camera = CameraManager()
-                print("âœ… CameraManager inicializado")
+                print(" CameraManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando CameraManager: {e}")
+                print(f" Error inicializando CameraManager: {e}")
         
         # Inicializar ConversationManager (memoria conversacional)
         self.conversation = None
         if CONVERSATION_AVAILABLE:
             try:
                 self.conversation = ConversationManager()
-                print("âœ… ConversationManager inicializado")
+                print(" ConversationManager inicializado")
             except Exception as e:
-                print(f"âš ï¸ Error inicializando ConversationManager: {e}")
+                print(f" Error inicializando ConversationManager: {e}")
         
         # Inicializar memoria persistente (SQLite)
         self.memory_store = None
@@ -413,10 +413,10 @@ class SaturdayCore:
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
         
-        # Auto-iniciar scheduler y programar tareas autÃ³nomas
+        # Auto-iniciar scheduler y programar tareas autonomas
         self._setup_autonomous_tasks()
         
-        print("âœ… NÃºcleo inicializado correctamente")
+        print(" Nucleo inicializado correctamente")
     
     def _describe_scene(self, question: str = "Que hay en la imagen?") -> str:
         if not self.privacy or not self.privacy.is_enabled("camera_enabled"):
@@ -451,7 +451,7 @@ class SaturdayCore:
     def build_knowledge_graph(self):
         """Construye el mapa de nodos de conocimiento"""
         actions = {
-            # InformaciÃ³n
+            # Informacion
             "hora": self.get_time,
             "fecha": self.get_date,
             "clima": self.get_weather,
@@ -485,11 +485,11 @@ class SaturdayCore:
             "no_leidos": self.get_unread_emails,
             "enviar_correo": self.send_email,
             
-            # EstadÃ­sticas
+            # Estadisticas
             "estadisticas": self.get_stats,
             "system_info": self.get_system_info,
             
-            # ComunicaciÃ³n (WhatsApp)
+            # Comunicacion (WhatsApp)
             "enviar_whatsapp": self.send_whatsapp,
             "enviar_voz_whatsapp": self.send_whatsapp_voice,
             
@@ -516,10 +516,10 @@ class SaturdayCore:
             "buscar_noticias": self.search_news,
             "noticias_resumen": self.get_news_summary,
             
-            # CÃ¡mara
+            # Camara
             "get_camera": self.get_camera,
 
-            # BÃ³veda (memoria en Markdown)
+            # Boveda (memoria en Markdown)
             "guardar_boveda": self.guardar_en_boveda,
             "buscar_boveda": self.buscar_en_boveda,
             "estado_boveda": self.estado_boveda,
@@ -539,8 +539,8 @@ class SaturdayCore:
     
     def process_intent(self, text: str, chat_id: int = None) -> Dict[str, Any]:
         """
-        Procesa la intenciÃ³n del usuario con contexto conversacional.
-        Si chat_id se provee, usa memoria de conversaciÃ³n.
+        Procesa la intencion del usuario con contexto conversacional.
+        Si chat_id se provee, usa memoria de conversacion.
         """
         # Registrar mensaje del usuario si hay contexto
         if chat_id and self.conversation:
@@ -580,7 +580,7 @@ class SaturdayCore:
                 except Exception as e:
                     response = "Hubo un error procesando tu mensaje. Intenta de nuevo."
             else:
-                response = "No entendí tu petición. ¿Puedes repetirla o decir 'ayuda' para ver qué puedo hacer?"
+                response = "No entendí tu petición. Puedes repetirla o decir 'ayuda' para ver qué puedo hacer?"
             
             if chat_id and self.conversation:
                 self.conversation.add_assistant_message(chat_id, response, "general")
@@ -597,10 +597,10 @@ class SaturdayCore:
             self.conversation.clear_pending_question(chat_id)
 
         # ------------------------------------------------------------
-        # IntenciÃ³n "abrir_noticias": solo indica al frontend cambiar vista
+        # Intencion "abrir_noticias": solo indica al frontend cambiar vista
         # ------------------------------------------------------------
         if match.meta.get("navigate"):
-            response = "Abriendo el panel de noticias ðŸ“°"
+            response = "Abriendo el panel de noticias o"
             if chat_id and self.conversation:
                 self.conversation.add_assistant_message(chat_id, response, intent)
             return {
@@ -611,7 +611,7 @@ class SaturdayCore:
             }
 
         # ------------------------------------------------------------
-        # Resto de intenciones: se ejecutan a travÃ©s del knowledge_graph
+        # Resto de intenciones: se ejecutan a traves del knowledge_graph
         # ------------------------------------------------------------
         if intent in self.knowledge_graph:
             node = self.knowledge_graph.nodes[intent]
@@ -624,13 +624,13 @@ class SaturdayCore:
                         result = self._enrich_response(intent, result, chat_id)
                         self.conversation.add_assistant_message(chat_id, result, intent)
                     
-                    self.send_to_telegram(f"ðŸ“± Interfaz: {text}")
-                    self.send_to_telegram(f"ðŸŸ£ Saturday: {result}")
+                    self.send_to_telegram(f" Interfaz: {text}")
+                    self.send_to_telegram(f" Saturday: {result}")
                     return {"intent": intent, "response": result, "action": True}
                 except Exception as e:
-                    return {"intent": "error", "response": f"âŒ Error: {str(e)}", "action": False}
+                    return {"intent": "error", "response": f" Error: {str(e)}", "action": False}
 
-        return {"intent": "general", "response": "No entendÃ­ tu peticiÃ³n. Â¿Puedes repetirla?", "action": False}
+        return {"intent": "general", "response": "No entendi tu peticion. ?Puedes repetirla?", "action": False}
 
     def process_via_router(self, text: str, chat_id: int = None, session_id: str = "") -> Dict[str, Any]:
         """
@@ -645,21 +645,21 @@ class SaturdayCore:
     def _enrich_response(self, intent: str, result: str, chat_id: int) -> str:
         """
         Enriquece la respuesta con contexto conversacional.
-        Agrega follow-ups naturales segÃºn la intenciÃ³n.
+        Agrega follow-ups naturales segun la intencion.
         """
         if not self.conversation:
             return result
         
         ctx = self.conversation.get_context(chat_id)
         
-        # Follow-ups naturales segÃºn intenciÃ³n
+        # Follow-ups naturales segun intencion
         followups = {
-            "clima": " Â¿Te parece si te aviso si cambia el clima?",
-            "hora": " Â¿Necesitas que te recuerde algo para despuÃ©s?",
-            "fecha": " Â¿Tienes algÃºn evento hoy?",
-            "tareas": " Â¿Quieres que te ayude con alguna?",
-            "noticias": " Â¿Te interesa algÃºn tema en particular?",
-            "correos": " Â¿Quieres que responda alguno?",
+            "clima": " ?Te parece si te aviso si cambia el clima?",
+            "hora": " ?Necesitas que te recuerde algo para despues?",
+            "fecha": " ?Tienes algun evento hoy?",
+            "tareas": " ?Quieres que te ayude con alguna?",
+            "noticias": " ?Te interesa algun tema en particular?",
+            "correos": " ?Quieres que responda alguno?",
         }
         
         if intent in followups and len(result) < 200:
@@ -674,78 +674,78 @@ class SaturdayCore:
         
         # Mapear topic a acciones de seguimiento
         followup_responses = {
-            "clima": "El clima es algo que cambia seguido. Â¿Quieres que te avise si hay lluvia pronosticada?",
-            "hora": "La hora no cambia mucho ðŸ˜„. Â¿Necesitas programar algo?",
-            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". Â¿Tienes planes?",
-            "tareas": "Â¿Quieres que te muestre las tareas pendientes o creemos una nueva?",
-            "noticias": "Â¿Hay algÃºn tema que te interese mÃ¡s? Puedo buscar noticias especÃ­ficas.",
-            "correos": "Â¿Quieres que revise tus correos no leÃ­dos?",
-            "spotify": "Â¿Quieres que ponga algo de mÃºsica?",
+            "clima": "El clima es algo que cambia seguido. ?Quieres que te avise si hay lluvia pronosticada?",
+            "hora": "La hora no cambia mucho . ?Necesitas programar algo?",
+            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". ?Tienes planes?",
+            "tareas": "?Quieres que te muestre las tareas pendientes o creemos una nueva?",
+            "noticias": "?Hay algun tema que te interese mas? Puedo buscar noticias especificas.",
+            "correos": "?Quieres que revise tus correos no leidos?",
+            "spotify": "?Quieres que ponga algo de musica?",
         }
         
         response = followup_responses.get(last_topic, 
-            f"EstÃ¡bamos hablando de {last_topic}. Â¿QuÃ© quieres saber?")
+            f"Estabamos hablando de {last_topic}. ?Que quieres saber?")
         
         self.conversation.add_assistant_message(chat_id, response, "followup")
         
         return {"intent": "followup", "response": response, "action": False}
     
-    # ============ ACCIONES BÃSICAS ============
+    # ============ ACCIONES BÁSICAS ============
     
     def get_status(self, **kwargs) -> str:
         """Estado general de Saturday"""
         modules = []
         
-        # Verificar mÃ³dulos
+        # Verificar modulos
         if self.notion:
-            modules.append("âœ… Notion")
+            modules.append(" Notion")
         else:
-            modules.append("âŒ Notion")
+            modules.append(" Notion")
         
         if self.calendar:
-            modules.append("âœ… Calendario")
+            modules.append(" Calendario")
         else:
-            modules.append("âŒ Calendario")
+            modules.append(" Calendario")
         
         if self.email:
-            modules.append("âœ… Correos")
+            modules.append(" Correos")
         else:
-            modules.append("âŒ Correos")
+            modules.append(" Correos")
         
         if self.communication:
-            modules.append("âœ… WhatsApp")
+            modules.append(" WhatsApp")
         else:
-            modules.append("âŒ WhatsApp")
+            modules.append(" WhatsApp")
         
         if self.news:
-            modules.append("âœ… Noticias")
+            modules.append(" Noticias")
         else:
-            modules.append("âŒ Noticias")
+            modules.append(" Noticias")
         
         if self.voice:
-            modules.append("âœ… Voz (TTS/STT)")
+            modules.append(" Voz (TTS/STT)")
         else:
-            modules.append("âŒ Voz")
+            modules.append(" Voz")
         
         if self.scheduler:
-            scheduler_status = "ðŸŸ¢ Activo" if self.scheduler.is_running else "ðŸ”´ Detenido"
-            modules.append(f"â° Scheduler: {scheduler_status}")
+            scheduler_status = " Activo" if self.scheduler.is_running else " Detenido"
+            modules.append(f" Scheduler: {scheduler_status}")
         
         if self.conversation:
-            modules.append("âœ… Memoria conversacional")
+            modules.append(" Memoria conversacional")
         else:
-            modules.append("âŒ Memoria conversacional")
+            modules.append(" Memoria conversacional")
         
-        # InformaciÃ³n del sistema
+        # Informacion del sistema
         try:
             import psutil
             cpu = psutil.cpu_percent(interval=0.3)
             mem = psutil.virtual_memory()
-            sys_info = f"ðŸ’» CPU: {cpu}% | RAM: {mem.percent}%"
+            sys_info = f" CPU: {cpu}% | RAM: {mem.percent}%"
         except (ImportError, Exception):
             sys_info = ""
         
-        response = "ðŸŸ£ **ESTADO DE SATURDAY**\n\n"
+        response = "**ESTADO DE SATURDAY**\n\n"
         response += "\n".join(modules)
         if sys_info:
             response += f"\n\n{sys_info}"
@@ -758,358 +758,358 @@ class SaturdayCore:
     
     def get_date(self, **kwargs) -> str:
         ahora = datetime.now()
-        dias = ["lunes", "martes", "miÃ©rcoles", "jueves", "viernes", "sÃ¡bado", "domingo"]
+        dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
         meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", 
                  "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
         return f"Hoy es {dias[ahora.weekday()]}, {ahora.day} de {meses[ahora.month-1]} de {ahora.year}"
     
     def _setup_autonomous_tasks(self):
-        """Configura tareas autÃ³nomas del scheduler"""
+        """Configura tareas autonomas del scheduler"""
         if not self.scheduler:
-            print("âš ï¸ Scheduler no disponible, tareas autÃ³nomas no configuradas")
+            print(" Scheduler no disponible, tareas autonomas no configuradas")
             return
         
         try:
             self.scheduler.start()
-            print("â° Scheduler iniciado en segundo plano")
+            print(" Scheduler iniciado en segundo plano")
             
             # Programar resumen diario a las 21:00 (9 PM)
             self.scheduler.schedule_daily_summary(hour=21, minute=0)
-            print("ðŸ“‹ Resumen diario programado para las 21:00")
+            print(" Resumen diario programado para las 21:00")
             
-            # Programar tareas autÃ³nomas (correos, noticias, organizaciÃ³n)
+            # Programar tareas autonomas (correos, noticias, organizacion)
             self.scheduler.schedule_autonomous_tasks()
-            print("ðŸ¤– Tareas autÃ³nomas programadas")
+            print(" Tareas autonomas programadas")
             
         except Exception as e:
-            print(f"âš ï¸ Error configurando tareas autÃ³nomas: {e}")
+            print(f" Error configurando tareas autonomas: {e}")
     
     def get_weather(self, **kwargs) -> str:
         try:
             api_key = config.weather_api_key
             if not api_key:
-                return "âŒ No configuraste la API del clima"
+                return " No configuraste la API del clima"
             city = config.saturday_city
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
             response = get_with_retry(url, timeout=10)
             if response and response.status_code == 200:
                 data = response.json()
-                return f"ðŸŒ¤ï¸ El clima en {city} es {data['weather'][0]['description']} con {data['main']['temp']}Â°C"
-            return "âŒ Error obteniendo el clima"
+                return f" El clima en {city} es {data['weather'][0]['description']} con {data['main']['temp']}oC"
+            return " Error obteniendo el clima"
         except Exception as e:
-            return f"âŒ Error: {str(e)}"
+            return f" Error: {str(e)}"
     
     def get_greeting(self, **kwargs) -> str:
         hora = datetime.now().hour
         if hora < 12:
-            saludo = "Buenos dÃ­as"
+            saludo = "Buenos dias"
         elif hora < 19:
             saludo = "Buenas tardes"
         else:
             saludo = "Buenas noches"
-        return f"{saludo}! Soy Saturday, tu asistente personal. Â¿En quÃ© puedo ayudarte?"
+        return f"{saludo}! Soy Saturday, tu asistente personal. ?En que puedo ayudarte?"
     
     def get_help(self, **kwargs) -> str:
-        return """ðŸŸ£ COMANDOS DE SATURDAY:
+        return """ COMANDOS DE SATURDAY:
 
-ðŸ“‹ TAREAS (Notion):
-  â€¢ tareas - Tareas pendientes
-  â€¢ crear tarea [nombre] - Crea una tarea
-  â€¢ completar tarea [nombre] - Completa una tarea
-  â€¢ eliminar tarea [nombre] - Elimina una tarea
-  â€¢ tareas hoy - Tareas de hoy
-  â€¢ tareas completadas - Tareas completadas
+ TAREAS (Notion):
+  - tareas - Tareas pendientes
+  - crear tarea [nombre] - Crea una tarea
+  - completar tarea [nombre] - Completa una tarea
+  - eliminar tarea [nombre] - Elimina una tarea
+  - tareas hoy - Tareas de hoy
+  - tareas completadas - Tareas completadas
 
-ðŸ“ NOTAS:
-  â€¢ nota [texto] - Guarda una nota
-  â€¢ ver notas - Muestra notas
+ NOTAS:
+  - nota [texto] - Guarda una nota
+  - ver notas - Muestra notas
 
-â° RECORDATORIOS:
-  â€¢ recordatorio [texto] a las [hora] - Crea recordatorio
-  â€¢ ver recordatorios - Muestra recordatorios
-  â€¢ recordatorios hoy - Recordatorios de hoy
+ RECORDATORIOS:
+  - recordatorio [texto] a las [hora] - Crea recordatorio
+  - ver recordatorios - Muestra recordatorios
+  - recordatorios hoy - Recordatorios de hoy
 
-ðŸ“… CALENDARIO:
-  â€¢ eventos - Eventos prÃ³ximos
-  â€¢ eventos hoy - Eventos de hoy
-  â€¢ crear evento [tÃ­tulo] el [fecha] a las [hora]
+ CALENDARIO:
+  - eventos - Eventos proximos
+  - eventos hoy - Eventos de hoy
+  - crear evento [titulo] el [fecha] a las [hora]
 
-ðŸ“§ EMAILS:
-  â€¢ correos - Correos recientes
-  â€¢ no leÃ­dos - Correos no leÃ­dos
-  â€¢ enviar correo a [email] asunto [asunto]
+ EMAILS:
+  - correos - Correos recientes
+  - no leidos - Correos no leidos
+  - enviar correo a [email] asunto [asunto]
 
-ðŸ“± WHATSAPP:
-  â€¢ envÃ­a WhatsApp [mensaje] - EnvÃ­a mensaje de texto
-  â€¢ envÃ­a voz WhatsApp [mensaje] - EnvÃ­a mensaje de voz
+ WHATSAPP:
+  - envia WhatsApp [mensaje] - Envia mensaje de texto
+  - envia voz WhatsApp [mensaje] - Envia mensaje de voz
 
-ðŸ“Š ESTADÃSTICAS:
-  â€¢ estadisticas - EstadÃ­sticas de uso
+ ESTADISTICAS:
+  - estadisticas - Estadisticas de uso
 
-ðŸ• INFORMACIÃ“N:
-  â€¢ hora - Hora actual
-  â€¢ fecha - Fecha actual
-  â€¢ clima - Clima
+ INFORMACIN:
+  - hora - Hora actual
+  - fecha - Fecha actual
+  - clima - Clima
   
-ðŸ“° NOTICIAS:
-  â€¢ noticias - Noticias principales
-  â€¢ noticias de [categorÃ­a] - Filtrar por categorÃ­a
-  â€¢ buscar noticias [tema] - Buscar por tema
-  â€¢ noticias resumen - Enviar resumen por WhatsApp
+o NOTICIAS:
+  - noticias - Noticias principales
+  - noticias de [categoria] - Filtrar por categoria
+  - buscar noticias [tema] - Buscar por tema
+  - noticias resumen - Enviar resumen por WhatsApp
 
-ðŸ’¬ OTROS:
-  â€¢ hola - Saludo
-  â€¢ ayuda - Esta ayuda"""
+ OTROS:
+  - hola - Saludo
+  - ayuda - Esta ayuda"""
     
     # ============ TELEGRAM ============
     
     def send_to_telegram(self, text: str):
-        """EnvÃ­a un mensaje a Telegram si estÃ¡ disponible"""
+        """Envia un mensaje a Telegram si esta disponible"""
         if self.telegram and hasattr(self.telegram, 'send_message'):
             try:
                 self.telegram.send_message(text)
             except Exception as e:
-                print(f"âš ï¸ Error enviando a Telegram: {e}")
+                print(f" Error enviando a Telegram: {e}")
     
-    # ============ DELEGAR A MÃ“DULOS ============
+    # ============ DELEGAR A MDULOS ============
     
     def get_tasks(self, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.get_tasks_formatted()
     
     def search_task(self, name: str = None, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.search_task(name)
     
     def create_task(self, name: str = None, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.create_task(name)
     
     def complete_task(self, name: str = None, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.complete_task(name)
     
     def delete_task(self, name: str = None, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.delete_task(name)
     
     def get_tasks_today(self, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.get_tasks_today()
     
     def get_completed_tasks(self, **kwargs) -> str:
         if not self.notion:
-            return "âŒ Notion no estÃ¡ configurado"
+            return " Notion no esta configurado"
         return self.notion.get_completed_tasks()
     
     def create_note(self, text: str = None, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.create_note(text)
     
     def get_notes(self, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.get_notes()
     
     def search_notes(self, query: str = None, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.search_notes(query)
     
     def create_reminder(self, text: str = None, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.create_reminder(text)
     
     def get_reminders(self, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.get_reminders()
     
     def get_reminders_today(self, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.get_reminders_today()
     
     def get_stats(self, **kwargs) -> str:
         if not self.data:
-            return "âŒ DataManager no disponible"
+            return " DataManager no disponible"
         return self.data.get_stats()
     
     # ------------------------------------------------------------------
-    # BÃ“VEDA (memoria en Markdown)
+    # BVEDA (memoria en Markdown)
     # ------------------------------------------------------------------
 
     def guardar_en_boveda(self, text: str = None, **kwargs) -> str:
-        """Guarda algo dicho/capturado en raw/ de la bÃ³veda."""
+        """Guarda algo dicho/capturado en raw/ de la boveda."""
         if not self.vault:
-            return "âŒ VaultManager no disponible"
+            return " VaultManager no disponible"
         if not text:
-            return "Â¿QuÃ© quieres que guarde en la bÃ³veda?"
+            return "?Que quieres que guarde en la boveda?"
         path = self.vault.save_raw(text, source="voz" if kwargs.get("voz") else "chat")
-        return f"âœ… Guardado en la bÃ³veda: {path}"
+        return f" Guardado en la boveda: {path}"
 
     def buscar_en_boveda(self, text: str = None, **kwargs) -> str:
-        """Busca un texto en toda la bÃ³veda."""
+        """Busca un texto en toda la boveda."""
         if not self.vault:
-            return "âŒ VaultManager no disponible"
+            return " VaultManager no disponible"
         if not text:
-            return "Â¿QuÃ© quieres buscar en la bÃ³veda?"
+            return "?Que quieres buscar en la boveda?"
         results = self.vault.search(text)
         if not results:
-            return f"No encontrÃ© nada con '{text}' en la bÃ³veda."
-        lines = [f"ðŸ” {len(results)} resultado(s) para '{text}':"]
+            return f"No encontre nada con '{text}' en la boveda."
+        lines = [f" {len(results)} resultado(s) para '{text}':"]
         for r in results[:5]:
-            lines.append(f"  ðŸ“„ {r['path']}: ...{r['snippet']}...")
+            lines.append(f"   {r['path']}: ...{r['snippet']}...")
         return "\n".join(lines)
 
     def estado_boveda(self, **kwargs) -> str:
-        """Resumen de la bÃ³veda (cuÃ¡ntas notas hay en cada capa)."""
+        """Resumen de la boveda (cuantas notas hay en cada capa)."""
         if not self.vault:
-            return "âŒ VaultManager no disponible"
+            return " VaultManager no disponible"
         return self.vault.get_stats_text()
 
     def get_camera(self, **kwargs) -> str:
-        """Obtiene imagen/estado de la cÃ¡mara"""
+        """Obtiene imagen/estado de la camara"""
         if not self.camera:
-            return "âŒ CameraManager no disponible"
+            return " CameraManager no disponible"
         return self.camera.get_status()
     
     def get_system_info(self, **kwargs) -> str:
-        """Obtiene informaciÃ³n del sistema (CPU, RAM, disco)"""
+        """Obtiene informacion del sistema (CPU, RAM, disco)"""
         try:
             import psutil
             cpu = psutil.cpu_percent(interval=0.3)
             mem = psutil.virtual_memory()
             disk = psutil.disk_usage('/')
-            return (f"ðŸ’» CPU: {cpu}% | ðŸ“Ÿ RAM: {mem.percent}% ({mem.used//1024//1024}GB/{mem.total//1024//1024}GB) | "
-                    f"ðŸ’¿ Disco: {disk.percent}% ({disk.used//1024//1024}GB/{disk.total//1024//1024}GB)")
+            return (f" CPU: {cpu}% |  RAM: {mem.percent}% ({mem.used//1024//1024}GB/{mem.total//1024//1024}GB) | "
+                    f" Disco: {disk.percent}% ({disk.used//1024//1024}GB/{disk.total//1024//1024}GB)")
         except ImportError:
-            return "âŒ psutil no estÃ¡ instalado en el backend"
+            return " psutil no esta instalado en el backend"
         except Exception as e:
-            return f"âŒ Error: {str(e)}"
+            return f" Error: {str(e)}"
     
     def get_events(self, **kwargs) -> str:
         if not self.calendar:
-            return "âŒ CalendarManager no disponible"
+            return " CalendarManager no disponible"
         return self.calendar.get_events_formatted()
     
     def get_events_today(self, **kwargs) -> str:
         if not self.calendar:
-            return "âŒ CalendarManager no disponible"
+            return " CalendarManager no disponible"
         return self.calendar.get_events_today_formatted()
     
     def create_event(self, text: str = None, **kwargs) -> str:
         if not self.calendar:
-            return "âŒ CalendarManager no disponible"
+            return " CalendarManager no disponible"
         return self.calendar.create_event_from_text(text)
     
     def get_emails(self, **kwargs) -> str:
         if not self.email:
-            return "âŒ EmailManager no disponible"
+            return " EmailManager no disponible"
         return self.email.get_emails_formatted()
     
     def get_unread_emails(self, **kwargs) -> str:
         if not self.email:
-            return "âŒ EmailManager no disponible"
+            return " EmailManager no disponible"
         return self.email.get_unread_emails_formatted()
     
     def send_email(self, text: str = None, **kwargs) -> str:
         if not self.email:
-            return "âŒ EmailManager no disponible"
+            return " EmailManager no disponible"
         return self.email.send_email_from_text(text)
     
     # ============ WHATSAPP (CommunicationManager) ============
     
     def send_whatsapp(self, text: str = None, **kwargs) -> str:
-        """EnvÃ­a un mensaje por WhatsApp"""
+        """Envia un mensaje por WhatsApp"""
         if not self.communication:
-            return "âŒ CommunicationManager no disponible. Verifica la configuraciÃ³n."
+            return " CommunicationManager no disponible. Verifica la configuracion."
         
         if not text:
             text = kwargs.get("text", "")
         if not text:
-            return "Â¿QuÃ© mensaje quieres enviar? Dime: 'envÃ­a WhatsApp [mensaje]'"
+            return "?Que mensaje quieres enviar? Dime: 'envia WhatsApp [mensaje]'"
         
         # Limpiar el comando del texto
-        for word in ["envÃ­a WhatsApp", "enviar WhatsApp", "envÃ­a wsp", "enviar wsp", "whatsapp"]:
+        for word in ["envia WhatsApp", "enviar WhatsApp", "envia wsp", "enviar wsp", "whatsapp"]:
             text = text.replace(word, "").strip()
         
         if not text:
-            return "No entendÃ­ el mensaje. Dime: 'envÃ­a WhatsApp [mensaje]'"
+            return "No entendi el mensaje. Dime: 'envia WhatsApp [mensaje]'"
         
         result = self.communication.send_whatsapp_message(text)
         
         if result.get('success'):
-            return f"ðŸ“± Mensaje enviado por WhatsApp: '{text}'"
+            return f" Mensaje enviado por WhatsApp: '{text}'"
         else:
-            return f"âŒ Error al enviar WhatsApp: {result.get('error')}"
+            return f" Error al enviar WhatsApp: {result.get('error')}"
     
     def send_whatsapp_voice(self, text: str = None, **kwargs) -> str:
-        """EnvÃ­a un mensaje de voz por WhatsApp"""
+        """Envia un mensaje de voz por WhatsApp"""
         if not self.communication:
-            return "âŒ CommunicationManager no disponible. Verifica la configuraciÃ³n."
+            return " CommunicationManager no disponible. Verifica la configuracion."
         
         if not text:
             text = kwargs.get("text", "")
         if not text:
-            return "Â¿QuÃ© mensaje de voz quieres enviar? Dime: 'envÃ­a voz WhatsApp [mensaje]'"
+            return "?Que mensaje de voz quieres enviar? Dime: 'envia voz WhatsApp [mensaje]'"
         
         # Limpiar el comando del texto
-        for word in ["envÃ­a voz WhatsApp", "enviar voz WhatsApp", "voz WhatsApp", "whatsapp voz"]:
+        for word in ["envia voz WhatsApp", "enviar voz WhatsApp", "voz WhatsApp", "whatsapp voz"]:
             text = text.replace(word, "").strip()
         
         if not text:
-            return "No entendÃ­ el mensaje. Dime: 'envÃ­a voz WhatsApp [mensaje]'"
+            return "No entendi el mensaje. Dime: 'envia voz WhatsApp [mensaje]'"
         
         result = self.communication.send_whatsapp_voice(text)
         
         if result.get('success'):
-            return f"ðŸŽ¤ Mensaje de voz enviado por WhatsApp: '{text}'"
+            return f" Mensaje de voz enviado por WhatsApp: '{text}'"
         else:
-            return f"âŒ Error al enviar voz WhatsApp: {result.get('error')}"
+            return f" Error al enviar voz WhatsApp: {result.get('error')}"
     
     def send_daily_summary(self, **kwargs) -> str:
-        """EnvÃ­a un resumen del dÃ­a por WhatsApp"""
+        """Envia un resumen del dia por WhatsApp"""
         if not self.daily_summary:
-            return "âŒ DailySummary no disponible"
+            return " DailySummary no disponible"
         
         if not self.communication or not self.communication.whatsapp_enabled:
-            return "âŒ WhatsApp no configurado. Verifica WHATSAPP_NUMBER y WHATSAPP_API_KEY"
+            return " WhatsApp no configurado. Verifica WHATSAPP_NUMBER y WHATSAPP_API_KEY"
         
         result = self.daily_summary.send(via="whatsapp")
         
         if result.get('success'):
-            msg = "ðŸ“‹ Resumen del dÃ­a enviado por WhatsApp. Revisa tu telÃ©fono."
+            msg = " Resumen del dia enviado por WhatsApp. Revisa tu telefono."
             if result.get('vault_path'):
-                msg += f"\nðŸ—‚ï¸ Guardado en la bÃ³veda: {result['vault_path']}"
+                msg += f"\n Guardado en la boveda: {result['vault_path']}"
             return msg
         else:
-            return f"âŒ Error al enviar resumen: {result.get('error')}"
+            return f" Error al enviar resumen: {result.get('error')}"
         
     def open_spotify(self, **kwargs) -> str:
         """Abre Spotify Web"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         return self.spotify.open_spotify()
 
     def play_music(self, text: str = None, **kwargs) -> str:
-        """Reproduce mÃºsica en Spotify"""
+        """Reproduce musica en Spotify"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         
         if not text:
             text = kwargs.get("text", "")
         
         # Limpiar el comando
-        for word in ["reproduce", "reproducir", "pon", "toca", "play", "mÃºsica", "canciÃ³n", "cancion"]:
+        for word in ["reproduce", "reproducir", "pon", "toca", "play", "musica", "cancion", "cancion"]:
             if text:
                 text = text.replace(word, "").strip()
         
@@ -1119,35 +1119,35 @@ class SaturdayCore:
         return self.spotify.play(text)
 
     def pause_music(self, **kwargs) -> str:
-        """Pausa la mÃºsica"""
+        """Pausa la musica"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         return self.spotify.pause()
 
     def next_track(self, **kwargs) -> str:
-        """Siguiente canciÃ³n"""
+        """Siguiente cancion"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         return self.spotify.next_track()
 
     def previous_track(self, **kwargs) -> str:
-        """CanciÃ³n anterior"""
+        """Cancion anterior"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         return self.spotify.previous_track()
 
     def current_track(self, **kwargs) -> str:
-        """Muestra la canciÃ³n actual"""
+        """Muestra la cancion actual"""
         if not self.spotify:
-            return "âŒ Spotify no disponible"
+            return " Spotify no disponible"
         return self.spotify.get_current_track()
     
     def get_news(self, text: str = None, **kwargs) -> str:
         """Obtiene noticias principales"""
         if not self.news or not self.news.is_available():
-            return "âŒ Noticias no disponible. Verifica NEWS_API_KEY."
+            return " Noticias no disponible. Verifica NEWS_API_KEY."
         
-        # Detectar categorÃ­a
+        # Detectar categoria
         category = None
         if text:
             categories = ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology']
@@ -1162,7 +1162,7 @@ class SaturdayCore:
     def search_news(self, text: str = None, **kwargs) -> str:
         """Busca noticias por tema"""
         if not self.news or not self.news.is_available():
-            return "âŒ Noticias no disponible. Verifica NEWS_API_KEY."
+            return " Noticias no disponible. Verifica NEWS_API_KEY."
         
         if not text:
             text = kwargs.get("text", "")
@@ -1173,15 +1173,15 @@ class SaturdayCore:
                 text = text.replace(word, "").strip()
         
         if not text:
-            return "Â¿QuÃ© tema quieres buscar? Dime: 'buscar noticias [tema]'"
+            return "?Que tema quieres buscar? Dime: 'buscar noticias [tema]'"
         
         articles = self.news.search_news(text, limit=5)
         return self.news.format_news(articles)
 
     def get_news_summary(self, **kwargs) -> str:
-        """EnvÃ­a un resumen de noticias por WhatsApp"""
+        """Envia un resumen de noticias por WhatsApp"""
         if not self.news or not self.news.is_available():
-            return "âŒ Noticias no disponible. Verifica NEWS_API_KEY."
+            return " Noticias no disponible. Verifica NEWS_API_KEY."
         
         articles = self.news.get_top_headlines(limit=5)
         
@@ -1193,7 +1193,7 @@ class SaturdayCore:
         result = self.communication.send_whatsapp_message(message)
         
         if result.get('success'):
-            return "ðŸ“° Resumen de noticias enviado por WhatsApp"
+            return "o Resumen de noticias enviado por WhatsApp"
         else:
             return self.news.format_news(articles)
 
