@@ -676,7 +676,13 @@ class SaturdayCore:
         followup_responses = {
             "clima": "El clima es algo que cambia seguido. ?Quieres que te avise si hay lluvia pronosticada?",
             "hora": "La hora no cambia mucho . ?Necesitas programar algo?",
-            "fecha": "Hoy es " + datetime.now().strftime("%A %d de %B") + ". ?Tienes planes?",
+            _DIAS = {0: "lunes", 1: "martes", 2: "miercoles", 3: "jueves", 4: "viernes", 5: "sabado", 6: "domingo"}
+            _MESES = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+                      7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
+            _now = datetime.now()
+            _dia = _DIAS[_now.weekday()]
+            _mes = _MESES[_now.month]
+            "fecha": f"Hoy es {_dia} {_now.day} de {_mes}. ?Tienes planes?",
             "tareas": "?Quieres que te muestre las tareas pendientes o creemos una nueva?",
             "noticias": "?Hay algun tema que te interese mas? Puedo buscar noticias especificas.",
             "correos": "?Quieres que revise tus correos no leidos?",
@@ -754,7 +760,7 @@ class SaturdayCore:
     
     def get_time(self, **kwargs) -> str:
         ahora = datetime.now()
-        return f"Son las {ahora.strftime('%I:%M %p')}"
+        return f"Son las {ahora.strftime('%H:%M')}"
     
     def get_date(self, **kwargs) -> str:
         ahora = datetime.now()
@@ -773,7 +779,7 @@ class SaturdayCore:
             self.scheduler.start()
             print(" Scheduler iniciado en segundo plano")
             
-            # Programar resumen diario a las 21:00 (9 PM)
+            # Programar resumen diario a las 21:00 (21:00)
             self.scheduler.schedule_daily_summary(hour=21, minute=0)
             print(" Resumen diario programado para las 21:00")
             

@@ -78,7 +78,7 @@ def require_api_key(f):
     def decorated(*args, **kwargs):
         if not API_KEY:
             logger.warning("API key no configurada - rechazando request")
-            return jsonify({"error": "Server misconfigured"}), 503
+            return jsonify({"error": "Servidor mal configurado"}), 503
         key = request.headers.get("X-API-Key", "")
         if hmac.compare_digest(key, API_KEY) or _is_valid_session(key):
             return f(*args, **kwargs)
