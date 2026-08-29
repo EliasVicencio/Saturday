@@ -675,14 +675,8 @@ class SaturdayCore:
         # Mapear topic a acciones de seguimiento
         followup_responses = {
             "clima": "El clima es algo que cambia seguido. ?Quieres que te avise si hay lluvia pronosticada?",
-            "hora": "La hora no cambia mucho . ?Necesitas programar algo?",
-            _DIAS = {0: "lunes", 1: "martes", 2: "miercoles", 3: "jueves", 4: "viernes", 5: "sabado", 6: "domingo"}
-            _MESES = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
-                      7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
-            _now = datetime.now()
-            _dia = _DIAS[_now.weekday()]
-            _mes = _MESES[_now.month]
-            "fecha": f"Hoy es {_dia} {_now.day} de {_mes}. ?Tienes planes?",
+            "hora": "La hora no cambia mucho. ?Necesitas programar algo?",
+            "fecha": self._fecha_es(),
             "tareas": "?Quieres que te muestre las tareas pendientes o creemos una nueva?",
             "noticias": "?Hay algun tema que te interese mas? Puedo buscar noticias especificas.",
             "correos": "?Quieres que revise tus correos no leidos?",
