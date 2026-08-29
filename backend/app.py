@@ -170,17 +170,17 @@ def privacy_set():
 
 @app.route("/api/agents", methods=["GET"])
 def agents_list():
-    agents = saturday.router.list_agents() if saturday.router else []
+    agents = saturday.agent_router.list_agents() if saturday.agent_router else []
     return jsonify({"agents": agents})
 
 @app.route("/api/agents/stats", methods=["GET"])
 def agents_stats():
-    stats = saturday.router.get_stats() if saturday.router else {}
+    stats = saturday.agent_router.get_stats() if saturday.agent_router else {}
     return jsonify({"stats": stats})
 
 @app.route("/api/agents/checkpoints", methods=["GET"])
 def agents_checkpoints():
-    checkpoints = saturday.router.get_checkpoints() if saturday.router else []
+    checkpoints = saturday.agent_router.get_checkpoints() if saturday.agent_router else []
     return jsonify({"checkpoints": checkpoints})
 
 @app.route("/api/agents/confirm", methods=["POST"])
@@ -188,12 +188,12 @@ def agents_confirm():
     data = request.get_json(silent=True) or {}
     checkpoint_id = data.get("checkpoint_id")
     approved = data.get("approved", True)
-    saturday.router.confirm_checkpoint(checkpoint_id, approved)
+    saturday.agent_router.confirm_checkpoint(checkpoint_id, approved)
     return jsonify({"status": "confirmed"})
 
 @app.route("/api/agents/pending", methods=["GET"])
 def agents_pending():
-    pending = saturday.router.get_pending() if saturday.router else []
+    pending = saturday.agent_router.get_pending() if saturday.agent_router else []
     return jsonify({"pending": pending})
 
 @app.route("/api/agents/route", methods=["POST"])
