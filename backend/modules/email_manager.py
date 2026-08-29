@@ -1,57 +1,64 @@
-# modules/email_manager.py
-import os
-import json
-import base64
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import List, Dict, Optional
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+# modules/email_manager.py - Gestion de correos via Zapier webhooks
+from typing import Dict, Any, Optional
+
 
 class EmailManager:
-    SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+    """Gestiona correos electronicos via Zapier ? Gmail."""
     
-    def __init__(self, credentials_path: str = "credentials/credentials.json"):
-        self.credentials_path = credentials_path
-        self.service = None
-        self._authenticate()
-    
-    def _authenticate(self):
-        creds = None
-        token_path = "credentials/token_email.json"
-        
-        if not os.path.exists("credentials"):
-            os.makedirs("credentials")
-        
-        if os.path.exists(token_path):
-            with open(token_path, 'r') as token:
-                creds = Credentials.from_authorized_user_file(token_path, self.SCOPES)
-        
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                if not os.path.exists(self.credentials_path):
-                    print("No se encuentra credentials.json")
-                    return
-                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, self.SCOPES)
-                creds = flow.run_local_server(port=0)
-            
-            with open(token_path, 'w') as token:
-                token.write(creds.to_json())
-        
-        self.service = build('gmail', 'v1', credentials=creds)
-        print("Gmail autenticado")
+    def __init__(self, zapier=None):
+        self.zapier = zapier
     
     def get_emails_formatted(self) -> str:
-        return "Correos (implementacion en progreso)"
+        if not self.zapier or not self.zapier.is_available("email"):
+            return "Los correos no estan configurados. Configura un webhook de Zapier para Gmail."
+        return (
+            "Puedo ayudarte con correos via Zapier.\n"
+            "Opciones: 'revisa mis correos', 'envia un correo a [nombre]'\n"
+            "Nota: La lectura de correos requiere un Zap con trigger de Gmail."
+        )
     
     def get_unread_emails_formatted(self) -> str:
-        return "Correos no leidos (implementacion en progreso)"
+        if not self.zapier or not self.zapier.is_available("email"):
+            return "Los correos no estan configurados."
+        return "Consultando correos no leidos via Zapier..."
     
     def send_email_from_text(self, text: str) -> str:
         if not text:
-            return "Que correo quieres enviar?"
-        return "Correo enviado (implementacion en progreso)"
+            return "Que correo quieres enviar? Dame el destinatario y el mensaje."
+        
+        if not self.zapier or not self.zapier.is_available("email"):
+            return "Los correos no estan configurados. Configura un webhook de Zapier para Gmail."
+        
+        parsed = self._parse_email_text(text)
+        if not parsed.get("to"):
+            return "Necesito saber a quien enviar el correo. Ejemplo: 'envia un correo a Juan sobre la reunion'"
+        
+        result = self.zapier.send_email(
+            to=parsed["to"],
+            subject=parsed.get("subject", "Correo desde Saturday"),
+            body=parsed.get("body", text),
+        )
+        
+        if result["success"]:
+            return f"Correo enviado a {parsed['to']}!"
+        else:
+            return f"Error enviando correo: {result.get('error', 'Error desconocido')}"
+    
+    def _parse_email_text(self, text: str) -> Dict[str, str]:
+        """Interpreta texto del usuario para extraer destinatario, asunto y cuerpo."""
+        result = {"to": "", "subject": "", "body": text}
+        
+        text_lower = text.lower()
+        
+        # Buscar patron "a [nombre]"
+        import re
+        to_match = re.search(r'a\s+(\w+(?:\s+\w+)?)', text_lower)
+        if to_match:
+            result["to"] = to_match.group(1).strip()
+        
+        # Buscar patron "sobre [asunto]"
+        subject_match = re.search(r'sobre\s+(.+?)(?:\.|$)', text_lower)
+        if subject_match:
+            result["subject"] = subject_match.group(1).strip()
+        
+        return result

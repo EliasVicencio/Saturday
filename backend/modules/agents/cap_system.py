@@ -1,10 +1,10 @@
-# agents/cap_system.py - Agente de sistema: comandos SO, archivos, procesos
+# agents/cap_system.py - Agente de sistema: comandos SO, archivos, procesos, correo
 from .base import BaseAgent, AgentResult
 
 
 class SystemAgent(BaseAgent):
     name = "system"
-    description = "Control del sistema, archivos, procesos, configuracion"
+    description = "Control del sistema, archivos, procesos, configuracion, correo"
     tools = ["get_time", "get_system_stats"]
     destructive_actions = ["execute_command"]
 
@@ -16,6 +16,7 @@ class SystemAgent(BaseAgent):
             "reiniciar", "apagar", "actualizar", "instalar",
             "archivo", "carpeta", "directorio", "listar", "eliminar",
             "abrir", "cerrar", "ejecutar", "correr",
+            "correo", "correos", "email", "enviar correo", "revisar correo",
         ]
         score = 0.0
         for kw in keywords:
@@ -27,7 +28,6 @@ class SystemAgent(BaseAgent):
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = __import__("time").time()
         tools_log = []
-
         text_lower = text.lower()
 
         # Hora / fecha
@@ -50,10 +50,24 @@ class SystemAgent(BaseAgent):
             duration = (__import__("time").time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
+        # Correo
+        if any(kw in text_lower for kw in ["correo", "correos", "email"]):
+            core = self.core
+            if core and core.email:
+                if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
+                    result = core.email.send_email_from_text(text)
+                else:
+                    result = core.email.get_emails_formatted()
+            else:
+                result = "Los correos no estan configurados. Configura un webhook de Zapier."
+            tools_log.append({"tool": "email", "args": {"text": text}})
+            duration = (__import__("time").time() - start) * 1000
+            return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
+
         # Default
         duration = (__import__("time").time() - start) * 1000
         return AgentResult(
-            response="No pude determinar qué acción de sistema necesitás. Podés ser más específico?",
+            response="No pude determinar que accion de sistema necesitas. Podes ser mas especifico?",
             agent=self.name,
             duration_ms=duration,
         )

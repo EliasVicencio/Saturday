@@ -45,6 +45,13 @@ try:
 except ImportError:
     EMAIL_AVAILABLE = False
 
+# IMPORTAR ZAPIER WEBHOOK
+try:
+    from modules.zapier_webhook import ZapierWebhook
+    ZAPIER_AVAILABLE = True
+except ImportError:
+    ZAPIER_AVAILABLE = False
+
 try:
     from modules.telegram_bot import TelegramBot
     TELEGRAM_AVAILABLE = True
@@ -244,11 +251,20 @@ class SaturdayCore:
             except Exception as e:
                 print(f" Error inicializando CalendarManager: {e}")
         
+        # Inicializar Zapier Webhooks
+        self.zapier = None
+        if ZAPIER_AVAILABLE:
+            try:
+                self.zapier = ZapierWebhook()
+                print(" ZapierWebhook inicializado")
+            except Exception as e:
+                print(f" Error inicializando ZapierWebhook: {e}")
+        
         # Inicializar Email
         self.email = None
         if EMAIL_AVAILABLE:
             try:
-                self.email = EmailManager()
+                self.email = EmailManager(zapier=self.zapier)
                 print(" EmailManager inicializado")
             except Exception as e:
                 print(f" Error inicializando EmailManager: {e}")

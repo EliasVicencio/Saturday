@@ -225,7 +225,7 @@ def build_default_engine() -> IntentEngine:
         IntentDefinition(name="crear_evento", phrases=["crear evento", "agenda un evento", "agrega un evento"], param_mode="text"),
 
         # ---- Correo ----
-        IntentDefinition(name="correos", phrases=["correos", "mis correos", "ver correos", "revisa mi correo"]),
+        IntentDefinition(name="correos", phrases=["correos", "mis correos", "ver correos", "revisa mi correo", "revisa mis correos", "checa mis correos", "revisar correo", "consultar correos"]),
         IntentDefinition(name="no_leidos", phrases=["no leídos", "correos no leídos", "correos sin leer"]),
         IntentDefinition(name="enviar_correo", phrases=["enviar correo", "manda un correo", "envía un email"], param_mode="text"),
 
