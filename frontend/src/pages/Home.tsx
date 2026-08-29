@@ -213,7 +213,8 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
       ]);
 
       setSpeaking(true);
-      speakText(replyText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
+      const ttsText = replyText.length > 300 ? replyText.substring(0, 300) + "..." : replyText;
+      speakText(ttsText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
 
       // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
