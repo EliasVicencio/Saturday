@@ -47,7 +47,6 @@ except ImportError:
 
 # IMPORTAR ZAPIER WEBHOOK
 try:
-    from modules.make_webhook import MakeWebhook
     MAKE_AVAILABLE = True
 except ImportError:
     MAKE_AVAILABLE = False

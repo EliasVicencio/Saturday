@@ -4,7 +4,6 @@ import os
 import base64
 import hmac
 import logging
-import requests
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -13,6 +12,8 @@ from dotenv import load_dotenv
 import threading
 import hashlib
 import time
+import tempfile
+import psutil
 from datetime import datetime
 
 # Cargar variables de entorno
@@ -31,6 +32,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from modules.core import SaturdayCore
+from modules.http_utils import get_with_retry
 from modules.input_validator import validate_message, validate_text, validate_search_query, validate_category, validate_limit, validate_audio_file, validate_vault_path, validate_vault_layer, validate_note_input
 
 
@@ -69,7 +71,6 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", API_KEY + "-session")
 SESSION_TTL = 3600
 
 def _generate_session_token(ip):
-    import base64 as _b64
     expire = int(time.time()) + SESSION_TTL
     payload = f"{ip}|{expire}|{os.urandom(8).hex()}"
     sig = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
@@ -77,7 +78,6 @@ def _generate_session_token(ip):
 
 def _is_valid_session(token):
     try:
-        import base64 as _b64
         decoded = _b64.urlsafe_b64decode(token.encode()).decode()
         payload, sig = decoded.rsplit("|", 1)
         expected = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
@@ -129,18 +129,17 @@ def build_welcome_message(core):
 
         clima_info = ""
         try:
-            import requests
             api_key = os.getenv("WEATHER_API_KEY")
             city = os.getenv("SATURDAY_CITY", "Santiago")
             if api_key:
                 url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
-                response = requests.get(url, timeout=5)
-                if response.status_code == 200:
+                response = get_with_retry(url, timeout=5)
+                if response and response.status_code == 200:
                     data = response.json()
                     temp = data['main']['temp']
                     desc = data['weather'][0]['description']
                     clima_info = f" Hoy en {city} hace {temp}oC con {desc}."
-        except (requests.RequestException, KeyError, TypeError):
+        except (KeyError, TypeError):
             pass
 
         mensaje = f"{saludo}! Soy Saturday, tu asistente personal.{clima_info} Estoy listo para ayudarte."
@@ -384,7 +383,6 @@ def vision_capture():
         return jsonify({'error': 'No se pudo capturar imagen'}), 500
     description = None
     if saturday.vision and saturday.vision.is_available:
-        import tempfile, base64 as b64mod
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b64mod.b64decode(img_b64))
             tmp_path = f.name
@@ -414,7 +412,6 @@ def vision_capture_device():
         return jsonify({'error': 'Camaras desactivadas por privacidad'}), 403
     description = None
     if saturday.vision and saturday.vision.is_available:
-        import tempfile, base64 as b64mod
         img_bytes = b64mod.b64decode(image_b64)
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(img_bytes)
@@ -679,7 +676,6 @@ def stt():
         if audio_file.filename == '':
             return jsonify({'error': 'Archivo vacio'}), 400
 
-        import tempfile
         import os
 
         filename = audio_file.filename.lower()
@@ -863,10 +859,9 @@ def weather():
         if not api_key:
             return jsonify({'error': 'WEATHER_API_KEY no configurada'}), 500
 
-        import requests
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=es"
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
+        response = get_with_retry(url, timeout=10)
+        if not response or response.status_code != 200:
             return jsonify({'error': 'Error obteniendo el clima'}), 502
 
         data = response.json()
@@ -889,7 +884,6 @@ def weather():
 def system_stats():
     """Devuelve uso real de CPU, RAM y disco del servidor"""
     try:
-        import psutil
         cpu = psutil.cpu_percent(interval=0.3)
         mem = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
@@ -943,7 +937,7 @@ def news_headlines():
 def crypto_bitcoin():
     """Precio actual de Bitcoin (CoinGecko, sin necesidad de API key)"""
     try:
-        response = requests.get(
+        response = get_with_retry(
             "https://api.coingecko.com/api/v3/simple/price",
             params={
                 "ids": "bitcoin",
@@ -953,7 +947,8 @@ def crypto_bitcoin():
             },
             timeout=10,
         )
-        response.raise_for_status()
+        if not response or response.status_code >= 400:
+            return jsonify({'error': 'Error obteniendo precio Bitcoin'}), 502
         data = response.json().get("bitcoin", {})
         if not data:
             return jsonify({'error': 'Sin datos de CoinGecko'}), 502
@@ -997,8 +992,9 @@ def youtube_search():
             'relevanceLanguage': 'es',
             'order': 'relevance',
         }
-        resp = requests.get(url, params=params, timeout=10)
-        resp.raise_for_status()
+        resp = get_with_retry(url, params=params, timeout=10)
+        if not resp or resp.status_code >= 400:
+            return jsonify({'error': 'Error de YouTube API'}), 502
         data = resp.json()
 
         videos = []
@@ -1013,9 +1009,6 @@ def youtube_search():
             })
 
         return jsonify({'videos': videos, 'query': query})
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"Error YouTube API: {e}")
-        return jsonify({'error': 'Error de YouTube API'}), 502
     except Exception as e:
         logger.error(f"Error en /api/youtube: {e}")
         return jsonify({'error': 'Error buscando videos'}), 500
