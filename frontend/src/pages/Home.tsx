@@ -212,8 +212,8 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatClock(new Date()) },
       ]);
 
-      speakText(replyText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
       setSpeaking(true);
+      speakText(replyText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
 
       // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
