@@ -105,8 +105,8 @@ def privacy_set():
     if not feature:
         return jsonify({"error": "feature es requerido"}), 400
     if enabled is not None:
-        _saturday.privacy.set_state(feature, enabled)
+        _saturday.privacy.set_enabled(feature, enabled)
     else:
         current = _saturday.privacy.get_state().get(feature, False)
-        _saturday.privacy.set_state(feature, not current)
+        _saturday.privacy.set_enabled(feature, not current)
     return jsonify(_saturday.privacy.get_state())
