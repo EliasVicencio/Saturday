@@ -1,5 +1,7 @@
 # modules/core.py - Nucleo de Saturday COMPLETO
 import os
+import logging
+logger = logging.getLogger("saturday.core")
 from datetime import datetime
 from typing import Dict, Any
 import networkx as nx
@@ -61,46 +63,46 @@ except ImportError:
 try:
     from modules.communication import CommunicationManager
     COMMUNICATION_AVAILABLE = True
-    print(" CommunicationManager importado correctamente")
+    logger.info(" CommunicationManager importado correctamente")
 except ImportError as e:
     COMMUNICATION_AVAILABLE = False
-    print(f" CommunicationManager no disponible: {e}")
+    logger.info(f" CommunicationManager no disponible: {e}")
 
 try:
     from modules.daily_summary import DailySummary
     DAILY_SUMMARY_AVAILABLE = True
 except ImportError:
     DAILY_SUMMARY_AVAILABLE = False
-    print(" DailySummary no disponible")
+    logger.info(" DailySummary no disponible")
     
 try:
     from modules.scheduler import Scheduler
     SCHEDULER_AVAILABLE = True
 except ImportError:
     SCHEDULER_AVAILABLE = False
-    print(" Scheduler no disponible")
+    logger.info(" Scheduler no disponible")
     
 try:
     from modules.spotify_manager import SpotifyManager
     SPOTIFY_AVAILABLE = True
 except ImportError:
     SPOTIFY_AVAILABLE = False
-    print(" SpotifyManager no disponible")
+    logger.info(" SpotifyManager no disponible")
     
 try:
     from modules.news_manager import NewsManager
     NEWS_AVAILABLE = True
 except ImportError:
     NEWS_AVAILABLE = False
-    print(" NewsManager no disponible")
+    logger.info(" NewsManager no disponible")
     
 try:
     from modules.camera_manager import CameraManager
     CAMERA_AVAILABLE = True
-    print(" CameraManager importado correctamente")
+    logger.info(" CameraManager importado correctamente")
 except ImportError as e:
     CAMERA_AVAILABLE = False
-    print(f" CameraManager no disponible: {e}")
+    logger.info(f" CameraManager no disponible: {e}")
 
 try:
     from modules.conversation_manager import ConversationManager
@@ -196,25 +198,25 @@ class SaturdayCore:
             return f"Error ejecutando {tool_name}: {str(e)}"
     
     def __init__(self):
-        print(" Inicializando nucleo de Saturday...")
+        logger.info(" Inicializando nucleo de Saturday...")
         
         # Inicializar DataManager
         self.data = None
         if DATA_AVAILABLE:
             try:
                 self.data = DataManager()
-                print(" DataManager inicializado")
+                logger.info(" DataManager inicializado")
             except Exception as e:
-                print(f" Error inicializando DataManager: {e}")
+                logger.info(f" Error inicializando DataManager: {e}")
         
         # Inicializar VaultManager (memoria en Markdown, "boveda/")
         self.vault = None
         if VAULT_AVAILABLE:
             try:
                 self.vault = VaultManager()
-                print(" VaultManager inicializado")
+                logger.info(" VaultManager inicializado")
             except Exception as e:
-                print(f" Error inicializando VaultManager: {e}")
+                logger.info(f" Error inicializando VaultManager: {e}")
 
         # Motor de interpretacion de intenciones (sinonimos + fuzzy matching,
         # ver modules/intent_engine.py)
@@ -226,47 +228,47 @@ class SaturdayCore:
             try:
                 if config.notion_api_key and config.notion_db_id:
                     self.notion = NotionManager(config.notion_api_key, config.notion_db_id)
-                    print(" Notion conectado")
+                    logger.info(" Notion conectado")
                 else:
-                    print("  NOTION_API_KEY o NOTION_DB_ID no configurados")
+                    logger.info("  NOTION_API_KEY o NOTION_DB_ID no configurados")
             except Exception as e:
-                print(f"  Error conectando a Notion: {e}")
+                logger.info(f"  Error conectando a Notion: {e}")
         
         # Inicializar VoiceManager
         self.voice = None
         if VOICE_AVAILABLE:
             try:
                 self.voice = VoiceManager()
-                print(" VoiceManager inicializado")
+                logger.info(" VoiceManager inicializado")
             except Exception as e:
-                print(f" Error inicializando VoiceManager: {e}")
+                logger.info(f" Error inicializando VoiceManager: {e}")
         
         # Inicializar Calendar
         self.calendar = None
         if CALENDAR_AVAILABLE:
             try:
                 self.calendar = CalendarManager()
-                print(" CalendarManager inicializado")
+                logger.info(" CalendarManager inicializado")
             except Exception as e:
-                print(f" Error inicializando CalendarManager: {e}")
+                logger.info(f" Error inicializando CalendarManager: {e}")
         
         # Inicializar Zapier Webhooks
         self.make = None
         if MAKE_AVAILABLE:
             try:
                 self.make = MakeWebhook()
-                print(" MakeWebhook inicializado")
+                logger.info(" MakeWebhook inicializado")
             except Exception as e:
-                print(f" Error inicializando MakeWebhook: {e}")
+                logger.info(f" Error inicializando MakeWebhook: {e}")
         
         # Inicializar Email
         self.email = None
         if EMAIL_AVAILABLE:
             try:
                 self.email = EmailManager()
-                print(" EmailManager inicializado")
+                logger.info(" EmailManager inicializado")
             except Exception as e:
-                print(f" Error inicializando EmailManager: {e}")
+                logger.info(f" Error inicializando EmailManager: {e}")
         
         # Inicializar Telegram
         self.telegram = None
@@ -274,70 +276,70 @@ class SaturdayCore:
             try:
                 if config.telegram_bot_token:
                     self.telegram = TelegramBot(self, config.telegram_bot_token)
-                    print(" TelegramBot inicializado")
+                    logger.info(" TelegramBot inicializado")
                 else:
-                    print("  TELEGRAM_BOT_TOKEN no configurado")
+                    logger.info("  TELEGRAM_BOT_TOKEN no configurado")
             except Exception as e:
-                print(f"  Error inicializando TelegramBot: {e}")
+                logger.info(f"  Error inicializando TelegramBot: {e}")
         
         # Inicializar Communication (WhatsApp)
         self.communication = None
         if COMMUNICATION_AVAILABLE:
             try:
                 self.communication = CommunicationManager()
-                print(" CommunicationManager inicializado")
+                logger.info(" CommunicationManager inicializado")
             except Exception as e:
-                print(f" Error inicializando CommunicationManager: {e}")
+                logger.info(f" Error inicializando CommunicationManager: {e}")
                 
         self.daily_summary = None
         if DAILY_SUMMARY_AVAILABLE:
             try:
                 self.daily_summary = DailySummary(self)
-                print(" DailySummary inicializado")
+                logger.info(" DailySummary inicializado")
             except Exception as e:
-                print(f" Error inicializando DailySummary: {e}")
+                logger.info(f" Error inicializando DailySummary: {e}")
                 
         self.scheduler = None
         if SCHEDULER_AVAILABLE:
             try:
                 self.scheduler = Scheduler(self)
-                print(" Scheduler inicializado")
+                logger.info(" Scheduler inicializado")
             except Exception as e:
-                print(f" Error inicializando Scheduler: {e}")
+                logger.info(f" Error inicializando Scheduler: {e}")
         
         self.spotify = None
         if SPOTIFY_AVAILABLE:
             try:
                 self.spotify = SpotifyManager()
-                print(" SpotifyManager inicializado")
+                logger.info(" SpotifyManager inicializado")
             except Exception as e:
-                print(f" Error inicializando SpotifyManager: {e}")
+                logger.info(f" Error inicializando SpotifyManager: {e}")
                 
         self.news = None
         if NEWS_AVAILABLE:
             try:
                 self.news = NewsManager()
-                print(" NewsManager inicializado")
+                logger.info(" NewsManager inicializado")
             except Exception as e:
-                print(f" Error inicializando NewsManager: {e}")
+                logger.info(f" Error inicializando NewsManager: {e}")
                 
         # Inicializar Camara
         self.camera = None
         if CAMERA_AVAILABLE:
             try:
                 self.camera = CameraManager()
-                print(" CameraManager inicializado")
+                logger.info(" CameraManager inicializado")
             except Exception as e:
-                print(f" Error inicializando CameraManager: {e}")
+                logger.info(f" Error inicializando CameraManager: {e}")
         
         # Inicializar ConversationManager (memoria conversacional)
         self.conversation = None
         if CONVERSATION_AVAILABLE:
             try:
                 self.conversation = ConversationManager()
-                print(" ConversationManager inicializado")
+                logger.info(" ConversationManager inicializado")
             except Exception as e:
-                print(f" Error inicializando ConversationManager: {e}")
+                logger.info(f" Error inicializando ConversationManager: {e}")
         
         # Inicializar memoria persistente (SQLite)
         self.memory_store = None
@@ -348,36 +350,36 @@ class SaturdayCore:
                 self.memory_store = MemoryStore()
                 self.memory_retriever = MemoryRetriever(self.memory_store)
                 self.memory_summarizer = MemorySummarizer(self.memory_store)
-                print("[OK] MemoryStore inicializado (SQLite)")
+                logger.info("[OK] MemoryStore inicializado (SQLite)")
             except Exception as e:
-                print(f"[WARN] Error inicializando MemoryStore: {e}")
+                logger.info(f"[WARN] Error inicializando MemoryStore: {e}")
 
         # Inicializar GeminiChat (LLM conversacional)
         self.gemini = None
         if GEMINI_AVAILABLE:
             try:
                 self.gemini = GeminiChat()
-                print("[OK] GeminiChat inicializado")
+                logger.info("[OK] GeminiChat inicializado")
             except Exception as e:
-                print(f"[WARN] Error inicializando GeminiChat: {e}")
+                logger.info(f"[WARN] Error inicializando GeminiChat: {e}")
 
         # Inicializar Event Bus
         self.event_bus = None
         if EVENTS_AVAILABLE:
             try:
                 self.event_bus = EventBus()
-                print("[OK] EventBus inicializado")
+                logger.info("[OK] EventBus inicializado")
             except Exception as e:
-                print(f"[WARN] Error inicializando EventBus: {e}")
+                logger.info(f"[WARN] Error inicializando EventBus: {e}")
 
         # Inicializar Privacy Manager
         self.privacy = None
         if PRIVACY_AVAILABLE:
             try:
                 self.privacy = PrivacyManager()
-                print("[OK] PrivacyManager inicializado")
+                logger.info("[OK] PrivacyManager inicializado")
             except Exception as e:
-                print(f"[WARN] Error inicializando PrivacyManager: {e}")
+                logger.info(f"[WARN] Error inicializando PrivacyManager: {e}")
 
         # Inicializar Vision Describer
         self.vision = None
@@ -385,16 +387,16 @@ class SaturdayCore:
             try:
                 self.vision = VisionDescriber()
             except Exception as e:
-                print(f"[WARN] Error inicializando VisionDescriber: {e}")
+                logger.info(f"[WARN] Error inicializando VisionDescriber: {e}")
 
         # Inicializar Agent Router (Level 5)
         self.agent_router = None
         if AGENTS_AVAILABLE:
             try:
                 self.agent_router = AgentRouter(core=self)
-                print("[OK] AgentRouter inicializado (Level 5)")
+                logger.info("[OK] AgentRouter inicializado (Level 5)")
             except Exception as e:
-                print(f"[WARN] Error inicializando AgentRouter: {e}")
+                logger.info(f"[WARN] Error inicializando AgentRouter: {e}")
 
         # Inicializar Tool Registry
         self.tool_registry = None
@@ -402,27 +404,27 @@ class SaturdayCore:
             try:
                 self.tool_registry = ToolRegistry()
                 register_builtin_tools(self.tool_registry)
-                print(f"[OK] ToolRegistry inicializado ({len(self.tool_registry.list_tools())} tools)")
+                logger.info(f"[OK] ToolRegistry inicializado ({len(self.tool_registry.list_tools())} tools)")
             except Exception as e:
-                print(f"[WARN] Error inicializando ToolRegistry: {e}")
+                logger.info(f"[WARN] Error inicializando ToolRegistry: {e}")
 
         # Inicializar Audit Logger
         self.audit = None
         if AUDIT_AVAILABLE:
             try:
                 self.audit = AuditLogger()
-                print("[OK] AuditLogger inicializado")
+                logger.info("[OK] AuditLogger inicializado")
             except Exception as e:
-                print(f"[WARN] Error inicializando AuditLogger: {e}")
+                logger.info(f"[WARN] Error inicializando AuditLogger: {e}")
 
         # Inicializar Permission Manager
         self.permissions = None
         if PERMS_AVAILABLE:
             try:
                 self.permissions = PermissionManager()
-                print("[OK] PermissionManager inicializado")
+                logger.info("[OK] PermissionManager inicializado")
             except Exception as e:
-                print(f"[WARN] Error inicializando PermissionManager: {e}")
+                logger.info(f"[WARN] Error inicializando PermissionManager: {e}")
 
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
@@ -431,7 +433,7 @@ class SaturdayCore:
         # Auto-iniciar scheduler y programar tareas autonomas
         self._setup_autonomous_tasks()
         
-        print(" Nucleo inicializado correctamente")
+        logger.info(" Nucleo inicializado correctamente")
     
     def _describe_scene(self, question: str = "Que hay en la imagen?") -> str:
         if not self.privacy or not self.privacy.is_enabled("camera_enabled"):
@@ -781,23 +783,23 @@ class SaturdayCore:
     def _setup_autonomous_tasks(self):
         """Configura tareas autonomas del scheduler"""
         if not self.scheduler:
-            print(" Scheduler no disponible, tareas autonomas no configuradas")
+            logger.info(" Scheduler no disponible, tareas autonomas no configuradas")
             return
         
         try:
             self.scheduler.start()
-            print(" Scheduler iniciado en segundo plano")
+            logger.info(" Scheduler iniciado en segundo plano")
             
             # Programar resumen diario a las 21:00 (21:00)
             self.scheduler.schedule_daily_summary(hour=21, minute=0)
-            print(" Resumen diario programado para las 21:00")
+            logger.info(" Resumen diario programado para las 21:00")
             
             # Programar tareas autonomas (correos, noticias, organizacion)
             self.scheduler.schedule_autonomous_tasks()
-            print(" Tareas autonomas programadas")
+            logger.info(" Tareas autonomas programadas")
             
         except Exception as e:
-            print(f" Error configurando tareas autonomas: {e}")
+            logger.info(f" Error configurando tareas autonomas: {e}")
     
     def get_weather(self, **kwargs) -> str:
         try:
@@ -884,7 +886,7 @@ o NOTICIAS:
             try:
                 self.telegram.send_message(text)
             except Exception as e:
-                print(f" Error enviando a Telegram: {e}")
+                logger.info(f" Error enviando a Telegram: {e}")
     
     # ============ DELEGAR A MDULOS ============
     
