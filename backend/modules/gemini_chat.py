@@ -56,8 +56,8 @@ class GeminiChat:
                     json={
                         "model": self._model,
                         "messages": messages,
-                        "max_tokens": 1024,
-                        "temperature": 0.7,
+                        "max_tokens": int(os.getenv("SATURDAY_LLM_MAX_TOKENS", "1024")),
+                        "temperature": float(os.getenv("SATURDAY_LLM_TEMPERATURE", "0.7")),
                     },
                     headers={
                         "Content-Type": "application/json",

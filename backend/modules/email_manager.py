@@ -12,13 +12,15 @@ import re
 class EmailManager:
     """Gestiona correos electronicos via Gmail SMTP + IMAP."""
     
+    PREVIEW_LENGTH = int(os.getenv("SATURDAY_EMAIL_PREVIEW_LENGTH", "150"))
+    
     def __init__(self):
         self.email = os.getenv("SATURDAY_EMAIL", "")
         self.password = os.getenv("SATURDAY_EMAIL_PASSWORD", "")
-        self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 587
-        self.imap_server = "imap.gmail.com"
-        self.imap_port = 993
+        self.smtp_server = os.getenv("SATURDAY_SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_port = int(os.getenv("SATURDAY_SMTP_PORT", "587"))
+        self.imap_server = os.getenv("SATURDAY_IMAP_SERVER", "imap.gmail.com")
+        self.imap_port = int(os.getenv("SATURDAY_IMAP_PORT", "993"))
         
         if self.email and self.password:
             print(f"  Email: configurado ({self.email})")

@@ -205,8 +205,8 @@ class VoiceManager:
             },
             "audioConfig": {
                 "audioEncoding": "MP3",
-                "speakingRate": 0.9,
-                "pitch": 0,
+                "speakingRate": float(os.getenv("SATURDAY_TTS_RATE", "0.9")),
+                "pitch": float(os.getenv("SATURDAY_TTS_PITCH", "0")),
                 "volumeGainDb": 0
             }
         }
@@ -238,11 +238,12 @@ class VoiceManager:
     
     def _play_audio(self, audio_data: bytes) -> bool:
         try:
-            import time
             import threading
-            filename = f"temp_audio_{int(time.time())}.mp3"
-            with open(filename, "wb") as f:
-                f.write(audio_data)
+            import tempfile
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp.write(audio_data)
+                filename = tmp.name
             
             system = platform.system()
             if system == "Windows":
