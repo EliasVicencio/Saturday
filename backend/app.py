@@ -209,16 +209,18 @@ def agents_route():
 
 @app.route("/api/events/log", methods=["GET"])
 def events_list():
-    events = saturday.event_bus.get_events() if saturday.event_bus else []
-    return jsonify({"events": events})
+    events = saturday.event_bus.recent(limit=20) if saturday.event_bus else []
+    return jsonify({"events": [e.to_dict() for e in events]})
 
 @app.route("/api/events", methods=["POST"])
 def events_publish():
     data = request.get_json(silent=True) or {}
-    event_type = data.get("type", "custom")
-    payload = data.get("payload", {})
-    saturday.event_bus.publish(event_type, payload)
-    return jsonify({"status": "published"})
+    event_name = data.get("name", "")
+    event_data = data.get("data", {})
+    if not event_name:
+        return jsonify({"error": "name es requerido"}), 400
+    saturday.event_bus.publish(event_name, event_data, source="api")
+    return jsonify({"published": True, "event": event_name})
 
 @app.route("/api/system", methods=["GET"])
 def system_stats():
