@@ -53,13 +53,16 @@ class SystemAgent(BaseAgent):
         # Correo
         if any(kw in text_lower for kw in ["correo", "correos", "email"]):
             core = self.core
-            if core and core.email:
-                if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
-                    result = core.email.send_email_from_text(text)
+            if core and hasattr(core, "email") and core.email:
+                if hasattr(core.email, "_is_configured") and core.email._is_configured():
+                    if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
+                        result = core.email.send_email_from_text(text)
+                    else:
+                        result = core.email.get_emails_formatted()
                 else:
-                    result = core.email.get_emails_formatted()
+                    result = "El correo no esta configurado. Necesitas configurar SATURDAY_EMAIL y SATURDAY_EMAIL_PASSWORD en .env"
             else:
-                result = "Los correos no estan configurados. Configura un webhook de Zapier."
+                result = "El modulo de correo no esta disponible."
             tools_log.append({"tool": "email", "args": {"text": text}})
             duration = (__import__("time").time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
