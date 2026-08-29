@@ -1,4 +1,4 @@
-# backend/app.py - API para Saturday (refactored with Blueprints)
+﻿# backend/app.py - API para Saturday (refactored with Blueprints)
 import sys
 import os
 import time
@@ -50,6 +50,7 @@ from api.calendar import calendar_bp, init_calendar
 from api.communication import communication_bp, init_communication
 from api.media import media_bp, init_media
 from api.vault import vault_bp, init_vault
+from api.vision import vision_bp, init_vision
 
 _sessions = {}
 init_chat(saturday, _sessions)
@@ -59,6 +60,7 @@ init_calendar(saturday)
 init_communication(saturday)
 init_media(saturday)
 init_vault(saturday)
+init_vision(saturday)
 
 app.register_blueprint(chat_bp)
 app.register_blueprint(memory_bp)
@@ -67,6 +69,7 @@ app.register_blueprint(calendar_bp)
 app.register_blueprint(communication_bp)
 app.register_blueprint(media_bp)
 app.register_blueprint(vault_bp)
+app.register_blueprint(vision_bp)
 
 # Welcome message
 _greeting_message = {"text": None, "ready": False}
@@ -158,15 +161,7 @@ def permissions_set():
     set_permission(data.get("resource", ""), data.get("level", "private"))
     return jsonify({"status": "updated"})
 
-@app.route("/api/privacy", methods=["GET"])
-def privacy_get():
-    return jsonify(saturday._privacy_status())
-
-@app.route("/api/privacy", methods=["POST"])
-def privacy_set():
-    data = request.get_json(silent=True) or {}
-    saturday.privacy_mode = data.get("privacy_mode", False)
-    return jsonify({"privacy_mode": saturday.privacy_mode})
+# Privacy routes moved to api/vision.py blueprint
 
 @app.route("/api/agents", methods=["GET"])
 def agents_list():
