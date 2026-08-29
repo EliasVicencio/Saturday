@@ -33,6 +33,28 @@ sys.path.insert(0, project_root)
 from modules.core import SaturdayCore
 from modules.input_validator import validate_message, validate_text, validate_search_query, validate_category, validate_limit, validate_audio_file, validate_vault_path, validate_vault_layer, validate_note_input
 
+
+
+
+def safe_float(value, default=0.0):
+    """Parsea un float de forma segura."""
+    try:
+        return float(value or default)
+    except (ValueError, TypeError):
+        return default
+
+def safe_int(value, default=0, min_val=None, max_val=None):
+    """Parsea un entero de forma segura desde un query param."""
+    try:
+        result = int(value or default)
+        if min_val is not None:
+            result = max(result, min_val)
+        if max_val is not None:
+            result = min(result, max_val)
+        return result
+    except (ValueError, TypeError):
+        return default
+
 app = Flask(__name__)
 CORS(app, origins=["https://saturday.viewdns.net", "http://localhost:5173"])
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per minute"])
@@ -262,7 +284,7 @@ def memory_list():
         return jsonify({'error': 'MemoryStore no disponible'}), 503
     mem_type = request.args.get('type', '')
     query = request.args.get('q', '')
-    limit = min(int(request.args.get('limit', 20)), 100)
+    limit = min(safe_int(request.args.get('limit'), default=20, min_val=1, max_val=100), 100)
     if query:
         results = saturday.memory_store.search(query=query, mem_type=mem_type, limit=limit)
     else:
@@ -282,7 +304,7 @@ def memory_save():
     chat_id = None
     if session_id:
         chat_id = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (10**9)
-    mid = saturday.memory_store.save(mem_type=data.get('type', 'note'), content=content_val, source=data.get('source', 'manual'), confidence=float(data.get('confidence', 1.0)), chat_id=chat_id, tags=data.get('tags', ''))
+    mid = saturday.memory_store.save(mem_type=data.get('type', 'note'), content=content_val, source=data.get('source', 'manual'), confidence=safe_float(data.get('confidence'), default=1.0), chat_id=chat_id, tags=data.get('tags', ''))
     return jsonify({'id': mid, 'saved': True})
 
 @app.route('/api/memory/<int:memory_id>', methods=['GET'])
@@ -453,13 +475,13 @@ def privacy_set():
 
 # ===== EVENTS ENDPOINTS =====
 
-@app.route('/api/events', methods=['GET'])
+@app.route('/api/events/log', methods=['GET'])
 @require_api_key
 def events_list():
     if not saturday.event_bus:
         return jsonify({'error': 'EventBus no disponible'}), 503
     event_name = request.args.get("name", "")
-    limit = min(int(request.args.get("limit", 20)), 100)
+    limit = (lambda x: min(x, 100) if isinstance(x, int) and x > 0 else 20)(int(request.args.get("limit", "20") or "20"))
     events = saturday.event_bus.recent(event_name, limit)
     return jsonify({"events": [e.to_dict() for e in events]})
 
@@ -500,7 +522,7 @@ def agents_checkpoints():
     if not saturday.agent_router:
         return jsonify({'error': 'AgentRouter no disponible'}), 503
     session_id = request.args.get("session_id", "")
-    limit = min(int(request.args.get("limit", 20)), 100)
+    limit = (lambda x: min(x, 100) if isinstance(x, int) and x > 0 else 20)(int(request.args.get("limit", "20") or "20"))
     return jsonify({"checkpoints": saturday.agent_router.get_checkpoints(session_id, limit)})
 
 @app.route('/api/agents/confirm', methods=['POST'])

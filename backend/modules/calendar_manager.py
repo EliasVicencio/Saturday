@@ -123,4 +123,45 @@ class CalendarManager:
     def create_event_from_text(self, text: str) -> str:
         if not text:
             return "Que evento quieres crear?"
-        return "Evento creado (implementacion en progreso)"
+        
+        if not self.service:
+            return "Google Calendar no esta configurado. Necesitas credentials.json."
+        
+        import re
+        from datetime import datetime, timedelta
+        
+        text_lower = text.lower()
+        
+        # Extraer titulo
+        title = text
+        for word in ["crear evento", "agenda un evento", "agrega un evento", "evento"]:
+            title = title.replace(word, "").strip()
+        if not title:
+            title = "Evento sin titulo"
+        
+        # Extraer fecha/hora basica
+        now = datetime.now()
+        start_time = now + timedelta(hours=1)
+        end_time = start_time + timedelta(hours=1)
+        
+        if "ma" in text_lower:
+            start_time = start_time + timedelta(days=1)
+            end_time = end_time + timedelta(days=1)
+        
+        hour_match = re.search(r"a las (\d{1,2})(?::(\d{2}))?", text_lower)
+        if hour_match:
+            hour = int(hour_match.group(1))
+            minute = int(hour_match.group(2) or 0)
+            start_time = start_time.replace(hour=hour, minute=minute)
+            end_time = start_time + timedelta(hours=1)
+        
+        try:
+            event = {
+                "summary": title,
+                "start": {"dateTime": start_time.isoformat(), "timeZone": "America/Santiago"},
+                "end": {"dateTime": end_time.isoformat(), "timeZone": "America/Santiago"},
+            }
+            created = self.service.events().insert(calendarId="primary", body=event).execute()
+            return f"Evento creado: {title} el {start_time.strftime('%d/%m %H:%M')}"
+        except Exception as e:
+            return f"Error creando evento: {str(e)}"

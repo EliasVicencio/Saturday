@@ -72,6 +72,7 @@ class EmailManager:
     
     def get_recent_emails(self, limit: int = 5) -> List[Dict[str, str]]:
         """Obtiene los correos mas recientes."""
+        mail = None
         try:
             mail = self._get_imap()
             mail.select("INBOX")
@@ -102,15 +103,21 @@ class EmailManager:
                     "preview": preview,
                 })
             
-            mail.logout()
             return emails
         
         except Exception as e:
             print(f"Error leyendo correos: {e}")
             return []
+        finally:
+            if mail:
+                try:
+                    mail.logout()
+                except Exception:
+                    pass
     
     def get_unread_emails(self, limit: int = 5) -> List[Dict[str, str]]:
         """Obtiene los correos no leidos."""
+        mail = None
         try:
             mail = self._get_imap()
             mail.select("INBOX")
@@ -141,12 +148,17 @@ class EmailManager:
                     "preview": preview,
                 })
             
-            mail.logout()
             return emails
         
         except Exception as e:
             print(f"Error leyendo correos no leidos: {e}")
             return []
+        finally:
+            if mail:
+                try:
+                    mail.logout()
+                except Exception:
+                    pass
     
     def _decode_header(self, header):
         """Decodifica headers de correo."""

@@ -196,8 +196,11 @@ class DailySummary:
             if not self.core.telegram:
                 return {'success': False, 'error': 'Telegram no disponible'}
             # Enviar por Telegram
-            # self.core.telegram.send_message(summary)
-            result = {'success': True, 'message': 'Resumen enviado por Telegram'}
+            try:
+                self.core.telegram.send_message(summary)
+                result = {'success': True, 'message': 'Resumen enviado por Telegram'}
+            except Exception as e:
+                result = {'success': False, 'error': f'Error enviando por Telegram: {str(e)}'}
 
         else:
             return {'success': False, 'error': f'Canal no soportado: {via}'}
