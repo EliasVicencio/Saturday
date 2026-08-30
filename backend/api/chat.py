@@ -19,7 +19,13 @@ def init_chat(saturday, sessions):
 def chat():
     from api.auth import require_api_key
     from modules.input_validator import validate_message
-    data = request.get_json(silent=True) or {}
+    raw = request.get_data()
+    logger.info("CHAT DEBUG: raw_data=%r", raw[:200] if raw else b'EMPTY')
+    import json as _json
+    try:
+        data = _json.loads(raw) if raw else {}
+    except Exception:
+        data = {}
     text = data.get('message', data.get('text', '')).strip()
     session_id = data.get('session_id', 'default')
 
