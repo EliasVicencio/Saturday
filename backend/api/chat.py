@@ -23,8 +23,11 @@ def chat():
     text = data.get('message', data.get('text', '')).strip()
     session_id = data.get('session_id', 'default')
 
+    logger.info("CHAT DEBUG: data=%s text=%r", data, text)
+
     valid, error = validate_message(text)
     if not valid:
+        logger.warning("CHAT DEBUG: invalid msg=%r error=%s", text, error)
         return jsonify({'error': error}), 400
 
     result = _saturday.process_via_router(text, session_id=session_id)
