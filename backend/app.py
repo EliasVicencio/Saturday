@@ -196,10 +196,10 @@ def agents_route():
     from modules.input_validator import validate_message
     data = request.get_json(silent=True) or {}
     text = data.get("text", "").strip()
-    valid, sanitized, error = validate_message(text)
+    valid, error = validate_message(text)
     if not valid:
         return jsonify({"error": error}), 400
-    result = saturday.process_via_router(sanitized)
+    result = saturday.process_via_router(text)
     return jsonify(result)
 
 @app.route("/api/events/log", methods=["GET"])
