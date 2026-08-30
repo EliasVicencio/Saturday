@@ -1,4 +1,4 @@
-﻿# api/vault.py - Vault/Notes/Graph Blueprint
+# api/vault.py - Vault/Notes/Graph Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 

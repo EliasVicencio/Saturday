@@ -1,4 +1,4 @@
-﻿# api/voice.py - Voice (TTS/STT) Blueprint
+# api/voice.py - Voice (TTS/STT) Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 import tempfile

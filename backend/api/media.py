@@ -1,4 +1,4 @@
-﻿# api/media.py - Weather/News/Crypto/YouTube Blueprint
+# api/media.py - Weather/News/Crypto/YouTube Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 import os

@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const isDev = import.meta.env.DEV;
 const devError = (...args: unknown[]) => { if (isDev) console.error(...args); };

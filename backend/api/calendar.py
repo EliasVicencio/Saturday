@@ -1,4 +1,4 @@
-﻿# api/calendar.py - Calendar/Tasks/Events/Notes Blueprint
+# api/calendar.py - Calendar/Tasks/Events/Notes Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 

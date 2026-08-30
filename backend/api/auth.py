@@ -1,4 +1,4 @@
-﻿# api/auth.py - Authentication & Session Blueprint
+# api/auth.py - Authentication & Session Blueprint
 from flask import Blueprint, request, jsonify
 import hmac
 import hashlib

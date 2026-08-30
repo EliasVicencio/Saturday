@@ -1,4 +1,4 @@
-﻿# api/vision.py - Vision/Camera/Privacy Blueprint
+# api/vision.py - Vision/Camera/Privacy Blueprint
 from flask import Blueprint, request, jsonify
 import os, tempfile, logging
 from api.auth import require_api_key

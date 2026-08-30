@@ -1,4 +1,4 @@
-﻿# api/chat.py - Chat & Conversation Blueprint
+# api/chat.py - Chat & Conversation Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 

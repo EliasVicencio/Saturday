@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Send,
   Mic,
@@ -13,7 +13,7 @@ import {
   MapPin,
 } from "lucide-react";
 import "../styles/Home.css";
-import NeuralNetwork from "../components/NeuralNetwork";
+import VaultGraph from "../components/Vaultgraph";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import {
   sendMessage as apiSendMessage,
@@ -356,7 +356,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         {/* ===== COLUMNA CENTRAL ===== */}
         <main className="vault-col vault-col--center">
           <div className="vault-sphere-wrap">
-            <NeuralNetwork active={speech.listening || sending || speaking} size={460} />
+            <VaultGraph active={speech.listening || sending || speaking} size={460} />
             <div className="vault-sphere-count">
               <span className="vault-sphere-count__num">
                 {vaultStats

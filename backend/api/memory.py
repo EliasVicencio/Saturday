@@ -1,4 +1,4 @@
-﻿# api/memory.py - Memory CRUD Blueprint
+# api/memory.py - Memory CRUD Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 import hashlib
