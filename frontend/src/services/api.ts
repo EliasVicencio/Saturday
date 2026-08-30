@@ -1,27 +1,8 @@
 import axios from 'axios';
 
-const isDev = import.meta.env.DEV;
-const devError = (...args: unknown[]) => { if (isDev) console.error(...args); };
-const devWarn = (...args: unknown[]) => { if (isDev) console.warn(...args); };
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const API_BASE_URL = API_URL;
-
-let sessionToken: string | null = null;
-
-async function fetchSessionToken(): Promise<string | null> {
-  try {
-    const res = await axios.post(API_URL + '/auth/session', {}, { timeout: 10000 });
-    if (res.data && res.data.token) {
-      sessionToken = res.data.token;
-      return sessionToken;
-    }
-  } catch (e) {
-    devError('Failed to fetch session token:', e);
-  }
-  return null;
-}
 
 const api = axios.create({
   baseURL: API_URL,
@@ -30,33 +11,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-api.interceptors.request.use(async (config) => {
-  if (!sessionToken) {
-    await fetchSessionToken();
-  }
-  if (sessionToken) {
-    config.headers['X-API-Key'] = sessionToken;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (res) => res,
-  async (error) => {
-    if (error.response && error.response.status === 401 && sessionToken) {
-      sessionToken = null;
-      const newToken = await fetchSessionToken();
-      if (newToken) {
-        error.config.headers['X-API-Key'] = newToken;
-        return api.request(error.config);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-fetchSessionToken();
 
 // ===== INTERFACES BASICAS =====
 
@@ -75,7 +29,7 @@ export interface GreetingResponse {
   text: string | null;
 }
 
-// NUEVA INTERFACIÃ“N CON 'id' PARA SOLUCIONAR ERROR TYPEScRIPT
+// NUEVA INTERFACIÓN CON 'id' PARA SOLUCIONAR ERROR TYPEScRIPT
 export interface NewsItem {
   id: string;
   title: string;
@@ -90,19 +44,19 @@ export interface NewsPanelData {
 }
 
 // ===== FUNCION AUXILIAR POLIFUNCIONAL =====
-// Intenta extraer tÃ­tulo de: **1. TÃ­tulo**, **TÃ­tulo**, 1. TÃ­tulo
+// Intenta extraer título de: **1. Título**, **Título**, 1. Título
 function extractTitleFromLine(line: string): string | null {
-  // PatrÃ³n 1: **1. TÃ­tulo** (nÃºmero + punto + texto)
+  // Patrón 1: **1. Título** (número + punto + texto)
   const p1 = /^\*\*(\d+)\.\s(.+?)\*\*$/;
   const m1 = line.match(p1);
   if (m1) return m1[2];
   
-  // PatrÃ³n 2: **TÃ­tulo** (solo negrita, sin nÃºmero)
+  // Patrón 2: **Título** (solo negrita, sin número)
   const p2 = /^\*\*(.+?)\*\*$/;
   const m2 = line.match(p2);
   if (m2) return m2[1];
   
-  // PatrÃ³n 3: 1. TÃ­tulo (sin negrita, solo nÃºmero + punto + texto)
+  // Patrón 3: 1. Título (sin negrita, solo número + punto + texto)
   const p3 = /^(\d+)\.\s(.+)$/;
   const m3 = line.match(p3);
   if (m3) return m3[2];
@@ -110,7 +64,7 @@ function extractTitleFromLine(line: string): string | null {
   return null;
 }
 
-// ===== FUNCIÃ“N PRINCIPAL GETNEWSPANEL =====
+// ===== FUNCIÓN PRINCIPAL GETNEWSPANEL =====
 export const getNewsPanel = async (): Promise<NewsPanelData> => {
   try {
     const response = await api.get<{ response?: string; success?: boolean }>('/news');
@@ -121,28 +75,28 @@ export const getNewsPanel = async (): Promise<NewsPanelData> => {
       let currentSource = '';
       
       for (const line of lines) {
-        // 1. Intentar extraer tÃ­tulo con cualquiera de los 3 patrones
+        // 1. Intentar extraer título con cualquiera de los 3 patrones
         const title = extractTitleFromLine(line);
         
         if (title) {
-          // Guardar tÃ­tulo anterior antes de empezar el nuevo
+          // Guardar título anterior antes de empezar el nuevo
           if (currentTitle) {
             articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
           }
           currentTitle = title;
           currentSource = '';
         }
-        // Detectar fuente: debe contener "ðŸ“Œ *Fuente:*"
-        else if (line.includes('ðŸ“Œ *Fuente:*')) {
-          const sm = line.match(/ðŸ“Œ \*Fuente:\*\s(.+)/);
+        // Detectar fuente: debe contener "📌 *Fuente:*"
+        else if (line.includes('📌 *Fuente:*')) {
+          const sm = line.match(/📌 \*Fuente:\*\s(.+)/);
           if (sm) currentSource = sm[1];
         }
-        // Detectar descripciÃ³n: "ðŸ“ Texto" (opcional, se ignora por simplicidad)
-        else if (line.startsWith('ðŸ“ ')) {
-          // Se asocia descriptivamente al tÃ­tulo actual (ignoramos por simplicidad)
+        // Detectar descripción: "📝 Texto" (opcional, se ignora por simplicidad)
+        else if (line.startsWith('📝 ')) {
+          // Se asocia descriptivamente al título actual (ignoramos por simplicidad)
         }
       }
-      // Empujar el Ãºltimo tÃ­tulo si quedÃ³ pendiente
+      // Empujar el último título si quedó pendiente
       if (currentTitle) {
         articles.push({ id: `${articles.length + 1}`, title: currentTitle, description: '', source: currentSource });
       }
@@ -151,18 +105,18 @@ export const getNewsPanel = async (): Promise<NewsPanelData> => {
     }
     return { headlines: [], lastUpdate: 'Nunca' };
   } catch (error) {
-    devError('Error obteniendo panel de noticias:', error);
+    console.error('Error obteniendo panel de noticias:', error);
     return { headlines: [], lastUpdate: 'Error' };
   }
 };
 
-// ===== FUNCIÃ“N GETWEATHER (OBLIGATORIA PARA Home.tsx) =====
+// ===== FUNCIÓN GETWEATHER (OBLIGATORIA PARA Home.tsx) =====
 export const getWeather = async (): Promise<WeatherResponse> => {
   const response = await api.get<WeatherResponse>('/weather');
   return response.data;
 };
 
-// ===== ENVÃO DE MENSAJES =====
+// ===== ENVÍO DE MENSAJES =====
 
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await api.post('/chat', { message });
@@ -200,24 +154,49 @@ export const speakText = async (text: string): Promise<boolean> => {
         };
 
         audio.onerror = (e) => {
-          devWarn('Error reproduciendo audio:', e);
+          console.warn('Error reproduciendo audio:', e);
           URL.revokeObjectURL(audioUrl);
           resolve(false);
         };
 
         audio.play().catch((err) => {
-          devWarn('Error al reproducir:', err);
+          console.warn('Error al reproducir:', err);
           URL.revokeObjectURL(audioUrl);
           resolve(false);
         });
       });
     } else {
-      devWarn('No se recibiÃ³ audio del backend');
+      console.warn('No se recibió audio del backend');
       return false;
     }
   } catch (error) {
-    devError('Error en TTS:', error);
+    console.error('Error en TTS:', error);
     return false;
+  }
+};
+
+/**
+ * Igual que speakText, pero en vez de reproducir el audio internamente,
+ * devuelve un HTMLAudioElement ya cargado (sin reproducir) para que quien
+ * lo llame lo conecte a un AnalyserNode de Web Audio API y reaccione a la
+ * amplitud real de la voz en tiempo real (ver hooks/useVoicePlayback.ts).
+ */
+export const synthesizeSpeech = async (text: string): Promise<HTMLAudioElement | null> => {
+  if (!text) return null;
+  try {
+    const response = await api.post<SpeakResponse>('/speak', { text });
+    const data = response.data;
+    if (!data.audio) return null;
+
+    const audioBytes = Uint8Array.from(atob(data.audio), (c) => c.charCodeAt(0));
+    const audioBlob = new Blob([audioBytes], { type: 'audio/mp3' });
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.addEventListener('ended', () => URL.revokeObjectURL(audioUrl), { once: true });
+    return audio;
+  } catch (err) {
+    console.warn('Error generando audio TTS:', err);
+    return null;
   }
 };
 
@@ -243,11 +222,11 @@ export const recognizeSpeech = async (audioBlob: Blob): Promise<string | null> =
     if (response.data.success && response.data.text) {
       return response.data.text;
     } else {
-      devWarn('No se reconociÃ³ texto:', response.data);
+      console.warn('No se reconoció texto:', response.data);
       return null;
     }
   } catch (error) {
-    devError('Error en STT:', error);
+    console.error('Error en STT:', error);
     return null;
   }
 };
@@ -284,7 +263,7 @@ export const getSystemStatus = async (): Promise<SystemStatus> => {
       connectionQuality: quality,
     };
   } catch (error) {
-    devError('Error obteniendo estado del sistema:', error);
+    console.error('Error obteniendo estado del sistema:', error);
     return {
       isConnected: false,
       isRecording: false,
@@ -303,8 +282,8 @@ export const sendMessageWithIndicator = async (message: string) => {
     const response = await sendMessage(message);
     return { success: true, response };
   } catch (error) {
-    devError('Error en envÃ­o de mensaje:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Error de conexiÃ³n' };
+    console.error('Error en envío de mensaje:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Error de conexión' };
   } finally {
     setLoadingState(false);
   }
@@ -327,7 +306,7 @@ const setLoadingState = (loading: boolean) => {
     overlay.style.color = '#e2e8f0';
     overlay.innerHTML = `
       <div style="background: rgba(17,24,39,0.8); padding: 2rem; border-radius: 16px; text-align: center;">
-        <div style="font-size: 48px; margin-bottom: 1rem;">â³</div>
+        <div style="font-size: 48px; margin-bottom: 1rem;">⏳</div>
         <div style="font-size: 14px; margin-bottom: 0.5rem;">PROCESANDO...</div>
         <div style="font-size: 12px; color: rgba(147,197,253,0.5);">Por favor espere</div>
       </div>
@@ -357,13 +336,13 @@ export const parseNewsResponse = (text: string): any[] => {
     if (line.match(/^\*\*\d+\.\s/)) {
       if (currentArticle.title) articles.push(currentArticle);
       currentArticle = { title: line.replace(/^\*\*\d+\.\s/, '').replace(/\*\*$/, '') };
-    } else if (line.startsWith('ðŸ“Œ *Fuente:*')) {
-      currentArticle.source = line.replace('ðŸ“Œ *Fuente:*', '').trim();
+    } else if (line.startsWith('📌 *Fuente:*')) {
+      currentArticle.source = line.replace('📌 *Fuente:*', '').trim();
       currentArticle.source_name = currentArticle.source;
-    } else if (line.startsWith('ðŸ·ï¸ *CategorÃ­a:*')) {
-      currentArticle.category = line.replace('ðŸ·ï¸ *CategorÃ­a:*', '').split(',').map((c: string) => c.trim());
-    } else if (line.startsWith('ðŸ“ ')) {
-      currentArticle.description = line.replace('ðŸ“ ', '');
+    } else if (line.startsWith('🏷️ *Categoría:*')) {
+      currentArticle.category = line.replace('🏷️ *Categoría:*', '').split(',').map((c: string) => c.trim());
+    } else if (line.startsWith('📝 ')) {
+      currentArticle.description = line.replace('📝 ', '');
     }
   }
   if (currentArticle.title) articles.push(currentArticle);
@@ -375,7 +354,7 @@ export const searchNews = async (topic: string): Promise<any[]> => {
     const response = await sendMessage('buscar noticias ' + topic);
     return parseNewsResponse(response.response);
   } catch (error) {
-    devError('Error buscando noticias:', error);
+    console.error('Error buscando noticias:', error);
     return [];
   }
 };
@@ -383,16 +362,16 @@ export const searchNews = async (topic: string): Promise<any[]> => {
 export const formatNewsForWhatsApp = (articles: any[]): string => {
   if (!articles || articles.length === 0) return 'No hay noticias disponibles';
 
-  let message = 'ðŸ“° *Resumen de Noticias*\n\n';
+  let message = '📰 *Resumen de Noticias*\n\n';
   articles.slice(0, 5).forEach((article, index) => {
-    const title = article.title || 'Sin tÃ­tulo';
-    const description = article.description || 'Sin descripciÃ³n';
+    const title = article.title || 'Sin título';
+    const description = article.description || 'Sin descripción';
     const source = article.source_name || 'Fuente desconocida';
     const date = article.published_at ? new Date(article.published_at).toLocaleDateString('es-ES') : 'Hoy';
 
     message += (index + 1) + '. *' + title + '*\n';
-    message += '   ðŸ“ ' + description.substring(0, 100) + (description.length > 100 ? '...' : '') + '\n';
-    message += '   ðŸ“Ž ' + source + ' â€¢ ' + date + '\n\n';
+    message += '   📝 ' + description.substring(0, 100) + (description.length > 100 ? '...' : '') + '\n';
+    message += '   📎 ' + source + ' • ' + date + '\n\n';
   });
 
   return message;
@@ -428,7 +407,7 @@ export interface SpeakResponse {
 
 // ===== CLIMA =====
 
-// ===== BÃ“VEDA (memoria en Markdown) =====
+// ===== BÓVEDA (memoria en Markdown) =====
 
 export interface VaultGraphNode {
   id: string;
@@ -548,90 +527,32 @@ export const getBitcoinPrice = async (): Promise<BitcoinPrice> => {
   return response.data;
 };
 
-// ===== YOUTUBE SEARCH =====
+// ===== WEB PUSH (notificaciones reales del sistema operativo) =====
 
-export interface YouTubeVideo {
-  id: string;
-  title: string;
-  channel: string;
-  thumbnail: string;
-  published: string;
+export interface VapidKeyResponse {
+  enabled: boolean;
+  publicKey?: string;
 }
 
-export const searchYouTube = async (query: string, maxResults = 5): Promise<YouTubeVideo[]> => {
-  const response = await api.get<{ videos: YouTubeVideo[]; query: string }>('/youtube/search', {
-    params: { q: query, max_results: maxResults },
-  });
-  return response.data.videos;
-};
-
-// ===== LEVEL 4: PRIVACY / VISION / EVENTS =====
-
-export interface PrivacyState {
-  camera_enabled: boolean;
-  microphone_enabled: boolean;
-  location_enabled: boolean;
-  ambient_sensors: boolean;
-  auto_save_images: boolean;
-}
-
-export const getPrivacy = async (): Promise<PrivacyState> => {
-  const response = await api.get<PrivacyState>('/privacy');
+export const getVapidPublicKey = async (): Promise<VapidKeyResponse> => {
+  const response = await api.get<VapidKeyResponse>('/push/vapid-public-key');
   return response.data;
 };
 
-export const setPrivacy = async (feature: string, enabled?: boolean): Promise<{ state: PrivacyState; killed?: number; restored?: number }> => {
-  const payload = enabled !== undefined ? { feature, enabled } : { feature };
-  const response = await api.post('/privacy', payload);
+export const subscribePush = async (subscription: PushSubscriptionJSON): Promise<{ success: boolean }> => {
+  const response = await api.post<{ success: boolean }>('/push/subscribe', subscription);
   return response.data;
 };
 
-export interface VisionStatus {
-  camera: { available: boolean; last_capture: unknown; opencv: boolean };
-  vision_model: boolean;
-}
-
-export interface VisionCapture {
-  captured: boolean;
-  simulated: boolean;
-  description: string | null;
-  timestamp: string | null;
-}
-
-export const getVisionStatus = async (): Promise<VisionStatus> => {
-  const response = await api.get<VisionStatus>('/vision/status');
+export const unsubscribePush = async (endpoint: string): Promise<{ success: boolean }> => {
+  const response = await api.post<{ success: boolean }>('/push/unsubscribe', { endpoint });
   return response.data;
 };
 
-export const captureVision = async (question?: string): Promise<VisionCapture> => {
-  const response = await api.post<VisionCapture>('/vision/capture', { question: question || 'Que hay en esta imagen?' });
-  return response.data;
-};
-
-export interface EventItem2 {
-  name: string;
-  data: Record<string, unknown>;
-  source: string;
-  timestamp: number;
-}
-
-export const getEvents = async (limit?: number): Promise<EventItem2[]> => {
-  const response = await api.get<{ events: EventItem2[] }>('/events', { params: { limit: limit || 20 } });
-  return response.data.events;
-};
-
-export const captureFromDevice = async (imageBase64: string, question?: string): Promise<VisionCapture> => {
-  const response = await api.post<VisionCapture>('/vision/capture-device', {
-    image: imageBase64,
-    question: question || 'Que hay en esta imagen?',
-  });
-  return response.data;
-};
-
-export const publishEvent = async (name: string, data?: Record<string, unknown>): Promise<{ published: boolean; event: string }> => {
-  const response = await api.post('/events', { name, data: data || {} });
+export const testPush = async (): Promise<{ success: boolean; sent?: number; failed?: number }> => {
+  const response = await api.post('/push/test');
   return response.data;
 };
 
 // ... resto de los exports existentes que estaban en tu archivo original
-// (Send, Mic, MapPin, etc. interfaces si las tenÃ­as, pero las esenciales estÃ¡n arriba)
+// (Send, Mic, MapPin, etc. interfaces si las tenías, pero las esenciales están arriba)

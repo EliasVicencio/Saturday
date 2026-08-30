@@ -6,6 +6,13 @@ interface VaultGraphProps {
   size?: number;
   /** cada cuántos ms vuelve a pedir el grafo al backend */
   refreshMs?: number;
+  /**
+   * Nivel de audio en vivo (0..1), típicamente la amplitud de la voz de
+   * Saturday mientras habla (ver hooks/useVoicePlayback.ts). Se actualiza
+   * muchas veces por segundo, así que se guarda en un ref para no reiniciar
+   * el loop de render en cada frame de audio.
+   */
+  audioLevel?: number;
 }
 
 interface LayoutNode extends VaultGraphNode {
@@ -101,14 +108,21 @@ function computeForceLayout(nodes: VaultGraphNode[], edges: VaultGraphEdge[]): L
   return positioned;
 }
 
-export default function VaultGraph({ active = true, size = 460, refreshMs = 30000 }: VaultGraphProps) {
+export default function VaultGraph({ active = true, size = 460, refreshMs = 30000, audioLevel = 0 }: VaultGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodesRef = useRef<LayoutNode[]>([]);
   const edgesRef = useRef<VaultGraphEdge[]>([]);
   const dustRef = useRef<DustParticle[]>([]);
   const rotationRef = useRef(0);
   const rafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const audioLevelRef = useRef(0);
   const [nodeCount, setNodeCount] = useState(0);
+
+  // el nivel de audio se guarda en un ref (no dispara el efecto principal de
+  // nuevo en cada frame de audio, solo actualiza el valor que el loop lee)
+  useEffect(() => {
+    audioLevelRef.current = audioLevel;
+  }, [audioLevel]);
 
   // partículas de fondo (polvo decorativo, siempre presentes)
   useEffect(() => {
@@ -192,7 +206,8 @@ export default function VaultGraph({ active = true, size = 460, refreshMs = 3000
 
     const render = () => {
       ctx.clearRect(0, 0, size, size);
-      rotationRef.current += active ? 0.0018 : 0.0005;
+      const level = audioLevelRef.current; // 0..1, amplitud real de la voz en este instante
+      rotationRef.current += active ? 0.0018 + level * 0.012 : 0.0005;
       const rot = rotationRef.current;
 
       // ----- polvo de fondo -----
@@ -241,11 +256,11 @@ export default function VaultGraph({ active = true, size = 460, refreshMs = 3000
           n.twinkle += n.twinkleSpeed;
           const p = projected[n.id];
           const sizeBoost = 1 + Math.min(n.degree, 6) * 0.18;
-          const alpha = (0.35 + p.scale * 0.65) * (0.7 + 0.3 * Math.sin(n.twinkle));
+          const alpha = Math.min(1, (0.35 + p.scale * 0.65) * (0.7 + 0.3 * Math.sin(n.twinkle)) + level * 0.25);
           return {
             ...p,
             title: n.title,
-            rad: Math.max(1.4, 2.4 * p.scale * sizeBoost),
+            rad: Math.max(1.4, 2.4 * p.scale * sizeBoost * (1 + level * 0.35)),
             alpha,
           };
         });
@@ -255,19 +270,20 @@ export default function VaultGraph({ active = true, size = 460, refreshMs = 3000
           ctx.beginPath();
           ctx.fillStyle = `rgba(240, 211, 145, ${Math.max(0, Math.min(1, p.alpha))})`;
           ctx.shadowColor = "rgba(240, 211, 145, 0.95)";
-          ctx.shadowBlur = active ? 8 : 4;
+          ctx.shadowBlur = (active ? 8 : 4) + level * 16;
           ctx.arc(p.x2, p.y2, p.rad, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // halo central
-      const glow = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius * 1.05);
-      glow.addColorStop(0, "rgba(214, 178, 94, 0.10)");
+      // halo central (pulsa con la voz mientras Saturday habla)
+      const haloRadius = radius * (1.05 + level * 0.18);
+      const glow = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, haloRadius);
+      glow.addColorStop(0, `rgba(214, 178, 94, ${0.1 + level * 0.14})`);
       glow.addColorStop(1, "rgba(214, 178, 94, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(cx, cy, radius * 1.05, 0, Math.PI * 2);
+      ctx.arc(cx, cy, haloRadius, 0, Math.PI * 2);
       ctx.fill();
 
       rafRef.current = requestAnimationFrame(render);

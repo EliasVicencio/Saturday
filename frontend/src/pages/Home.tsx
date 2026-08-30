@@ -11,13 +11,18 @@ import {
   ChevronRight,
   Lock,
   MapPin,
+  Bell,
+  BellOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import "../styles/Home.css";
 import VaultGraph from "../components/Vaultgraph";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { usePushNotifications } from "../hooks/Usepushnotifications";
+import { useVoicePlayback } from "../hooks/Usevoiceplayback";
 import {
   sendMessage as apiSendMessage,
-  speakText,
   getStatus,
   getWeather,
   getSystemStats,
@@ -70,14 +75,13 @@ const prettifyNoteName = (name: string) =>
 
 interface HomeProps {
   onNavigateNews?: () => void;
-  onNavigateSettings?: () => void;
 }
 
-export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) {
+export default function Home({ onNavigateNews }: HomeProps) {
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
 
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [statusError, setStatusError] = useState(false);
@@ -212,9 +216,12 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         { id: (Date.now() + 1).toString(), sender: "saturday", text: replyText, time: formatClock(new Date()) },
       ]);
 
-      setSpeaking(true);
-      const ttsText = replyText.length > 300 ? replyText.substring(0, 300) + "..." : replyText;
-      speakText(ttsText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
+      // Saturday habla la respuesta en voz alta. Mientras el audio suena,
+      // `voice.speaking`/`voice.level` reaccionan en tiempo real y eso es
+      // lo que hace "vibrar" a la esfera de partículas (VaultGraph).
+      if (voiceEnabled && replyText) {
+        voice.speak(replyText);
+      }
 
       // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
@@ -243,6 +250,9 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
     onFinalResult: (transcript) => sendMessage(transcript),
   });
 
+  const push = usePushNotifications();
+  const voice = useVoicePlayback();
+
   const isOnline = !!status && status.status === "online";
   const activeModulesCount = status ? Object.values(status.modules).filter(Boolean).length : 0;
   const cpuPct = system ? Math.round(system.cpu_percent) : 0;
@@ -266,13 +276,30 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <span className="dim">·</span>
           <span>EN LÍNEA</span>
           <span className="vault-topbar__link" onClick={onNavigateNews}>NOTICIAS</span>
-          <span className="vault-topbar__link" onClick={onNavigateSettings}>SETTINGS</span>
           <span className="vault-topbar__active">ACTIVE</span>
         </nav>
         <div className="vault-topbar__clock">
           <span className="vault-topbar__clock-time">{formatClock(now)}</span>
           <span className="vault-topbar__clock-label">HORA DEL SISTEMA</span>
         </div>
+        <button
+          className={`vault-bell ${push.status === "subscribed" ? "vault-bell--active" : ""}`}
+          onClick={push.toggle}
+          disabled={push.status === "unsupported" || push.status === "disabled-backend" || push.status === "loading"}
+          title={
+            push.status === "unsupported"
+              ? "Tu navegador no soporta notificaciones push"
+              : push.status === "disabled-backend"
+                ? "El backend no configuró claves VAPID todavía"
+                : push.status === "denied"
+                  ? "Bloqueaste las notificaciones para este sitio"
+                  : push.status === "subscribed"
+                    ? "Notificaciones activas — click para desactivar"
+                    : "Activar notificaciones push"
+          }
+        >
+          {push.status === "subscribed" ? <Bell size={15} /> : <BellOff size={15} />}
+        </button>
       </header>
 
       <div className="vault-main">
@@ -356,7 +383,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         {/* ===== COLUMNA CENTRAL ===== */}
         <main className="vault-col vault-col--center">
           <div className="vault-sphere-wrap">
-            <VaultGraph active={speech.listening || sending || speaking} size={460} />
+            <VaultGraph active={speech.listening || sending || voice.speaking} audioLevel={voice.level} size={460} />
             <div className="vault-sphere-count">
               <span className="vault-sphere-count__num">
                 {vaultStats
@@ -408,6 +435,16 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
             >
               {speech.listening ? <Mic size={14} /> : <MicOff size={14} />}
             </button>
+            <button
+              className={`vault-composer__mic ${voiceEnabled ? "vault-composer__mic--active" : ""}`}
+              onClick={() => {
+                if (voiceEnabled) voice.stop();
+                setVoiceEnabled((v) => !v);
+              }}
+              title={voiceEnabled ? "Silenciar la voz de Saturday" : "Activar la voz de Saturday"}
+            >
+              {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            </button>
             <button className="vault-composer__send" onClick={() => sendMessage()} disabled={sending || !inputValue.trim()}>
               <Send size={14} />
             </button>
@@ -421,7 +458,13 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
 
           <div className="vault-last-msg">
             <span className="vault-last-msg__tag">saturday</span>
-            {sending ? "pensando..." : speech.listening ? "escuchando..." : lastMessage?.text}
+            {sending
+              ? "pensando..."
+              : voice.speaking
+                ? "hablando..."
+                : speech.listening
+                  ? "escuchando..."
+                  : lastMessage?.text}
           </div>
           <div ref={chatEndRef} />
         </main>
@@ -457,7 +500,9 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <div className="vault-panel-title vault-panel-title--tight">AUDIO E/S</div>
           <div className="vault-audio-row">
             TTS / LOCAL
-            <span className="vault-audio-state">{speech.listening ? "ESCUCHANDO..." : "EJECUTÁNDOSE..."}</span>
+            <span className="vault-audio-state">
+              {voice.speaking ? "HABLANDO..." : speech.listening ? "ESCUCHANDO..." : "EN ESPERA"}
+            </span>
           </div>
 
           <div className="vault-panel-title vault-panel-title--tight">
