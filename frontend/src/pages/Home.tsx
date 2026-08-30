@@ -44,24 +44,24 @@ interface Message {
 const formatClock = (d: Date) =>
   d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
-/** Comandos r├ípidos del panel derecho (equivalente a los bullets de la imagen) */
+/** Comandos rápidos del panel derecho (equivalente a los bullets de la imagen) */
 const quickCommands = [
-  "Extraer m├®tricas",
+  "Extraer métricas",
   "Resumen bandeja",
   "Escaneo tendencias",
   "Plan de hoy",
-  "Revisi├│n semanal",
+  "Revisión semanal",
   "Reporte AM",
   "Tendencias GH",
   "YT semanal",
-  "Plan ma├▒ana",
-  "Limpieza b├│veda",
+  "Plan mañana",
+  "Limpieza bóveda",
 ];
 
 /** Informes del panel izquierdo */
 const reportShortcuts = ["Informe breve", "Informe mental", "Informe del mercado", "Plan diario"];
 
-/** Quita el timestamp del nombre de archivo para mostrar un t├¡tulo legible */
+/** Quita el timestamp del nombre de archivo para mostrar un título legible */
 const prettifyNoteName = (name: string) =>
   name
     .replace(/^\d{4}-\d{2}-\d{2}_\d{6}_/, "")
@@ -186,8 +186,8 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
     if (!status && !statusError) return;
     setMessages((prev) => {
       const greeting = statusError
-        ? "No pude conectar con el backend. Revis├í que est├® corriendo en el puerto 5000, jefe."
-        : `Backend conectado (v${status?.version ?? "?"}). ┬┐En qu├® te ayudo?`;
+        ? "No pude conectar con el backend. Revisá que esté corriendo en el puerto 5000, jefe."
+        : `Backend conectado (v${status?.version ?? "?"}). ¿En qué te ayudo?`;
       if (prev.length === 1 && prev[0].id === "1") {
         return [{ ...prev[0], text: `Hola, soy SATURDAY. ${greeting}` }];
       }
@@ -216,7 +216,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
       const ttsText = replyText.length > 300 ? replyText.substring(0, 300) + "..." : replyText;
       speakText(ttsText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "").replace(/\s{2,}/g, " ").trim()).then(() => setSpeaking(false));
 
-      // Si el backend interpret├│ un comando de navegaci├│n (ej: "abrir noticias"),
+      // Si el backend interpretó un comando de navegación (ej: "abrir noticias"),
       // cambiamos de vista en vez de solo mostrar la respuesta en el chat.
       if (result.navigate === "news" && onNavigateNews) {
         setTimeout(() => onNavigateNews(), 400);
@@ -227,7 +227,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         {
           id: (Date.now() + 1).toString(),
           sender: "saturday",
-          text: "No pude comunicarme con el backend. Verific├í que est├® corriendo.",
+          text: "No pude comunicarme con el backend. Verificá que esté corriendo.",
           time: formatClock(new Date()),
         },
       ]);
@@ -260,11 +260,11 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <span className="vault-subtitle">INTELIGENCIA CENTRALIZADA</span>
         </div>
         <nav className="vault-topbar__nav">
-          <span>N├ÜCLEO</span>
+          <span>NÚCLEO</span>
           <span>IDEAS</span>
           <span>ENLACE</span>
-          <span className="dim">┬À</span>
-          <span>EN L├ìNEA</span>
+          <span className="dim">·</span>
+          <span>EN LÍNEA</span>
           <span className="vault-topbar__link" onClick={onNavigateNews}>NOTICIAS</span>
           <span className="vault-topbar__link" onClick={onNavigateSettings}>SETTINGS</span>
           <span className="vault-topbar__active">ACTIVE</span>
@@ -282,20 +282,20 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
 
           <div className="vault-metric">
             <div className="vault-metric__label">
-              <Users size={12} /> M├ôDULOS ACTIVOS
+              <Users size={12} /> MÓDULOS ACTIVOS
             </div>
             <div className="vault-metric__value">
-              {status ? `${activeModulesCount}/${Object.values(status.modules).length}` : "ÔÇö"}
-              <span className="vault-metric__delta">{isOnline ? "sistema en l├¡nea" : "sin conexi├│n"}</span>
+              {status ? `${activeModulesCount}/${Object.values(status.modules).length}` : "—"}
+              <span className="vault-metric__delta">{isOnline ? "sistema en línea" : "sin conexión"}</span>
             </div>
           </div>
 
           <div className="vault-metric">
             <div className="vault-metric__label">
-              <MessageSquare size={12} /> NOTAS EN LA B├ôVEDA
+              <MessageSquare size={12} /> NOTAS EN LA BÓVEDA
             </div>
             <div className="vault-metric__value">
-              {vaultStats ? vaultStats.wiki_count + vaultStats.raw_count + vaultStats.outputs_count : "ÔÇö"}
+              {vaultStats ? vaultStats.wiki_count + vaultStats.raw_count + vaultStats.outputs_count : "—"}
               <span className="vault-metric__delta">
                 {vaultStats ? `${vaultStats.graph_edges} enlaces` : "cargando..."}
               </span>
@@ -317,7 +317,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
               <Percent size={12} /> USO DE LA CPU
             </div>
             <div className="vault-metric__value">
-              {system ? `${cpuPct}%` : "ÔÇö"}
+              {system ? `${cpuPct}%` : "—"}
               <span className="vault-metric__delta">
                 {system ? `RAM ${Math.round(system.ram_percent)}%` : "servidor"}
               </span>
@@ -331,7 +331,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <ul className="vault-list">
             <li>Construido para el modo de JARVIS</li>
             <li>Conectar la voz-habilidad con el canal active</li>
-            <li>Bloquear pesta├▒as ÔÇö flujos ÔÇö miniaturas</li>
+            <li>Bloquear pestañas — flujos — miniaturas</li>
             <li>Recuperar contexto</li>
           </ul>
 
@@ -361,21 +361,21 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
               <span className="vault-sphere-count__num">
                 {vaultStats
                   ? (vaultStats.wiki_count + vaultStats.raw_count + vaultStats.outputs_count).toLocaleString("es-ES")
-                  : "ÔÇö"}
+                  : "—"}
               </span>
               <span className="vault-sphere-count__label">NOTAS</span>
             </div>
           </div>
 
-          <div className="vault-sphere-caption">MEMORIA DE LA B├ôVEDA ÔÇö NOTAS ENLAZADAS</div>
+          <div className="vault-sphere-caption">MEMORIA DE LA BÓVEDA — NOTAS ENLAZADAS</div>
 
           <div className="vault-status-row">
             <span className={`vault-status-dot ${isOnline ? "vault-status-dot--on" : "vault-status-dot--off"}`} />
-            {isOnline ? "SISTEMA EN L├ìNEA" : statusError ? "SIN CONEXI├ôN AL BACKEND" : "CONECTANDO..."}
+            {isOnline ? "SISTEMA EN LÍNEA" : statusError ? "SIN CONEXIÓN AL BACKEND" : "CONECTANDO..."}
             {weather && (
               <>
                 <span className="vault-status-sep">|</span>
-                <MapPin size={11} /> {weather.city} {weather.temp}┬░C
+                <MapPin size={11} /> {weather.city} {weather.temp}°C
               </>
             )}
           </div>
@@ -387,7 +387,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
               placeholder={
                 speech.listening
                   ? speech.interimTranscript || "Escuchando..."
-                  : "Escribe una instrucci├│n o comando..."
+                  : "Escribe una instrucción o comando..."
               }
               value={speech.listening ? speech.interimTranscript : inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -400,7 +400,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
               disabled={!speech.supported}
               title={
                 !speech.supported
-                  ? "Tu navegador no soporta reconocimiento de voz (prob├í con Chrome o Edge)"
+                  ? "Tu navegador no soporta reconocimiento de voz (probá con Chrome o Edge)"
                   : speech.listening
                     ? "Detener y escuchar"
                     : "Activar voz"
@@ -415,7 +415,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
 
           {speech.error && (
             <div className="vault-speech-error">
-              ­ƒÄÖ´©Å No pude usar el micr├│fono ({speech.error === "not-allowed" ? "permiso denegado" : speech.error}).
+              🎙️ No pude usar el micrófono ({speech.error === "not-allowed" ? "permiso denegado" : speech.error}).
             </div>
           )}
 
@@ -437,7 +437,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
             ))}
           </ul>
           <div className="vault-instruction-line">
-            INTENCIONES ESCRIBEN AL SISTEMA/COLA ÔÇ║<br />
+            INTENCIONES ESCRIBEN AL SISTEMA/COLA ›<br />
             EJECUTA EL COMBINADOR
           </div>
 
@@ -457,17 +457,17 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <div className="vault-panel-title vault-panel-title--tight">AUDIO E/S</div>
           <div className="vault-audio-row">
             TTS / LOCAL
-            <span className="vault-audio-state">{speech.listening ? "ESCUCHANDO..." : "EJECUT├üNDOSE..."}</span>
+            <span className="vault-audio-state">{speech.listening ? "ESCUCHANDO..." : "EJECUTÁNDOSE..."}</span>
           </div>
 
           <div className="vault-panel-title vault-panel-title--tight">
             <Lock size={11} /> YA DENTRO
           </div>
           <p className="vault-security-note">
-            Todo lo que Saturday guarda o env├¡a queda registrado como archivo en la b├│veda local.
+            Todo lo que Saturday guarda o envía queda registrado como archivo en la bóveda local.
           </p>
           <p className="vault-security-note vault-security-note--dim">
-            <Cpu size={11} /> {system ? `CPU ${cpuPct}% ┬À RAM ${Math.round(system.ram_percent)}%` : "Servidor Flask local"}. Sin base de datos externa.
+            <Cpu size={11} /> {system ? `CPU ${cpuPct}% · RAM ${Math.round(system.ram_percent)}%` : "Servidor Flask local"}. Sin base de datos externa.
           </p>
         </aside>
       </div>
