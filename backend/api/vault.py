@@ -1,4 +1,4 @@
-# api/vault.py - Vault/Notes/Graph Blueprint
+﻿# api/vault.py - Vault/Notes/Graph Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 
@@ -21,8 +21,14 @@ def vault_stats():
 @vault_bp.route("/api/vault/notes", methods=["GET"])
 def vault_notes():
     from api.auth import require_api_key
-    notes = _saturday.get_notes()
-    return jsonify({"notes": notes})
+    from modules.input_validator import validate_vault_layer
+    layer = request.args.get("layer", "wiki")
+    valid, err = validate_vault_layer(layer)
+    if not valid:
+        return jsonify({"error": err}), 400
+    if not _saturday or not _saturday.vault:
+        return jsonify({"error": "VaultManager no disponible"}), 500
+    return jsonify({"layer": layer, "notes": _saturday.vault.list_notes(layer)})
 
 @vault_bp.route("/api/vault/note", methods=["GET"])
 def vault_note():
