@@ -20,14 +20,14 @@ def chat():
     from api.auth import require_api_key
     from modules.input_validator import validate_message
     data = request.get_json(silent=True) or {}
-    text = data.get('text', '').strip()
+    text = data.get('message', data.get('text', '')).strip()
     session_id = data.get('session_id', 'default')
-    
-    valid, sanitized, error = validate_message(text)
+
+    valid, error = validate_message(text)
     if not valid:
         return jsonify({'error': error}), 400
-    
-    result = _saturday.process_via_router(sanitized, session_id=session_id)
+
+    result = _saturday.process_via_router(text, session_id=session_id)
     return jsonify(result)
 
 @chat_bp.route('/api/conversation/<session_id>', methods=['GET'])
