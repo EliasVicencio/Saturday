@@ -15,8 +15,9 @@ def init_vault(saturday):
 @vault_bp.route("/api/vault/stats", methods=["GET"])
 def vault_stats():
     from api.auth import require_api_key
-    stats = _saturday.estado_boveda()
-    return jsonify({"stats": stats})
+    if not _saturday or not _saturday.vault:
+        return jsonify({"error": "VaultManager no disponible"}), 500
+    return jsonify(_saturday.vault.get_stats())
 
 @vault_bp.route("/api/vault/notes", methods=["GET"])
 def vault_notes():

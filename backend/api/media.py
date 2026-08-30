@@ -1,4 +1,4 @@
-# api/media.py - Weather/News/Crypto/YouTube Blueprint
+﻿# api/media.py - Weather/News/Crypto/YouTube Blueprint
 from flask import Blueprint, request, jsonify
 import logging
 import os
@@ -49,8 +49,16 @@ def news():
 @media_bp.route("/api/news/headlines", methods=["GET"])
 def news_headlines():
     from api.auth import require_api_key
-    result = _saturday.search_news(query=request.args.get("q", ""))
-    return jsonify({"news": result})
+    if not _saturday or not _saturday.news or not _saturday.news.is_available():
+        return jsonify({"articles": [], "available": False})
+    try:
+        category = request.args.get("category")
+        limit = int(request.args.get("limit", 8))
+        articles = _saturday.news.get_top_headlines(category=category, limit=limit)
+        return jsonify({"articles": articles, "available": True})
+    except Exception as e:
+        logger.error("Error en /api/news/headlines: %s", e)
+        return jsonify({"articles": [], "available": True, "error": str(e)})
 
 @media_bp.route("/api/crypto/bitcoin", methods=["GET"])
 def crypto_bitcoin():
