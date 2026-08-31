@@ -43,11 +43,13 @@ def vault_create_note():
     from api.auth import require_api_key
     from modules.input_validator import validate_note_input
     data = request.get_json(silent=True) or {}
-    text = data.get("text", "").strip()
-    valid, sanitized, error = validate_note_input(text)
+    title = data.get("title", "").strip()
+    content = data.get("content", data.get("text", "")).strip()
+    valid, error = validate_note_input({"title": title, "content": content})
     if not valid:
         return jsonify({"error": error}), 400
-    result = _saturday.guardar_en_boveda(text=sanitized)
+    text = title + "\n\n" + content if title else content
+    result = _saturday.guardar_en_boveda(text=text)
     return jsonify({"status": "saved", "result": result})
 
 @vault_bp.route("/api/vault/search", methods=["GET"])

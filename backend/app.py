@@ -1,4 +1,4 @@
-﻿# backend/app.py - API para Saturday (refactored with Blueprints)
+# backend/app.py - API para Saturday (refactored with Blueprints)
 import sys
 import os
 import time
@@ -138,27 +138,33 @@ def config_get():
 
 @app.route("/api/audit", methods=["GET"])
 def audit_log():
-    from modules.security.audit import get_audit_log
-    logs = get_audit_log()
+    from modules.security.audit import AuditLogger
+    logs = AuditLogger().recent(limit=50)
     return jsonify({"logs": logs})
 
 @app.route("/api/audit/stats", methods=["GET"])
 def audit_stats():
-    from modules.security.audit import get_audit_stats
-    stats = get_audit_stats()
+    from modules.security.audit import AuditLogger
+    stats = AuditLogger().stats()
     return jsonify({"stats": stats})
 
 @app.route("/api/permissions", methods=["GET"])
 def permissions_list():
-    from modules.security.permissions import list_permissions
-    perms = list_permissions()
-    return jsonify({"permissions": perms})
+    from modules.security.permissions import PermissionManager
+    perms = PermissionManager().list_all()
+    return jsonify({"permissions": {k: list(v) for k, v in perms.items()}})
 
 @app.route("/api/permissions", methods=["POST"])
 def permissions_set():
-    from modules.security.permissions import set_permission
+    from modules.security.permissions import PermissionManager
     data = request.get_json(silent=True) or {}
-    set_permission(data.get("resource", ""), data.get("level", "private"))
+    resource = data.get("resource", "")
+    level = data.get("level", "private")
+    pm = PermissionManager()
+    if level == "revoked":
+        pm.revoke(resource, "access")
+    else:
+        pm.grant(resource, "access")
     return jsonify({"status": "updated"})
 
 # Privacy routes moved to api/vision.py blueprint

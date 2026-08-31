@@ -146,8 +146,14 @@ class DailySummary:
         if not self.core.data:
             return []
         try:
-            reminders = self.core.data.get_reminders_today()
-            return [f"{r['text']} - {r['time']}" for r in reminders]
+            raw = self.core.data.get_reminders_today()
+            if not raw:
+                return []
+            if isinstance(raw, str):
+                lines = [l.strip() for l in raw.strip().split("
+") if l.strip()]
+                return lines if lines else []
+            return [f"{r['text']} - {r['time']}" for r in raw]
         except Exception:
             return []
     
