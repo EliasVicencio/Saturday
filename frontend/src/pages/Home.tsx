@@ -17,7 +17,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import "../styles/Home.css";
-import VaultGraph from "../components/Vaultgraph";
+import SaturdayLogo from "../components/SaturdayLogo";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { usePushNotifications } from "../hooks/Usepushnotifications";
 import { useVoicePlayback } from "../hooks/Usevoiceplayback";
@@ -383,7 +383,7 @@ export default function Home({ onNavigateNews }: HomeProps) {
         {/* ===== COLUMNA CENTRAL ===== */}
         <main className="vault-col vault-col--center">
           <div className="vault-sphere-wrap">
-            <VaultGraph active={speech.listening || sending || voice.speaking} audioLevel={voice.level} size={460} />
+            <SaturdayLogo audioLevel={voice.level} size={460} />
             <div className="vault-sphere-count">
               <span className="vault-sphere-count__num">
                 {vaultStats
@@ -394,7 +394,7 @@ export default function Home({ onNavigateNews }: HomeProps) {
             </div>
           </div>
 
-          <div className="vault-sphere-caption">MEMORIA DE LA BÓVEDA — NOTAS ENLAZADAS</div>
+          <div className="vault-sphere-caption">SATURDAY — ASISTENTE INTELIGENTE</div>
 
           <div className="vault-status-row">
             <span className={`vault-status-dot ${isOnline ? "vault-status-dot--on" : "vault-status-dot--off"}`} />
