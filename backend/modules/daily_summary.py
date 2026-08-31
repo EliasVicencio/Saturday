@@ -1,4 +1,4 @@
-# modules/daily_summary.py
+﻿# modules/daily_summary.py
 import os
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
@@ -150,7 +150,7 @@ class DailySummary:
             if not raw:
                 return []
             if isinstance(raw, str):
-                lines = [l.strip() for l in raw.strip().split("
+                lines = [l.strip() for l in raw.strip().split("\n") if l.strip()]
 ") if l.strip()]
                 return lines if lines else []
             return [f"{r['text']} - {r['time']}" for r in raw]
