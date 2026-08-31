@@ -2,6 +2,8 @@
 from flask import Blueprint, request, jsonify
 import logging
 import tempfile
+import os
+import base64
 
 logger = logging.getLogger('saturday.voice')
 
@@ -24,26 +26,33 @@ def speak():
     if len(text) > 300:
         text = text[:297] + "..."
     
-    audio_data = _saturday.voice.speak(text)
+    audio_data = _saturday.voice._synthesize_google_tts(text)
     if audio_data:
-        return audio_data, 200, {'Content-Type': 'audio/mp3', 'Content-Disposition': 'inline'}
+        audio_b64 = base64.b64encode(audio_data).decode('utf-8')
+        return jsonify({'audio': audio_b64, 'format': 'mp3'})
     return jsonify({'error': 'Error generando audio'}), 500
 
 @voice_bp.route('/api/stt', methods=['POST'])
 def stt():
     from api.auth import require_api_key
     if 'audio' not in request.files:
-        return jsonify({'error': 'No audio file'}), 400
+        return jsonify({'error': 'No audio file', 'success': False}), 400
     
     audio_file = request.files['audio']
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
+    suffix = os.path.splitext(audio_file.filename or 'audio.webm')[1] or '.webm'
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         audio_file.save(tmp.name)
-        text = _saturday.voice.transcribe(tmp.name)
+        tmp_path = tmp.name
     
-    import os
     try:
-        os.unlink(tmp.name)
-    except OSError:
-        pass
+        text = _saturday.voice.recognize_audio_file(tmp_path)
+    except Exception as e:
+        logger.error("STT error: %s", e)
+        text = None
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
     
-    return jsonify({'text': text or ''})
+    return jsonify({'text': text or '', 'success': bool(text)})
