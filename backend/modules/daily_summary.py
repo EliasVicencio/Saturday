@@ -142,21 +142,16 @@ class DailySummary:
             return []
     
     def _get_reminders(self) -> List[str]:
-        """Obtiene recordatorios del dia"""
-        if not self.core.data:
-            return []
         try:
             raw = self.core.data.get_reminders_today()
             if not raw:
                 return []
             if isinstance(raw, str):
-                lines = [l.strip() for l in raw.strip().split("\n") if l.strip()]
-") if l.strip()]
+                lines = [l.strip() for l in raw.strip().split(";") if l.strip()]
                 return lines if lines else []
             return [f"{r['text']} - {r['time']}" for r in raw]
         except Exception:
             return []
-    
     def _get_autonomous_emails(self) -> Optional[str]:
         """Obtiene correos revisados automaticamente de la boveda"""
         if not self.core.vault:
