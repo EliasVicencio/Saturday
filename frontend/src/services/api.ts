@@ -632,10 +632,12 @@ export const publishEvent = async (name: string, data?: Record<string, unknown>)
 // ===== YOUTUBE =====
 
 export interface YouTubeVideo {
+  id: string;
   title: string;
   description: string;
   url: string;
   thumbnail: string;
+  channel: string;
   published_at: string;
 }
 

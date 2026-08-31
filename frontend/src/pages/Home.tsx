@@ -15,6 +15,7 @@ import {
   BellOff,
   Volume2,
   VolumeX,
+  Settings,
 } from "lucide-react";
 import "../styles/Home.css";
 import SaturdayLogo from "../components/SaturdayLogo";
@@ -301,6 +302,11 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         >
           {push.status === "subscribed" ? <Bell size={15} /> : <BellOff size={15} />}
         </button>
+        {onNavigateSettings && (
+          <button className="vault-bell" onClick={onNavigateSettings} title="Configuración">
+            <Settings size={15} />
+          </button>
+        )}
       </header>
 
       <div className="vault-main">
