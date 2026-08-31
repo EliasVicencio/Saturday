@@ -628,3 +628,18 @@ export const publishEvent = async (name: string, data?: Record<string, unknown>)
   const response = await api.post('/events', { name, data: data || {} });
   return response.data;
 };
+
+// ===== YOUTUBE =====
+
+export interface YouTubeVideo {
+  title: string;
+  description: string;
+  url: string;
+  thumbnail: string;
+  published_at: string;
+}
+
+export const searchYouTube = async (query: string, maxResults = 5): Promise<YouTubeVideo[]> => {
+  const response = await api.get<{ videos: YouTubeVideo[] }>('/youtube/search', { params: { q: query, max_results: maxResults } });
+  return response.data.videos;
+};

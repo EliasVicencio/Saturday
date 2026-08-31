@@ -75,9 +75,10 @@ const prettifyNoteName = (name: string) =>
 
 interface HomeProps {
   onNavigateNews?: () => void;
+  onNavigateSettings?: () => void;
 }
 
-export default function Home({ onNavigateNews }: HomeProps) {
+export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) {
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
