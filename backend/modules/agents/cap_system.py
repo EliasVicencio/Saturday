@@ -51,24 +51,66 @@ class SystemAgent(BaseAgent):
             duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
-        # Correo
-        if any(kw in text_lower for kw in ["correo", "correos", "email"]):
+        # Correo - Gmail con analisis LLM
+        if any(kw in text_lower for kw in ["correo", "correos", "email", "gmail"]):
             core = self.core
-            if core and hasattr(core, "email") and core.email and core.email._is_configured():
-                # Enviar correo
-                if any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
-                    result = core.email.send_email_from_text(text)
-                # Correos no leidos
-                elif any(kw in text_lower for kw in ["no leidos", "sin leer", "nuevos"]):
-                    result = core.email.get_unread_emails_formatted()
-                # Leer/revisar correos
-                elif any(kw in text_lower for kw in ["leer", "revisar", "ver", "mostrar"]):
-                    result = core.email.get_emails_formatted()
-                # Default: mostrar recientes
+            result = "No hay correos disponibles."
+            
+            # Resumen inteligente con LLM
+            if any(kw in text_lower for kw in ["resumen", "analizar", "analiza", "revisar", "revise", "leer", "que hay", "actualizaciones"]):
+                if core and hasattr(core, "email_summary") and core.email_summary:
+                    try:
+                        summary_data = core.email_summary.get_summary()
+                        result = summary_data.get("summary", "No pude generar el resumen.")
+                        emails = summary_data.get("emails", [])
+                        if emails and len(emails) > 0:
+                            result += f"\n\n{len(emails)} correo(s) analizado(s)."
+                    except Exception as ex:
+                        result = f"Error al resumir correos: {str(ex)}"
                 else:
-                    result = core.email.get_emails_formatted()
+                    result = "El resumen de correos no esta configurado."
+            
+            # Enviar correo
+            elif any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
+                if core and hasattr(core, "email") and core.email and core.email._is_configured():
+                    result = core.email.send_email_from_text(text)
+                else:
+                    result = "El envio de correos no esta configurado."
+            
+            # Gmail no leidos (raw)
+            elif any(kw in text_lower for kw in ["no leidos", "sin leer", "nuevos", "raw", "bruto"]):
+                if core and hasattr(core, "gmail") and core.gmail and core.gmail.is_connected():
+                    emails = core.gmail.get_recent_emails(max_results=10)
+                    if emails:
+                        lines = []
+                        for e in emails[:10]:
+                            lines.append(f"De: {e.get('from','?')} | Asunto: {e.get('subject','Sin asunto')}")
+                        result = f"{len(emails)} correos:\n" + "\n".join(lines)
+                    else:
+                        result = "No hay correos no leidos."
+                else:
+                    result = "Gmail no esta conectado. Conecta en Configuracion."
+            
+            # Default: resumen inteligente
             else:
-                result = "El correo no esta configurado."
+                if core and hasattr(core, "email_summary") and core.email_summary:
+                    try:
+                        summary_data = core.email_summary.get_summary()
+                        result = summary_data.get("summary", "No pude generar el resumen.")
+                    except Exception:
+                        result = "Error al obtener correos."
+                elif core and hasattr(core, "gmail") and core.gmail and core.gmail.is_connected():
+                    emails = core.gmail.get_recent_emails(max_results=5)
+                    if emails:
+                        lines = []
+                        for e in emails[:5]:
+                            lines.append(f"De: {e.get('from','?')} | Asunto: {e.get('subject','Sin asunto')}")
+                        result = f"{len(emails)} correos recientes:\n" + "\n".join(lines)
+                    else:
+                        result = "No hay correos recientes."
+                else:
+                    result = "Gmail no esta conectado."
+            
             tools_log.append({"tool": "email", "args": {"text": text}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)

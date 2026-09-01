@@ -117,6 +117,29 @@ class GmailManager:
             logger.error(f"Error getting Gmail access token: {e}")
             return None
     
+    def _get_body_text(self, payload: Dict) -> str:
+        body = ""
+        mime = payload.get("mimeType", "")
+        
+        if "text/plain" in mime:
+            data = payload.get("body", {}).get("data", "")
+            if data:
+                body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+        elif "text/html" in mime:
+            data = payload.get("body", {}).get("data", "")
+            if data:
+                html = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                import re
+                body = re.sub(r'<[^>]+>', ' ', html)
+                body = re.sub(r'\s+', ' ', body).strip()
+        elif "multipart" in mime:
+            for part in payload.get("parts", []):
+                text = self._get_body_text(part)
+                if text:
+                    body += text + " "
+        
+        return body.strip()[:1500]
+    
     def get_recent_emails(self, max_results: int = 10, query: str = "") -> List[Dict[str, Any]]:
         token = self._get_access_token()
         if not token:
@@ -126,7 +149,7 @@ class GmailManager:
             import requests as req
             headers = {"Authorization": f"Bearer {token}"}
             
-            search_q = query if query else "is:unread"
+            search_q = query if query else "newer_than:7d"
             
             resp = req.get(
                 "https://gmail.googleapis.com/gmail/v1/users/me/messages",
@@ -153,19 +176,20 @@ class GmailManager:
                     headers_dict = {}
                     for h in msg_data.get("payload", {}).get("headers", []):
                         headers_dict[h["name"].lower()] = h["value"]
-                    # Also check top-level headers
                     for h in msg_data.get("headers", []):
                         headers_dict[h["name"].lower()] = h["value"]
                     
-                    snippet = msg_data.get("snippet", "")
+                    body_text = self._get_body_text(msg_data.get("payload", {}))
                     
                     emails.append({
                         "id": msg["id"],
                         "from": headers_dict.get("from", "Desconocido"),
                         "subject": headers_dict.get("subject", "Sin asunto"),
                         "date": headers_dict.get("date", ""),
-                        "snippet": snippet[:200],
+                        "snippet": msg_data.get("snippet", "")[:300],
+                        "body": body_text[:1500],
                         "labels": msg_data.get("labelIds", []),
+                        "url": f"https://mail.google.com/mail/u/0/#inbox/{msg['id']}",
                     })
             
             return emails

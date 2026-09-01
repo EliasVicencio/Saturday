@@ -26,7 +26,7 @@ class EmailSummary:
             with open(self._cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.error(f"Error guardando caché de emails: {e}")
+            logger.error(f"Error guardando cache de emails: {e}")
 
     def _summarize_with_llm(self, emails: List[Dict]) -> str:
         try:
@@ -35,12 +35,27 @@ class EmailSummary:
 
             email_texts = []
             for i, e in enumerate(emails[:10]):
-                sender = e.get('from', e.get('sender', 'Desconocido'))
-                subject = e.get('subject', e.get('asunto', 'Sin asunto'))
-                snippet = e.get('snippet', e.get('preview', ''))[:150]
-                email_texts.append(f"{i+1}. De: {sender}\n   Asunto: {subject}\n   Vista previa: {snippet}")
+                sender = e.get('from', 'Desconocido')
+                subject = e.get('subject', 'Sin asunto')
+                body = e.get('body', e.get('snippet', ''))[:500]
+                url = e.get('url', '')
+                email_texts.append(f"{i+1}. De: {sender}\n   Asunto: {subject}\n   Contenido: {body}\n   URL: {url}")
 
-            prompt = f"Resume estos correos electrónicos en español, categorizándolos por prioridad (alta/media/baja). Sé conciso.\n\nCorreos:\n" + "\n".join(email_texts)
+            prompt = """Eres Saturday, el asistente personal de Elias. Analiza estos correos y para cada uno:
+1. Resume en 1-2 frases QUE DICE el correo (no el subject, sino el contenido real)
+2. Clasifica la urgencia: URGENTE, IMPORTANTE, INFORMATIVO, PROMOCION
+3. Si es accionable, sugiere una accion concreta
+
+Responde en espanol. Se directo y util. Usa este formato para cada correo:
+
+[De: remitente] - [Asunto]
+-> [Resumen inteligente del contenido]
+[Urgencia] | [Accion sugerida si aplica]
+[URL del correo]
+
+Correos:
+""" + "\n\n".join(email_texts)
+
             response = self.core.gemini.chat(prompt)
             return response if response else self._simple_summary(emails)
         except Exception as e:
@@ -50,25 +65,26 @@ class EmailSummary:
     def _simple_summary(self, emails: List[Dict]) -> str:
         if not emails:
             return "No hay correos recientes."
-        lines = [f"📧 {len(emails)} correo(s) encontrado(s):"]
+        lines = [f"{len(emails)} correo(s) encontrado(s):"]
         for e in emails[:5]:
-            sender = e.get('from', e.get('sender', '?'))
-            subject = e.get('subject', e.get('asunto', 'Sin asunto'))
-            lines.append(f"  • {sender}: {subject}")
+            sender = e.get('from', '?')
+            subject = e.get('subject', 'Sin asunto')
+            lines.append(f"  - {sender}: {subject}")
         return "\n".join(lines)
 
     def get_summary(self) -> Dict[str, Any]:
         cache = self._load_cache()
 
         emails = []
-        try:
-            if self.core.email:
-                raw = self.core.email.get_recent()
-                if raw:
-                    emails = [{"from": "correo", "subject": str(raw)[:100], "snippet": str(raw)[:200]}]
-        except Exception:
-            pass
 
+        # Try Gmail first (with full body for analysis)
+        try:
+            if hasattr(self.core, 'gmail') and self.core.gmail and self.core.gmail.is_connected():
+                emails = self.core.gmail.get_recent_emails(max_results=10)
+        except Exception as ex:
+            logger.error(f"Error getting Gmail: {ex}")
+
+        # Fallback to vault search
         if not emails:
             try:
                 if self.core.vault:
@@ -98,4 +114,4 @@ class EmailSummary:
         cache = self._load_cache()
         last = cache.get("last_check", "nunca")
         count = cache.get("email_count", 0)
-        return f"📧 Última revisión: {last} | {count} correos procesados"
+        return f"Ultima revision: {last} | {count} correos procesados"
