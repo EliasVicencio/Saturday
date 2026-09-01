@@ -149,17 +149,21 @@ def google_fit_auth_url():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@features_bp.route("/api/health/google-fit/callback", methods=["POST"])
+@features_bp.route("/api/health/google-fit/callback", methods=["GET", "POST"])
 def google_fit_callback():
     if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
         return jsonify({"error": "Google Fit no disponible"}), 503
     try:
-        data = request.get_json(silent=True) or {}
-        code = data.get("code", "")
+        code = request.args.get("code", "") if request.method == "GET" else ""
+        if not code:
+            data = request.get_json(silent=True) or {}
+            code = data.get("code", "")
         if not code:
             return jsonify({"error": "Se requiere el campo code"}), 400
         success = _core.google_fit.exchange_code(code, GOOGLE_FIT_REDIRECT)
         if success:
+            if request.method == "GET":
+                return '<html><body style="background:#0a0a14;color:#4caf50;font-family:sans-serif;text-align:center;padding-top:100px"><h1>Google Fit conectado!</h1><p>Puedes cerrar esta ventana.</p></body></html>'
             return jsonify({"message": "Google Fit conectado exitosamente"})
         return jsonify({"error": "Error procesando el codigo"}), 500
     except Exception as e:
