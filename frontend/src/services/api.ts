@@ -383,6 +383,7 @@ export interface ChatResponse {
   intent: string;
   action: boolean;
   navigate?: string;
+  navigate_url?: string;
 }
 
 export interface StatusResponse {

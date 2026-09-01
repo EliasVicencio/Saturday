@@ -56,6 +56,10 @@ class AgentRouter:
                         rd["checkpoint_id"] = checkpoint_id
                         rd["session_id"] = session_id
                         rd["duration_ms"] = (time.time() - start) * 1000
+                        # Extract URL from tools_called for frontend
+                        for tool in result.tools_called:
+                            if tool.get("tool") == "open_email" and "url" in tool:
+                                rd["navigate_url"] = tool["url"]
                         return rd
 
         # 1. Evaluar scores de cada agente

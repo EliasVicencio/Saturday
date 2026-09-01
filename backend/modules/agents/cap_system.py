@@ -122,7 +122,7 @@ class SystemAgent(BaseAgent):
                 url = core.pending_email_url
                 core.pending_email_url = None
                 result = "Abriendo el correo en Gmail..."
-                tools_log.append({"tool": "open_email", "args": {"url": url}})
+                tools_log.append({"tool": "open_email", "url": url, "args": {"url": url}})
                 duration = (time.time() - start) * 1000
                 return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
