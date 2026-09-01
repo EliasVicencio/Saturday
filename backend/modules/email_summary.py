@@ -34,10 +34,10 @@ class EmailSummary:
                 return self._simple_summary(emails)
 
             email_texts = []
-            for i, e in enumerate(emails[:10]):
+            for i, e in enumerate(emails[:5]):
                 sender = e.get('from', 'Desconocido')
                 subject = e.get('subject', 'Sin asunto')
-                body = e.get('body', e.get('snippet', ''))[:600]
+                body = e.get('body', e.get('snippet', ''))[:200]
                 url = e.get('url', '')
                 email_texts.append(f"De: {sender} | Asunto: {subject}\nContenido: {body}\nURL: {url}")
 
