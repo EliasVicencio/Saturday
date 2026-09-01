@@ -1,4 +1,4 @@
-# modules/core.py - Nucleo de Saturday COMPLETO
+﻿# modules/core.py - Nucleo de Saturday COMPLETO
 import os
 import logging
 logger = logging.getLogger("saturday.core")
@@ -197,6 +197,12 @@ try:
     HEALTH_AVAILABLE = True
 except ImportError:
     HEALTH_AVAILABLE = False
+
+try:
+    from modules.google_fit import GoogleFitManager
+    GOOGLE_FIT_AVAILABLE = True
+except ImportError:
+    GOOGLE_FIT_AVAILABLE = False
 
 class SaturdayCore:
     """Nucleo de inteligencia de Saturday"""
@@ -498,6 +504,14 @@ class SaturdayCore:
             except Exception as e:
                 logger.info(f"  Error inicializando HealthTracker: {e}")
 
+        self.google_fit = None
+        if GOOGLE_FIT_AVAILABLE:
+            try:
+                self.google_fit = GoogleFitManager(self)
+                logger.info("  GoogleFitManager inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando GoogleFitManager: {e}")
+
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
@@ -674,6 +688,17 @@ class SaturdayCore:
             if chat_id and self.conversation:
                 self.conversation.add_assistant_message(chat_id, response, "general")
             
+            # Proactive context hint
+            try:
+                if self.proactive:
+                    suggestions = self.proactive.get_suggestions()
+                    if suggestions and response:
+                        hint = suggestions[0].get("text", "")
+                        if hint:
+                            response = response.rstrip() + "\n\n💡 " + hint
+            except Exception:
+                pass
+            
             return {"intent": "general", "response": response, "action": False}
 
         intent = match.intent
@@ -715,6 +740,18 @@ class SaturdayCore:
                     
                     self.send_to_telegram(f" Interfaz: {text}")
                     self.send_to_telegram(f" Saturday: {result}")
+                    
+                    # Proactive context hint
+                    try:
+                        if self.proactive:
+                            suggestions = self.proactive.get_suggestions()
+                            if suggestions and result:
+                                hint = suggestions[0].get("text", "")
+                                if hint:
+                                    result = result.rstrip() + "\n\n💡 " + hint
+                    except Exception:
+                        pass
+                    
                     return {"intent": intent, "response": result, "action": True}
                 except Exception as e:
                     return {"intent": "error", "response": f" Error: {str(e)}", "action": False}

@@ -31,6 +31,9 @@ import {
   getVaultNotes,
   getTasksList,
   getEventsToday,
+  getProductivity,
+  getGoogleFitData,
+  connectGoogleFit,
   type StatusResponse,
   type WeatherResponse,
   type SystemStats,
@@ -62,7 +65,6 @@ const quickCommands = [
   "YT semanal",
   "Plan mañana",
   "Limpieza bóveda",
-  "🚀 Features",
 ];
 
 /** Informes del panel izquierdo */
@@ -78,10 +80,9 @@ const prettifyNoteName = (name: string) =>
 interface HomeProps {
   onNavigateNews?: () => void;
   onNavigateSettings?: () => void;
-  onNavigateFeatures?: () => void;
 }
 
-export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFeatures }: HomeProps) {
+export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) {
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -95,6 +96,8 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
   const [recentOutputs, setRecentOutputs] = useState<VaultNote[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [prodData, setProdData] = useState<any>(null);
+  const [healthData, setHealthData] = useState<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -191,6 +194,24 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
   }, [refreshStatus, refreshWeather, refreshSystem, refreshVault, refreshAgenda]);
 
   useEffect(() => {
+    const loadProd = async () => {
+      try { const d = await getProductivity(); setProdData(d); } catch {}
+    };
+    loadProd();
+    const interval = setInterval(loadProd, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const loadHealth = async () => {
+      try { const d = await getGoogleFitData(); setHealthData(d); } catch {}
+    };
+    loadHealth();
+    const interval = setInterval(loadHealth, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (!status && !statusError) return;
     setMessages((prev) => {
       const greeting = statusError
@@ -202,6 +223,15 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
       return prev;
     });
   }, [status, statusError]);
+
+  const handleConnectFit = async () => {
+    try {
+      const data = await connectGoogleFit();
+      if (data.auth_url) {
+        window.open(data.auth_url, '_blank');
+      }
+    } catch {}
+  };
 
   const sendMessage = async (text?: string) => {
     const value = (text ?? inputValue).trim();
@@ -280,7 +310,6 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
           <span className="dim">·</span>
           <span>EN LÍNEA</span>
           <span className="vault-topbar__link" onClick={onNavigateNews}>NOTICIAS</span>
-          <span className="vault-topbar__link" onClick={onNavigateFeatures}>FEATURES</span>
           <span className="vault-topbar__active">ACTIVE</span>
         </nav>
         <div className="vault-topbar__clock">
@@ -361,6 +390,30 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
             </div>
             <div className="vault-bar">
               <div className="vault-bar__fill" style={{ width: `${cpuPct}%` }} />
+            </div>
+          </div>
+
+          {/* PRODUCTIVIDAD */}
+          <div className="vault-section">
+            <div className="vault-section-title">
+              <span>PRODUCTIVIDAD HOY</span>
+            </div>
+            <div className="prod-widget">
+              {prodData ? (
+                <>
+                  <div className="prod-score-mini">
+                    <span className="prod-score-num">{prodData.score}</span>
+                    <span className="prod-score-label">/100</span>
+                  </div>
+                  <div className="prod-details">
+                    <span>{prodData.interactions} interacciones</span>
+                    <span>{prodData.vault_notes} notas</span>
+                    <span>{prodData.reminders} recordatorios</span>
+                  </div>
+                </>
+              ) : (
+                <span className="vault-loading">Cargando...</span>
+              )}
             </div>
           </div>
 
@@ -484,7 +537,7 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
           <div className="vault-panel-title">PANEL DE COMANDOS</div>
           <ul className="vault-linklist vault-linklist--grid">
             {quickCommands.map((c) => (
-              <li key={c} onClick={() => c === "🚀 Features" ? onNavigateFeatures?.() : sendMessage(c)}>
+              <li key={c} onClick={() => sendMessage(c)}>
                 <span>{c}</span>
               </li>
             ))}
@@ -506,6 +559,53 @@ export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFea
               <li className="vault-agenda__empty">Sin eventos programados para hoy.</li>
             )}
           </ul>
+
+          {/* GOOGLE FIT / SALUD */}
+          <div className="vault-section">
+            <div className="vault-section-title">
+              <span>SALUD / GOOGLE FIT</span>
+            </div>
+            <div className="health-widget">
+              {healthData && healthData.connected ? (
+                <div className="health-data">
+                  {healthData.steps !== undefined && (
+                    <div className="health-metric">
+                      <span className="metric-icon">🏃</span>
+                      <span className="metric-value">{healthData.steps.toLocaleString()}</span>
+                      <span className="metric-label">pasos</span>
+                    </div>
+                  )}
+                  {healthData.calories !== undefined && (
+                    <div className="health-metric">
+                      <span className="metric-icon">🔥</span>
+                      <span className="metric-value">{healthData.calories}</span>
+                      <span className="metric-label">kcal</span>
+                    </div>
+                  )}
+                  {healthData.heart_rate_avg && (
+                    <div className="health-metric">
+                      <span className="metric-icon">❤️</span>
+                      <span className="metric-value">{healthData.heart_rate_avg}</span>
+                      <span className="metric-label">bpm</span>
+                    </div>
+                  )}
+                  {healthData.sleep_hours && (
+                    <div className="health-metric">
+                      <span className="metric-icon">😴</span>
+                      <span className="metric-value">{healthData.sleep_hours}h</span>
+                      <span className="metric-label">sueño</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="health-connect">
+                  <button className="vault-btn" onClick={handleConnectFit}>
+                    📱 Vincular Google Fit
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="vault-panel-title vault-panel-title--tight">AUDIO E/S</div>
           <div className="vault-audio-row">

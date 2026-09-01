@@ -133,3 +133,51 @@ def set_health_goal():
         return jsonify({"message": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# --- Google Fit ---
+@features_bp.route("/api/health/google-fit/auth-url", methods=["GET"])
+def google_fit_auth_url():
+    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+        return jsonify({"error": "Google Fit no disponible"}), 503
+    try:
+        url = _core.google_fit.get_auth_url()
+        if url:
+            return jsonify({"auth_url": url})
+        return jsonify({"error": "Credenciales de Google Fit no configuradas"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/health/google-fit/callback", methods=["POST"])
+def google_fit_callback():
+    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+        return jsonify({"error": "Google Fit no disponible"}), 503
+    try:
+        data = request.get_json(silent=True) or {}
+        code = data.get("code", "")
+        if not code:
+            return jsonify({"error": "Código requerido"}), 400
+        success = _core.google_fit.handle_callback(code)
+        if success:
+            return jsonify({"message": "Google Fit conectado exitosamente"})
+        return jsonify({"error": "Error procesando callback"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/health/google-fit/data", methods=["GET"])
+def google_fit_data():
+    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+        return jsonify({"error": "Google Fit no disponible"}), 503
+    try:
+        data = _core.google_fit.get_today_data()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/health/google-fit/status", methods=["GET"])
+def google_fit_status():
+    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+        return jsonify({"connected": False, "error": "Google Fit no disponible"})
+    try:
+        return jsonify({"connected": _core.google_fit.is_connected()})
+    except Exception as e:
+        return jsonify({"connected": False, "error": str(e)})
