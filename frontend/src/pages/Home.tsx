@@ -11,8 +11,6 @@ import {
   ChevronRight,
   Lock,
   MapPin,
-  Bell,
-  BellOff,
   Volume2,
   VolumeX,
   Settings,
@@ -20,7 +18,6 @@ import {
 import "../styles/Home.css";
 import SaturdayLogo from "../components/SaturdayLogo";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
-import { usePushNotifications } from "../hooks/Usepushnotifications";
 import { useVoicePlayback } from "../hooks/Usevoiceplayback";
 import {
   sendMessage as apiSendMessage,
@@ -296,8 +293,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
     onFinalResult: (transcript) => sendMessage(transcript),
   });
 
-  const push = usePushNotifications();
-  const voice = useVoicePlayback();
+    const voice = useVoicePlayback();
 
   const isOnline = !!status && status.status === "online";
   const activeModulesCount = status ? Object.values(status.modules).filter(Boolean).length : 0;
@@ -328,24 +324,6 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <span className="vault-topbar__clock-time">{formatClock(now)}</span>
           <span className="vault-topbar__clock-label">HORA DEL SISTEMA</span>
         </div>
-        <button
-          className={`vault-bell ${push.status === "subscribed" ? "vault-bell--active" : ""}`}
-          onClick={push.toggle}
-          disabled={push.status === "unsupported" || push.status === "disabled-backend" || push.status === "loading"}
-          title={
-            push.status === "unsupported"
-              ? "Tu navegador no soporta notificaciones push"
-              : push.status === "disabled-backend"
-                ? "El backend no configuró claves VAPID todavía"
-                : push.status === "denied"
-                  ? "Bloqueaste las notificaciones para este sitio"
-                  : push.status === "subscribed"
-                    ? "Notificaciones activas — click para desactivar"
-                    : "Activar notificaciones push"
-          }
-        >
-          {push.status === "subscribed" ? <Bell size={15} /> : <BellOff size={15} />}
-        </button>
         {onNavigateSettings && (
           <button className="vault-bell" onClick={onNavigateSettings} title="Configuración">
             <Settings size={15} />
