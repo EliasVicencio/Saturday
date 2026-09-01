@@ -61,10 +61,18 @@ EJEMPLOS de como responder:
 Correos para analizar:
 """ + "\n\n".join(email_texts)
 
+            logger.info(f"Calling LLM with {len(email_texts)} emails")
             response = self.core.gemini.chat(prompt)
-            return response if response else self._simple_summary(emails)
+            logger.info(f"LLM response length: {len(response) if response else 0}")
+            if response:
+                return response
+            else:
+                logger.warning("LLM returned empty response, using simple summary")
+                return self._simple_summary(emails)
         except Exception as e:
             logger.error(f"Error en LLM summary: {e}")
+            import traceback
+            traceback.print_exc()
             return self._simple_summary(emails)
 
     def _simple_summary(self, emails: List[Dict]) -> str:
