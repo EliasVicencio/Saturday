@@ -34,6 +34,7 @@ import {
   getProductivity,
   getGoogleFitData,
   connectGoogleFit,
+  googleFitCallback,
   type StatusResponse,
   type WeatherResponse,
   type SystemStats,
@@ -226,11 +227,22 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
 
   const handleConnectFit = async () => {
     try {
-      const data = await connectGoogleFit();
-      if (data.auth_url) {
-        window.open(data.auth_url, '_blank');
+      const result = await connectGoogleFit();
+      if (result.auth_url) {
+        window.open(result.auth_url, '_blank');
+        const code = prompt('Despues de autorizar, copia el codigo que te dan y pegalo aqui:');
+        if (code) {
+          await googleFitCallback(code);
+          alert('Google Fit conectado!');
+          const data = await getGoogleFitData();
+          setHealthData(data);
+        }
+      } else {
+        alert('Credenciales de Google Fit no configuradas en el servidor');
       }
-    } catch {}
+    } catch (e) {
+      alert('Error conectando con Google Fit');
+    }
   };
 
   const sendMessage = async (text?: string) => {

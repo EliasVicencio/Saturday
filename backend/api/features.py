@@ -142,8 +142,8 @@ def google_fit_auth_url():
     try:
         url = _core.google_fit.get_auth_url()
         if url:
-            return jsonify({"auth_url": url})
-        return jsonify({"error": "Credenciales de Google Fit no configuradas"}), 500
+            return jsonify({"auth_url": url, "instructions": "Abre esta URL en tu navegador, autoriza, y copia el codigo que te den. Luego envia el codigo via POST a /api/health/google-fit/callback con {code: tu_codigo}"})
+        return jsonify({"error": "Credenciales no configuradas"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -155,11 +155,11 @@ def google_fit_callback():
         data = request.get_json(silent=True) or {}
         code = data.get("code", "")
         if not code:
-            return jsonify({"error": "Código requerido"}), 400
-        success = _core.google_fit.handle_callback(code)
+            return jsonify({"error": "Se requiere el campo code"}), 400
+        success = _core.google_fit.exchange_code(code)
         if success:
             return jsonify({"message": "Google Fit conectado exitosamente"})
-        return jsonify({"error": "Error procesando callback"}), 500
+        return jsonify({"error": "Error procesando el codigo"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
