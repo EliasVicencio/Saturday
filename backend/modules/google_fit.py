@@ -32,7 +32,7 @@ class GoogleFitManager:
             if not config:
                 return None
             
-            client_config = config.get("installed") or config.get("web", {})
+            client_config = config.get("web") or config.get("installed", {})
             client_id = client_config.get("client_id", "")
             client_secret = client_config.get("client_secret", "")
             auth_uri = client_config.get("auth_uri", "https://accounts.google.com/o/oauth2/auth")
@@ -64,7 +64,7 @@ class GoogleFitManager:
             if not config:
                 return False
             
-            client_config = config.get("installed") or config.get("web", {})
+            client_config = config.get("web") or config.get("installed", {})
             
             token_data = {
                 "code": code,

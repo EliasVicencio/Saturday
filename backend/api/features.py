@@ -135,12 +135,14 @@ def set_health_goal():
         return jsonify({"error": str(e)}), 500
 
 # --- Google Fit ---
+GOOGLE_FIT_REDIRECT = "https://saturday.viewdns.net/api/health/google-fit/callback"
+
 @features_bp.route("/api/health/google-fit/auth-url", methods=["GET"])
 def google_fit_auth_url():
     if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
         return jsonify({"error": "Google Fit no disponible"}), 503
     try:
-        url = _core.google_fit.get_auth_url()
+        url = _core.google_fit.get_auth_url(redirect_uri=GOOGLE_FIT_REDIRECT)
         if url:
             return jsonify({"auth_url": url, "instructions": "Abre esta URL en tu navegador, autoriza, y copia el codigo que te den. Luego envia el codigo via POST a /api/health/google-fit/callback con {code: tu_codigo}"})
         return jsonify({"error": "Credenciales no configuradas"}), 500
@@ -156,7 +158,7 @@ def google_fit_callback():
         code = data.get("code", "")
         if not code:
             return jsonify({"error": "Se requiere el campo code"}), 400
-        success = _core.google_fit.exchange_code(code)
+        success = _core.google_fit.exchange_code(code, GOOGLE_FIT_REDIRECT)
         if success:
             return jsonify({"message": "Google Fit conectado exitosamente"})
         return jsonify({"error": "Error procesando el codigo"}), 500
