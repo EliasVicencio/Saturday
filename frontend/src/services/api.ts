@@ -645,3 +645,129 @@ export const searchYouTube = async (query: string, maxResults = 5): Promise<YouT
   const response = await api.get<{ videos: YouTubeVideo[] }>('/youtube/search', { params: { q: query, max_results: maxResults } });
   return response.data.videos;
 };
+
+// --- Feature: Proactive Context ---
+export interface ProactiveSuggestion {
+  type: string;
+  text: string;
+  priority: string;
+}
+
+export interface ProactiveContext {
+  time: { hour: number; period: string; weekday: string; is_weekend: boolean; date: string };
+  suggestions: ProactiveSuggestion[];
+  summary: string;
+  upcoming_events?: any[];
+  weather?: any;
+}
+
+export const getProactiveContext = async (): Promise<ProactiveContext> => {
+  const { data } = await api.get("/proactive/context");
+  return data;
+};
+
+export const getProactiveSuggestions = async (): Promise<{ suggestions: ProactiveSuggestion[] }> => {
+  const { data } = await api.get("/proactive/suggestions");
+  return data;
+};
+
+// --- Feature: Email Summary ---
+export interface EmailSummary {
+  summary: string;
+  email_count: number;
+  last_check: string;
+  cached: boolean;
+}
+
+export const getEmailSummary = async (): Promise<EmailSummary> => {
+  const { data } = await api.get("/emails/summary");
+  return data;
+};
+
+// --- Feature: Productivity ---
+export interface ProductivityReport {
+  date: string;
+  interactions: number;
+  vault_notes: number;
+  reminders: number;
+  pending_tasks: number;
+  top_intents: { intent: string; count: number }[];
+  score: number;
+  total_all_time: number;
+}
+
+export interface WeeklyReport {
+  period: string;
+  total_interactions: number;
+  daily_average: number;
+  most_productive_day: { date: string; interactions: number };
+  daily_breakdown: { date: string; interactions: number }[];
+}
+
+export const getDailyProductivity = async (): Promise<ProductivityReport> => {
+  const { data } = await api.get("/productivity/daily");
+  return data;
+};
+
+export const getWeeklyProductivity = async (): Promise<WeeklyReport> => {
+  const { data } = await api.get("/productivity/weekly");
+  return data;
+};
+
+// --- Feature: Routines ---
+export interface RoutineData {
+  status: string;
+  total_samples: number;
+  current_suggestions: string[];
+  hourly_routines: Record<string, { intent: string; frequency: number }[]>;
+  weekly_routines: Record<string, { intent: string; frequency: number }[]>;
+}
+
+export const getRoutines = async (): Promise<RoutineData> => {
+  const { data } = await api.get("/routines");
+  return data;
+};
+
+// --- Feature: Health ---
+export interface HealthEntry {
+  timestamp: string;
+  date: string;
+  category: string;
+  value: any;
+  note: string;
+}
+
+export interface HealthToday {
+  date: string;
+  entries: HealthEntry[];
+  compliance: Record<string, { current: number; goal: number; met: boolean }>;
+  mood_average: number | null;
+  total_entries: number;
+}
+
+export interface HealthWeekly {
+  period: string;
+  total_entries: number;
+  avg_compliance: number;
+  daily_breakdown: { date: string; met: number; total: number; percentage: number }[];
+}
+
+export const getHealthToday = async (): Promise<HealthToday> => {
+  const { data } = await api.get("/health/today");
+  return data;
+};
+
+export const getHealthWeekly = async (): Promise<HealthWeekly> => {
+  const { data } = await api.get("/health/weekly");
+  return data;
+};
+
+export const logHealth = async (category: string, value: any, note: string = ""): Promise<{ message: string }> => {
+  const { data } = await api.post("/health/log", { category, value, note });
+  return data;
+};
+
+export const setHealthGoal = async (category: string, value: number): Promise<{ message: string }> => {
+  const { data } = await api.post("/health/goal", { category, value });
+  return data;
+};

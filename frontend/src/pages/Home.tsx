@@ -62,6 +62,7 @@ const quickCommands = [
   "YT semanal",
   "Plan mañana",
   "Limpieza bóveda",
+  "🚀 Features",
 ];
 
 /** Informes del panel izquierdo */
@@ -77,9 +78,10 @@ const prettifyNoteName = (name: string) =>
 interface HomeProps {
   onNavigateNews?: () => void;
   onNavigateSettings?: () => void;
+  onNavigateFeatures?: () => void;
 }
 
-export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) {
+export default function Home({ onNavigateNews, onNavigateSettings, onNavigateFeatures }: HomeProps) {
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -278,6 +280,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <span className="dim">·</span>
           <span>EN LÍNEA</span>
           <span className="vault-topbar__link" onClick={onNavigateNews}>NOTICIAS</span>
+          <span className="vault-topbar__link" onClick={onNavigateFeatures}>FEATURES</span>
           <span className="vault-topbar__active">ACTIVE</span>
         </nav>
         <div className="vault-topbar__clock">
@@ -481,7 +484,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <div className="vault-panel-title">PANEL DE COMANDOS</div>
           <ul className="vault-linklist vault-linklist--grid">
             {quickCommands.map((c) => (
-              <li key={c} onClick={() => sendMessage(c)}>
+              <li key={c} onClick={() => c === "🚀 Features" ? onNavigateFeatures?.() : sendMessage(c)}>
                 <span>{c}</span>
               </li>
             ))}

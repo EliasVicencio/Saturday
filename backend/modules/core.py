@@ -167,6 +167,37 @@ try:
 except ImportError:
     PERMS_AVAILABLE = False
 
+# --- Feature Modules ---
+try:
+    from modules.proactive_context import ProactiveContext
+    PROACTIVE_AVAILABLE = True
+except ImportError:
+    PROACTIVE_AVAILABLE = False
+
+try:
+    from modules.email_summary import EmailSummary
+    EMAIL_SUMMARY_AVAILABLE = True
+except ImportError:
+    EMAIL_SUMMARY_AVAILABLE = False
+
+try:
+    from modules.productivity import ProductivityTracker
+    PRODUCTIVITY_AVAILABLE = True
+except ImportError:
+    PRODUCTIVITY_AVAILABLE = False
+
+try:
+    from modules.routine_learner import RoutineLearner
+    ROUTINES_AVAILABLE = True
+except ImportError:
+    ROUTINES_AVAILABLE = False
+
+try:
+    from modules.health_tracker import HealthTracker
+    HEALTH_AVAILABLE = True
+except ImportError:
+    HEALTH_AVAILABLE = False
+
 class SaturdayCore:
     """Nucleo de inteligencia de Saturday"""
 
@@ -425,6 +456,47 @@ class SaturdayCore:
                 logger.info("[OK] PermissionManager inicializado")
             except Exception as e:
                 logger.info(f"[WARN] Error inicializando PermissionManager: {e}")
+
+        # --- Feature Modules ---
+        self.proactive = None
+        if PROACTIVE_AVAILABLE:
+            try:
+                self.proactive = ProactiveContext(self)
+                logger.info("  ProactiveContext inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando ProactiveContext: {e}")
+        
+        self.email_summary = None
+        if EMAIL_SUMMARY_AVAILABLE:
+            try:
+                self.email_summary = EmailSummary(self)
+                logger.info("  EmailSummary inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando EmailSummary: {e}")
+        
+        self.productivity = None
+        if PRODUCTIVITY_AVAILABLE:
+            try:
+                self.productivity = ProductivityTracker(self)
+                logger.info("  ProductivityTracker inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando ProductivityTracker: {e}")
+        
+        self.routines = None
+        if ROUTINES_AVAILABLE:
+            try:
+                self.routines = RoutineLearner(self)
+                logger.info("  RoutineLearner inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando RoutineLearner: {e}")
+        
+        self.health = None
+        if HEALTH_AVAILABLE:
+            try:
+                self.health = HealthTracker(self)
+                logger.info("  HealthTracker inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando HealthTracker: {e}")
 
         # Construir mapa de conocimiento
         self.knowledge_graph = nx.DiGraph()

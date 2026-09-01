@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 import HomePage from './pages/Home';
 import NewsPage from './pages/News';
 import SettingsPage from './pages/Settings';
+import FeaturesPage from './pages/Features';
 import './styles/App.css';
 
-type View = 'home' | 'news' | 'settings';
+type View = 'home' | 'news' | 'settings' | 'features';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -22,10 +23,13 @@ function App() {
         <NewsPage />
       ) : currentView === 'settings' ? (
         <SettingsPage onBack={() => setCurrentView('home')} />
+      ) : currentView === 'features' ? (
+        <FeaturesPage onBack={() => setCurrentView('home')} />
       ) : (
         <HomePage
           onNavigateNews={() => setCurrentView('news')}
           onNavigateSettings={() => setCurrentView('settings')}
+          onNavigateFeatures={() => setCurrentView('features')}
         />
       )}
     </div>

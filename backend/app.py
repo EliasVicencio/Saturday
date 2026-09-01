@@ -51,6 +51,7 @@ from api.communication import communication_bp, init_communication
 from api.media import media_bp, init_media
 from api.vault import vault_bp, init_vault
 from api.vision import vision_bp, init_vision
+from api.features import features_bp, init_features
 
 _sessions = {}
 init_chat(saturday, _sessions)
@@ -61,6 +62,7 @@ init_communication(saturday)
 init_media(saturday)
 init_vault(saturday)
 init_vision(saturday)
+init_features(saturday)
 
 app.register_blueprint(chat_bp)
 app.register_blueprint(memory_bp)
@@ -70,6 +72,7 @@ app.register_blueprint(communication_bp)
 app.register_blueprint(media_bp)
 app.register_blueprint(vault_bp)
 app.register_blueprint(vision_bp)
+app.register_blueprint(features_bp)
 
 # Welcome message
 _greeting_message = {"text": None, "ready": False}
