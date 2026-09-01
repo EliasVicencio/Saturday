@@ -187,3 +187,69 @@ def google_fit_status():
         return jsonify({"connected": _core.google_fit.is_connected()})
     except Exception as e:
         return jsonify({"connected": False, "error": str(e)})
+
+# --- Gmail ---
+GMAIL_REDIRECT = "https://saturday.viewdns.net/api/gmail/callback"
+
+@features_bp.route("/api/gmail/auth-url", methods=["GET"])
+def gmail_auth_url():
+    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+        return jsonify({"error": "Gmail no disponible"}), 503
+    try:
+        url = _core.gmail.get_auth_url(redirect_uri=GMAIL_REDIRECT)
+        if url:
+            return jsonify({"auth_url": url})
+        return jsonify({"error": "Credenciales no configuradas"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/gmail/callback", methods=["GET", "POST"])
+def gmail_callback():
+    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+        return jsonify({"error": "Gmail no disponible"}), 503
+    try:
+        code = request.args.get("code", "") if request.method == "GET" else ""
+        if not code:
+            data = request.get_json(silent=True) or {}
+            code = data.get("code", "")
+        if not code:
+            return jsonify({"error": "Se requiere el campo code"}), 400
+        success = _core.gmail.exchange_code(code, GMAIL_REDIRECT)
+        if success:
+            if request.method == "GET":
+                return '<html><body style="background:#0a0a14;color:#4caf50;font-family:sans-serif;text-align:center;padding-top:100px"><h1>Gmail conectado!</h1><p>Puedes cerrar esta ventana.</p></body></html>'
+            return jsonify({"message": "Gmail conectado exitosamente"})
+        return jsonify({"error": "Error procesando codigo"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/gmail/status", methods=["GET"])
+def gmail_status():
+    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+        return jsonify({"connected": False, "error": "Gmail no disponible"})
+    try:
+        return jsonify({"connected": _core.gmail.is_connected()})
+    except Exception as e:
+        return jsonify({"connected": False, "error": str(e)})
+
+@features_bp.route("/api/gmail/emails", methods=["GET"])
+def gmail_emails():
+    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+        return jsonify({"error": "Gmail no disponible"}), 503
+    try:
+        query = request.args.get("q", "")
+        max_results = int(request.args.get("limit", 10))
+        emails = _core.gmail.get_recent_emails(max_results=max_results, query=query)
+        return jsonify({"emails": emails, "count": len(emails)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@features_bp.route("/api/gmail/summary", methods=["GET"])
+def gmail_summary():
+    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+        return jsonify({"error": "Gmail no disponible"}), 503
+    try:
+        summary = _core.gmail.get_summary()
+        return jsonify(summary)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

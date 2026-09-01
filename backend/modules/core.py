@@ -204,6 +204,11 @@ try:
 except ImportError:
     GOOGLE_FIT_AVAILABLE = False
 
+try:
+    from modules.gmail_manager import GmailManager
+    GMAIL_AVAILABLE = True
+except ImportError:
+    GMAIL_AVAILABLE = False
 class SaturdayCore:
     """Nucleo de inteligencia de Saturday"""
 
@@ -512,7 +517,14 @@ class SaturdayCore:
             except Exception as e:
                 logger.info(f"  Error inicializando GoogleFitManager: {e}")
 
-        # Construir mapa de conocimiento
+        self.gmail = None
+        if GMAIL_AVAILABLE:
+            try:
+                self.gmail = GmailManager(self)
+                logger.info("  GmailManager inicializado")
+            except Exception as e:
+                logger.info(f"  Error inicializando GmailManager: {e}")
+
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()
         
