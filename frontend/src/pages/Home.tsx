@@ -310,6 +310,11 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
         <div className="vault-topbar__brand">
           <span className="vault-logo">V.A.U.L.T.</span>
           <span className="vault-subtitle">INTELIGENCIA CENTRALIZADA</span>
+          {onNavigateSettings && (
+            <button className="vault-icon-btn" onClick={onNavigateSettings} title="Configuración" style={{marginLeft: '12px'}}>
+              <Settings size={14} />
+            </button>
+          )}
         </div>
         <nav className="vault-topbar__nav">
           <span>NÚCLEO</span>
@@ -324,11 +329,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
           <span className="vault-topbar__clock-time">{formatClock(now)}</span>
           <span className="vault-topbar__clock-label">HORA DEL SISTEMA</span>
         </div>
-        {onNavigateSettings && (
-          <button className="vault-bell" onClick={onNavigateSettings} title="Configuración">
-            <Settings size={15} />
-          </button>
-        )}
+
       </header>
 
       <div className="vault-main">
