@@ -271,6 +271,12 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
       if (result.navigate === "news" && onNavigateNews) {
         setTimeout(() => onNavigateNews(), 400);
       }
+
+      // Si la respuesta contiene una URL de Gmail, abrirla
+      const gmailMatch = replyText.match(/Abrir correo en Gmail: (https:\/\/mail\.google\.com\/[^\s]+)/);
+      if (gmailMatch) {
+        window.open(gmailMatch[1], "_blank");
+      }
     } catch {
       setMessages((prev) => [
         ...prev,

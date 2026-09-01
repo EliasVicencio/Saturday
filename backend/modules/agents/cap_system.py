@@ -115,6 +115,17 @@ class SystemAgent(BaseAgent):
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
+        # Abrir correo pendiente
+        if any(kw in text_lower for kw in ["si", "sí", "dale", "abre", "abrir", "claro", "por favor", "ok"]):
+            core = self.core
+            if core and hasattr(core, 'pending_email_url') and core.pending_email_url:
+                url = core.pending_email_url
+                core.pending_email_url = None
+                result = f"Abrir correo en Gmail: {url}"
+                tools_log.append({"tool": "open_email", "args": {"url": url}})
+                duration = (time.time() - start) * 1000
+                return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
+
         # Default
         duration = (time.time() - start) * 1000
         return AgentResult(

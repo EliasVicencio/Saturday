@@ -105,6 +105,15 @@ Correos para analizar:
         })
         self._save_cache(cache)
 
+        # Store first actionable URL for "open email" flow
+        if self.core:
+            import re
+            urls = re.findall(r'https://mail\.google\.com/[^\s\)]+', summary)
+            if urls:
+                self.core.pending_email_url = urls[0]
+            else:
+                self.core.pending_email_url = None
+
         return {
             "summary": summary,
             "email_count": len(emails),

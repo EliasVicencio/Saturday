@@ -375,6 +375,7 @@ class SaturdayCore:
                 logger.info(f" Error inicializando CameraManager: {e}")
         
         # Inicializar ConversationManager (memoria conversacional)
+        self.pending_email_url = None
         self.conversation = None
         if CONVERSATION_AVAILABLE:
             try:
