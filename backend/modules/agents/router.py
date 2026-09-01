@@ -41,6 +41,23 @@ class AgentRouter:
         checkpoint_id = str(uuid.uuid4())[:12]
         session_id = session_id or str(chat_id or "anonymous")
 
+        # Override: Si hay un correo pendiente y el usuario dice afirmativo, ir a system
+        text_lower = text.lower().strip()
+        affirmative_words = ["si", "sí", "dale", "abre", "abrir", "claro", "por favor", "ok"]
+        if self.core and hasattr(self.core, 'pending_email_url') and self.core.pending_email_url:
+            if any(w == text_lower or text_lower.startswith(w) for w in affirmative_words):
+                for agent in self.agents:
+                    if agent.name == "system":
+                        result = agent.process(text, chat_id=chat_id, context={
+                            "session_id": session_id,
+                            "scores": [(1.0, "system")],
+                        })
+                        rd = result.to_dict()
+                        rd["checkpoint_id"] = checkpoint_id
+                        rd["session_id"] = session_id
+                        rd["duration_ms"] = (time.time() - start) * 1000
+                        return rd
+
         # 1. Evaluar scores de cada agente
         scores = []
         for agent in self.agents:
