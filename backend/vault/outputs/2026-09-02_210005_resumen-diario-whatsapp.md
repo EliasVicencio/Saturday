@@ -1,0 +1,59 @@
+---
+kind: resumen-diario-whatsapp
+created: 2026-09-02T21:00:05.306589
+---
+
+*RESUMEN DEL DIA*
+ Miercoles, 02/09/2026
+
+*Hora:* 21:00
+
+*Clima:* nubes dispersas, 15.68oC
+
+*Tareas pendientes:*
+  - Reconstruir a Saturday
+
+*Eventos de hoy:* No hay eventos programados
+
+- *Recordatorios:*
+  - No tienes recordatorios para hoy
+
+*Correos revisados:*
+  6-09-01T09:31:08.799729
+---
+
+Correos no leídos (09:31):
+Tus correos no leidos:
+
+1. De: LinkedIn <jobalerts-noreply@linke
+
+- *Noticias de hoy:*
+  os no leidos:
+
+1. De: LinkedIn <jobalerts-noreply@linke
+
+- *Noticias de hoy:*
+  source: autonomo
+cap
+os no leidos:
+
+1. De: LinkedIn <jobalerts-noreply@linke
+
+- *Noticias de hoy:*
+  source: autonomo
+cap
+source: autonomo
+captured: 2026-09-01T08:00:04.152823
+---
+
+Noticias (01/09 08:00):
+Noticias del día:
+
+
+*Para mas informacion:*
+  - 'tareas' - Ver todas las tareas
+  - 'eventos' - Ver todos los eventos
+  - 'recordatorios' - Ver todos los recordatorios
+  - 'clima' - Ver el clima completo
+
+*Saturday - Tu asistente personal*
