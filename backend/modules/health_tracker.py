@@ -1,4 +1,4 @@
-"""Seguimiento de salud y bienestar."""
+"""Seguimiento de salud automatico desde Google Fit."""
 import json, os, logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
@@ -11,6 +11,13 @@ class HealthTracker:
         self.data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
         os.makedirs(self.data_dir, exist_ok=True)
         self._health_file = os.path.join(self.data_dir, 'health_data.json')
+        self._goals = {
+            "steps": 10000,
+            "calories": 2000,
+            "distance_km": 8,
+            "heart_rate_max": 100,
+            "heart_rate_min": 60
+        }
 
     def _load_data(self) -> Dict:
         try:
@@ -19,7 +26,7 @@ class HealthTracker:
                     return json.load(f)
         except Exception:
             pass
-        return {"entries": [], "goals": {"water": 8, "exercise": 30, "sleep": 8}}
+        return {"daily": {}, "goals": self._goals}
 
     def _save_data(self, data: Dict):
         try:
@@ -28,123 +35,133 @@ class HealthTracker:
         except Exception as e:
             logger.error(f"Error guardando datos de salud: {e}")
 
-    def log_entry(self, category: str, value: Any, note: str = "") -> str:
-        data = self._load_data()
-        entry = {
-            "timestamp": datetime.now().isoformat(),
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "category": category,
-            "value": value,
-            "note": note
-        }
-        data["entries"].append(entry)
-        data["entries"] = data["entries"][-200:]
-        self._save_data(data)
-
-        labels = {"mood": "estado de ánimo", "sleep": "sueño", "exercise": "ejercicio", "water": "agua", "weight": "peso", "note": "nota"}
-        label = labels.get(category, category)
-        return f"✅ Registrado: {label} = {value}" + (f" ({note})" if note else "")
+    def sync_from_google_fit(self) -> Dict[str, Any]:
+        """Sincroniza datos automaticamente desde Google Fit"""
+        if not self.core.google_fit or not self.core.google_fit.is_connected():
+            return {"synced": False, "error": "Google Fit no conectado"}
+        
+        try:
+            fit_data = self.core.google_fit.get_today_data()
+            
+            if not fit_data.get("connected"):
+                return {"synced": False, "error": "Google Fit no conectado"}
+            
+            today = datetime.now().strftime("%Y-%m-%d")
+            data = self._load_data()
+            
+            if "daily" not in data:
+                data["daily"] = {}
+            
+            data["daily"][today] = {
+                "date": today,
+                "synced_at": datetime.now().isoformat(),
+                "steps": fit_data.get("steps", 0),
+                "calories": fit_data.get("calories", 0),
+                "distance_km": fit_data.get("distance_km", 0),
+                "heart_rate_avg": fit_data.get("heart_rate_avg"),
+            }
+            
+            # Guardar historial (ultimos 30 dias)
+            dates = sorted(data["daily"].keys())
+            if len(dates) > 30:
+                for old_date in dates[:-30]:
+                    del data["daily"][old_date]
+            
+            self._save_data(data)
+            
+            logger.info(f"Google Fit sincronizado: {fit_data.get('steps', 0)} pasos")
+            return {"synced": True, "data": data["daily"][today]}
+            
+        except Exception as e:
+            logger.error(f"Error sincronizando Google Fit: {e}")
+            return {"synced": False, "error": str(e)}
 
     def get_today(self) -> Dict[str, Any]:
+        """Obtiene datos de hoy (auto-sync si esta conectado)"""
+        # Auto-sync si Google Fit esta conectado
+        if self.core.google_fit and self.core.google_fit.is_connected():
+            self.sync_from_google_fit()
+        
         data = self._load_data()
         today = datetime.now().strftime("%Y-%m-%d")
-        entries = [e for e in data.get("entries", []) if e.get("date") == today]
-
-        categories = {}
-        for e in entries:
-            cat = e["category"]
-            if cat not in categories:
-                categories[cat] = []
-            categories[cat].append(e)
-
-        goals = data.get("goals", {})
-        compliance = {}
-
-        if "water" in categories:
-            total_water = sum(1 for e in categories["water"])
-            compliance["water"] = {"current": total_water, "goal": goals.get("water", 8), "met": total_water >= goals.get("water", 8)}
-        if "exercise" in categories:
-            total_exercise = sum(float(e["value"]) for e in categories["exercise"] if str(e["value"]).replace(".", "").isdigit())
-            compliance["exercise"] = {"current": total_exercise, "goal": goals.get("exercise", 30), "met": total_exercise >= goals.get("exercise", 30)}
-        if "sleep" in categories:
-            last_sleep = categories["sleep"][-1]["value"]
-            compliance["sleep"] = {"current": last_sleep, "goal": goals.get("sleep", 8), "met": float(last_sleep) >= goals.get("sleep", 8)}
-
-        mood_entries = categories.get("mood", [])
-        mood_avg = None
-        if mood_entries:
-            try:
-                mood_values = [float(e["value"]) for e in mood_entries if str(e["value"]).replace(".", "").isdigit()]
-                mood_avg = round(sum(mood_values) / len(mood_values), 1) if mood_values else None
-            except Exception:
-                pass
-
+        today_data = data.get("daily", {}).get(today, {})
+        
+        if not today_data:
+            return {
+                "date": today,
+                "connected": self.core.google_fit.is_connected() if self.core.google_fit else False,
+                "data": None,
+                "message": "No hay datos de salud para hoy"
+            }
+        
+        goals = data.get("goals", self._goals)
+        analysis = self._analyze_today(today_data, goals)
+        
         return {
             "date": today,
-            "entries": entries,
-            "compliance": compliance,
-            "mood_average": mood_avg,
-            "total_entries": len(entries)
+            "connected": True,
+            "data": today_data,
+            "analysis": analysis,
+            "goals": goals
+        }
+
+    def _analyze_today(self, data: Dict, goals: Dict) -> Dict[str, Any]:
+        """Analiza datos de hoy vs metas"""
+        steps = data.get("steps", 0)
+        calories = data.get("calories", 0)
+        distance = data.get("distance_km", 0)
+        heart_rate = data.get("heart_rate_avg")
+        
+        steps_pct = round((steps / goals.get("steps", 10000)) * 100) if goals.get("steps") else 0
+        calories_pct = round((calories / goals.get("calories", 2000)) * 100) if goals.get("calories") else 0
+        distance_pct = round((distance / goals.get("distance_km", 8)) * 100) if goals.get("distance_km") else 0
+        
+        return {
+            "steps": {"value": steps, "goal": goals.get("steps", 10000), "pct": steps_pct},
+            "calories": {"value": calories, "goal": goals.get("calories", 2000), "pct": calories_pct},
+            "distance_km": {"value": distance, "goal": goals.get("distance_km", 8), "pct": distance_pct},
+            "heart_rate_avg": heart_rate,
         }
 
     def get_weekly(self) -> Dict[str, Any]:
+        """Obtiene datos de la ultima semana"""
         data = self._load_data()
-        entries = data.get("entries", [])
-
-        week_entries = []
-        for e in entries:
-            try:
-                entry_date = datetime.fromisoformat(e["timestamp"]).date()
-                if (datetime.now().date() - entry_date).days < 7:
-                    week_entries.append(e)
-            except Exception:
-                pass
-
-        by_date = {}
-        for e in week_entries:
-            d = e.get("date", "")
-            if d not in by_date:
-                by_date[d] = []
-            by_date[d].append(e)
-
-        goals = data.get("goals", {})
-        daily_compliance = []
-        for d, day_entries in sorted(by_date.items()):
-            cats = {}
-            for e in day_entries:
-                cats[e["category"]] = e
-            met = 0
-            total = 0
-            if "water" in goals:
-                total += 1
-                if sum(1 for e in day_entries if e["category"] == "water") >= goals["water"]:
-                    met += 1
-            if "exercise" in goals:
-                total += 1
-                if sum(float(e["value"]) for e in day_entries if e["category"] == "exercise" and str(e["value"]).replace(".", "").isdigit()) >= goals["exercise"]:
-                    met += 1
-            daily_compliance.append({"date": d, "met": met, "total": total, "percentage": round(met / total * 100) if total > 0 else 0})
-
-        avg_compliance = sum(d["percentage"] for d in daily_compliance) / len(daily_compliance) if daily_compliance else 0
-
+        daily = data.get("daily", {})
+        
+        week_data = []
+        for i in range(7):
+            date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            if date in daily:
+                week_data.append(daily[date])
+        
+        if not week_data:
+            return {"period": "sin datos", "data": []}
+        
+        avg_steps = sum(d.get("steps", 0) for d in week_data) / len(week_data)
+        avg_calories = sum(d.get("calories", 0) for d in week_data) / len(week_data)
+        total_distance = sum(d.get("distance_km", 0) for d in week_data)
+        
         return {
             "period": f"{(datetime.now() - timedelta(days=6)).strftime('%Y-%m-%d')} al {datetime.now().strftime('%Y-%m-%d')}",
-            "total_entries": len(week_entries),
-            "avg_compliance": round(avg_compliance),
-            "daily_breakdown": daily_compliance
+            "days": len(week_data),
+            "avg_steps": round(avg_steps),
+            "avg_calories": round(avg_calories),
+            "total_distance_km": round(total_distance, 2),
+            "daily": week_data
         }
 
     def set_goal(self, category: str, value: float) -> str:
         data = self._load_data()
         if "goals" not in data:
-            data["goals"] = {}
+            data["goals"] = self._goals
         data["goals"][category] = value
         self._save_data(data)
-        return f"🎯 Meta actualizada: {category} = {value}"
+        return f"Meta actualizada: {category} = {value}"
 
     def get_status(self) -> str:
         today = self.get_today()
-        compliance = today.get("compliance", {})
-        met = sum(1 for v in compliance.values() if v.get("met"))
-        total = len(compliance)
-        return f"❤️ Salud hoy: {met}/{total} metas alcanzadas | {today['total_entries']} registros"
+        if not today.get("data"):
+            return "Sin datos de salud hoy"
+        
+        data = today["data"]
+        return f"Pasos: {data.get('steps', 0)} | Calorias: {data.get('calories', 0)} | Distancia: {data.get('distance_km', 0)} km"

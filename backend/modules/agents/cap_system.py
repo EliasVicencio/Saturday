@@ -18,6 +18,8 @@ class SystemAgent(BaseAgent):
             "archivo", "carpeta", "directorio", "listar", "eliminar",
             "abrir", "cerrar", "ejecutar", "correr",
             "correo", "correos", "email", "enviar correo", "revisar correo",
+            "salud", "pasos", "calorias", "calorías", "corazon", "corazón",
+            "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy",
         ]
         score = 0.0
         for kw in keywords:
@@ -50,6 +52,64 @@ class SystemAgent(BaseAgent):
             tools_log.append({"tool": "get_system_stats", "args": {}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
+
+        # Salud - Google Fit con analisis LLM
+        if any(kw in text_lower for kw in ["salud", "pasos", "calorias", "calorías", "corazon", "corazón", "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy"]):
+            core = self.core
+            result = "No hay datos de salud disponibles."
+            
+            if core and hasattr(core, "health") and core.health:
+                try:
+                    # Obtener datos de hoy (auto-sync)
+                    today_data = core.health.get_today()
+                    
+                    if not today_data.get("data"):
+                        if today_data.get("connected"):
+                            result = "Google Fit esta conectado pero no hay datos de actividad hoy. Es normal si aun no has caminado."
+                        else:
+                            result = "Google Fit no esta conectado. Conecta en Configuracion para ver tus datos de salud."
+                    else:
+                        # Analisis con LLM
+                        data = today_data["data"]
+                        analysis = today_data.get("analysis", {})
+                        
+                        health_context = f"""Datos de salud de Elias para hoy:
+- Pasos: {data.get('steps', 0)} / {analysis.get('steps', {}).get('goal', 10000)} ({analysis.get('steps', {}).get('pct', 0)}%)
+- Calorias: {data.get('calories', 0)} / {analysis.get('calories', {}).get('goal', 2000)} ({analysis.get('calories', {}).get('pct', 0)}%)
+- Distancia: {data.get('distance_km', 0)} km / {analysis.get('distance_km', {}).get('goal', 8)} km ({analysis.get('distance_km', {}).get('pct', 0)}%)
+- Ritmo cardiaco promedio: {data.get('heart_rate_avg', 'N/A')} bpm
+"""
+                        
+                        prompt = f"""Eres Saturday, el asistente personal de Elias. Analiza estos datos de salud y responde de forma natural y conversacional, como un entrenador personal.
+
+REGLAS:
+- Habla de forma natural, no como un listado de datos
+- Solo menciona lo relevante
+- Da recomendaciones concretas y accionables
+- Si algo esta bien, elogia
+- Si algo falta, sugiere que hacer
+- Ejemplo: "Hoy caminaste 8000 pasos, vas bien. Te faltan 2000 para tu meta. ¿Quieres que te recuerde caminar un poco mas?"
+
+Datos de salud:
+{health_context}"""
+                        
+                        if core.gemini:
+                            result = core.gemini.chat(prompt)
+                        else:
+                            # Fallback sin LLM
+                            steps = data.get('steps', 0)
+                            calories = data.get('calories', 0)
+                            distance = data.get('distance_km', 0)
+                            result = f"Paso: {steps} | Calorias: {calories} | Distancia: {distance} km"
+                        
+                except Exception as ex:
+                    result = f"Error obteniendo datos de salud: {str(ex)}"
+            else:
+                result = "El seguimiento de salud no esta configurado."
+            
+            tools_log.append({"tool": "health", "args": {"text": text}})
+            duration = (time.time() - start) * 1000
+            return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Correo - Gmail con analisis LLM
         if any(kw in text_lower for kw in ["correo", "correos", "email", "gmail"]):
