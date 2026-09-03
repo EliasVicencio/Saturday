@@ -1,5 +1,6 @@
-const CACHE_NAME = 'saturday-v1';
-const STATIC_CACHE = 'saturday-static-v1';
+const CACHE_NAME = 'saturday-v2';
+const STATIC_CACHE = 'saturday-static-v2';
+const DATA_CACHE = 'saturday-data-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -23,7 +24,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          if (cache !== STATIC_CACHE && cache !== CACHE_NAME) {
+          if (cache !== STATIC_CACHE && cache !== DATA_CACHE && cache !== CACHE_NAME) {
             return caches.delete(cache);
           }
         })
@@ -32,24 +33,45 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch - network first, fallback to cache
+// Fetch strategy
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API requests
-  if (event.request.url.includes('/api/')) {
+  const url = new URL(event.request.url);
+
+  // API requests - network first, cache for offline
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return new Response(JSON.stringify({ error: 'Sin conexión' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      })
+      fetch(event.request)
+        .then((response) => {
+          // Cache GET responses for offline
+          if (event.request.method === 'GET' && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(DATA_CACHE).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Return cached version if offline
+          return caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            // Return offline response for API
+            return new Response(JSON.stringify({
+              offline: true,
+              error: 'Sin conexion - modo offline',
+              response: 'Estoy sin conexion ahora mismo. Intenta de nuevo cuando tengas internet.'
+            }), {
+              headers: { 'Content-Type': 'application/json' }
+            });
+          });
+        })
     );
     return;
   }
 
-  // For static assets - cache first
+  // Static assets - cache first
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -65,7 +87,6 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // Return offline page for navigation requests
             if (event.request.mode === 'navigate') {
               return caches.match('/index.html');
             }
@@ -84,16 +105,25 @@ self.addEventListener('push', (event) => {
     badge: '/favicon.svg',
     vibrate: [200, 100, 200],
   };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
-  );
+  event.waitUntil(clients.openWindow('/'));
+});
+
+// Message handler for cache operations
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CACHE_HEALTH') {
+    caches.open(DATA_CACHE).then((cache) => {
+      cache.put(event.data.url, new Response(JSON.stringify(event.data.data), {
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    });
+  }
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    caches.delete(DATA_CACHE);
+  }
 });

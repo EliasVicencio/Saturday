@@ -84,6 +84,7 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
   const [now, setNow] = useState(new Date());
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
 
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -115,6 +116,20 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -466,6 +481,11 @@ export default function Home({ onNavigateNews, onNavigateSettings }: HomeProps) 
             )}
           </div>
 
+          {isOffline && (
+            <div style={{background: '#ff6b3520', color: '#ff6b35', padding: '8px 16px', borderRadius: '8px', marginBottom: '8px', fontSize: '13px', textAlign: 'center'}}>
+              Modo offline - Mostrando datos cacheados
+            </div>
+          )}
           <div className="vault-composer">
             <span className="vault-composer__prompt">SATURDAY /</span>
             <input
