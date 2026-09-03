@@ -170,8 +170,23 @@ Datos de salud:
                             result = "¿Que contenido quieres guardar?"
                     
                     else:
-                        info = core.google_drive.get_storage_info()
-                        result = f"Google Drive conectado. Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
+                        # Default: intentar buscar con todo el texto como query
+                        query = text.lower()
+                        for stop in ["drive", "nube", "en drive", "en mi drive", "en nube", "la carpeta", "el archivo", "el documento", "por favor", "porfa"]:
+                            query = query.replace(stop, "")
+                        query = query.strip()
+                        if query and len(query) > 2:
+                            files = core.google_drive.search_files(query)
+                            if files:
+                                lines = [f"Resultados para '{query}' ({len(files)}):"]
+                                for f in files[:5]:
+                                    lines.append(f"  - {f.get('name', 'Sin nombre')}")
+                                result = "\n".join(lines)
+                            else:
+                                result = f"No encontre archivos con '{query}'."
+                        else:
+                            info = core.google_drive.get_storage_info()
+                            result = f"Google Drive conectado. Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
                 else:
                     result = "Google Drive no esta conectado. Conecta en Configuracion."
             else:
