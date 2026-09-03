@@ -6,6 +6,10 @@ from datetime import datetime
 
 logger = logging.getLogger("saturday.google_drive")
 
+GOOGLE_DRIVE_CLIENT_ID = os.environ.get("GOOGLE_DRIVE_CLIENT_ID", "")
+GOOGLE_DRIVE_CLIENT_SECRET = os.environ.get("GOOGLE_DRIVE_CLIENT_SECRET", "")
+GOOGLE_DRIVE_REDIRECT_URI = os.environ.get("GOOGLE_DRIVE_REDIRECT_URI", "https://saturday.viewdns.net/api/google-drive/callback")
+
 class GoogleDriveManager:
     def __init__(self, core):
         self.core = core
@@ -15,16 +19,16 @@ class GoogleDriveManager:
         self._credentials_file = os.path.join(self.data_dir, 'google_drive_credentials.json')
         self._service = None
         
-        # Save credentials
-        self._save_credentials({
-            "installed": {
-                "client_id": "781288900298-9vgtb71poha8amhpl0t4fslvi4ruemij.apps.googleusercontent.com",
-                "client_secret": "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",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["https://saturday.viewdns.net/api/google-drive/callback"]
-            }
-        })
+        if GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET:
+            self._save_credentials({
+                "installed": {
+                    "client_id": GOOGLE_DRIVE_CLIENT_ID,
+                    "client_secret": GOOGLE_DRIVE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [GOOGLE_DRIVE_REDIRECT_URI]
+                }
+            })
     
     def _save_credentials(self, creds: Dict):
         try:
@@ -41,13 +45,11 @@ class GoogleDriveManager:
             with open(self._token_file, 'r') as f:
                 token_data = json.load(f)
             
-            # Check if token is expired
             if token_data.get('expiry_date', 0) < datetime.now().timestamp() * 1000:
-                # Refresh token
                 import requests
                 resp = requests.post('https://oauth2.googleapis.com/token', data={
-                    'client_id': '781288900298-9vgtb71poha8amhpl0t4fslvi4ruemij.apps.googleusercontent.com',
-                    'client_secret': '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',
+                    'client_id': GOOGLE_DRIVE_CLIENT_ID,
+                    'client_secret': GOOGLE_DRIVE_CLIENT_SECRET,
                     'refresh_token': token_data.get('refresh_token'),
                     'grant_type': 'refresh_token'
                 })
@@ -69,11 +71,10 @@ class GoogleDriveManager:
             return None
     
     def get_auth_url(self) -> str:
-        """Generate OAuth2 authorization URL"""
         from urllib.parse import urlencode
         params = {
-            'client_id': '781288900298-9vgtb71poha8amhpl0t4fslvi4ruemij.apps.googleusercontent.com',
-            'redirect_uri': 'https://saturday.viewdns.net/api/google-drive/callback',
+            'client_id': GOOGLE_DRIVE_CLIENT_ID,
+            'redirect_uri': GOOGLE_DRIVE_REDIRECT_URI,
             'response_type': 'code',
             'scope': 'https://www.googleapis.com/auth/drive',
             'access_type': 'offline',
@@ -82,14 +83,13 @@ class GoogleDriveManager:
         return f"https://accounts.google.com/o/oauth2/auth?{urlencode(params)}"
     
     def exchange_code(self, code: str) -> bool:
-        """Exchange authorization code for tokens"""
         try:
             import requests
             resp = requests.post('https://oauth2.googleapis.com/token', data={
                 'code': code,
-                'client_id': '781288900298-9vgtb71poha8amhpl0t4fslvi4ruemij.apps.googleusercontent.com',
-                'client_secret': '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',
-                'redirect_uri': 'https://saturday.viewdns.net/api/google-drive/callback',
+                'client_id': GOOGLE_DRIVE_CLIENT_ID,
+                'client_secret': GOOGLE_DRIVE_CLIENT_SECRET,
+                'redirect_uri': GOOGLE_DRIVE_REDIRECT_URI,
                 'grant_type': 'authorization_code'
             })
             
@@ -126,7 +126,6 @@ class GoogleDriveManager:
             return None
     
     def list_files(self, folder_id: str = None, query: str = None, max_results: int = 20) -> List[Dict]:
-        """List files in Drive"""
         try:
             params = {
                 'pageSize': max_results,
@@ -148,7 +147,6 @@ class GoogleDriveManager:
             return []
     
     def search_files(self, query: str, max_results: int = 10) -> List[Dict]:
-        """Search files by name or content"""
         try:
             params = {
                 'q': f"name contains '{query}' and trashed=false",
@@ -162,9 +160,7 @@ class GoogleDriveManager:
             return []
     
     def get_file_content(self, file_id: str) -> Optional[str]:
-        """Get text content of a file"""
         try:
-            # First get file metadata
             meta = self._api_request('GET', f'https://www.googleapis.com/drive/v3/files/{file_id}?fields=mimeType,name')
             if not meta:
                 return None
@@ -172,13 +168,11 @@ class GoogleDriveManager:
             mime_type = meta.get('mimeType', '')
             file_name = meta.get('name', '')
             
-            # For Google Docs, export as text
             if 'google-apps.document' in mime_type:
                 result = self._api_request('GET', f'https://www.googleapis.com/drive/v3/files/{file_id}/export?mimeType=text/plain')
                 if result:
                     return result
             
-            # For other text files, download directly
             if any(t in mime_type for t in ['text/', 'application/json', 'application/xml']):
                 result = self._api_request('GET', f'https://www.googleapis.com/drive/v3/files/{file_id}?alt=media')
                 if result:
@@ -190,7 +184,6 @@ class GoogleDriveManager:
             return None
     
     def create_file(self, name: str, content: str, folder_id: str = None, mime_type: str = 'text/plain') -> Optional[Dict]:
-        """Create a new file"""
         try:
             import requests
             
@@ -201,7 +194,6 @@ class GoogleDriveManager:
             if folder_id:
                 metadata['parents'] = [folder_id]
             
-            # Create file with content
             files = {
                 'metadata': (None, json.dumps(metadata), 'application/json'),
                 'file': (name, content.encode('utf-8'), mime_type)
@@ -226,7 +218,6 @@ class GoogleDriveManager:
             return None
     
     def create_folder(self, name: str, parent_id: str = None) -> Optional[Dict]:
-        """Create a new folder"""
         try:
             metadata = {
                 'name': name,
@@ -242,7 +233,6 @@ class GoogleDriveManager:
             return None
     
     def get_storage_info(self) -> Dict[str, Any]:
-        """Get storage usage info"""
         try:
             result = self._api_request('GET', 'https://www.googleapis.com/drive/v3/about?fields=user(displayName,storageQuota)')
             if result:
