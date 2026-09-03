@@ -209,6 +209,12 @@ try:
     GMAIL_AVAILABLE = True
 except ImportError:
     GMAIL_AVAILABLE = False
+
+try:
+    from modules.google_drive import GoogleDriveManager
+    GOOGLE_DRIVE_AVAILABLE = True
+except ImportError:
+    GOOGLE_DRIVE_AVAILABLE = False
 class SaturdayCore:
     """Nucleo de inteligencia de Saturday"""
 
@@ -525,6 +531,14 @@ class SaturdayCore:
                 logger.info("  GmailManager inicializado")
             except Exception as e:
                 logger.info(f"  Error inicializando GmailManager: {e}")
+        
+        # Google Drive
+        self.google_drive = None
+        try:
+            self.google_drive = GoogleDriveManager(self)
+            logger.info("  GoogleDriveManager inicializado")
+        except Exception as e:
+            logger.info(f"  Error inicializando GoogleDriveManager: {e}")
 
         self.knowledge_graph = nx.DiGraph()
         self.build_knowledge_graph()

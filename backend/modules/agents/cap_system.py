@@ -20,6 +20,7 @@ class SystemAgent(BaseAgent):
             "correo", "correos", "email", "enviar correo", "revisar correo",
             "salud", "pasos", "calorias", "calorías", "corazon", "corazón",
             "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy",
+            "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "descargar",
         ]
         score = 0.0
         for kw in keywords:
@@ -108,6 +109,72 @@ Datos de salud:
                 result = "El seguimiento de salud no esta configurado."
             
             tools_log.append({"tool": "health", "args": {"text": text}})
+            duration = (time.time() - start) * 1000
+            return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
+
+        # Google Drive
+        if any(kw in text_lower for kw in ["drive", "nube", "archivos", "guardar archivo", "buscar archivo", "descargar"]):
+            core = self.core
+            result = "Google Drive no esta conectado."
+            
+            if core and hasattr(core, "google_drive") and core.google_drive:
+                if core.google_drive.is_connected():
+                    # List files
+                    if any(kw in text_lower for kw in ["que tengo", "que hay", "listar", "mostrar", "ver archivos", "archivos"]):
+                        files = core.google_drive.list_files(max_results=10)
+                        if files:
+                            lines = [f"Archivos en tu Drive ({len(files)}):"]
+                            for f in files[:10]:
+                                lines.append(f"  - {f.get('name', 'Sin nombre')}")
+                            result = "\n".join(lines)
+                        else:
+                            result = "No hay archivos en tu Drive."
+                    
+                    # Search files
+                    elif any(kw in text_lower for kw in ["buscar", "search", "encontrar"]):
+                        query = text.replace("buscar", "").replace("search", "").replace("encontrar", "").strip()
+                        if query:
+                            files = core.google_drive.search_files(query)
+                            if files:
+                                lines = [f"Resultados para '{query}' ({len(files)}):"]
+                                for f in files[:5]:
+                                    lines.append(f"  - {f.get('name', 'Sin nombre')}")
+                                result = "\n".join(lines)
+                            else:
+                                result = f"No encontre archivos con '{query}'."
+                        else:
+                            result = "¿Que archivo quieres buscar?"
+                    
+                    # Storage info
+                    elif any(kw in text_lower for kw in ["espacio", "storage", "cuanto tengo", "cuanto espacio"]):
+                        info = core.google_drive.get_storage_info()
+                        if info:
+                            result = f"Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
+                        else:
+                            result = "No pude obtener info de espacio."
+                    
+                    # Create file
+                    elif any(kw in text_lower for kw in ["crear", "guardar", "save", "crear archivo"]):
+                        content = text.replace("crear", "").replace("guardar", "").replace("save", "").replace("crear archivo", "").strip()
+                        if content:
+                            name = f"saturday_nota_{__import__('datetime').datetime.now().strftime('%Y-%m-%d_%H%M')}.md"
+                            result_file = core.google_drive.create_file(name, content)
+                            if result_file:
+                                result = f"Archivo creado: {name}"
+                            else:
+                                result = "No pude crear el archivo."
+                        else:
+                            result = "¿Que contenido quieres guardar?"
+                    
+                    else:
+                        info = core.google_drive.get_storage_info()
+                        result = f"Google Drive conectado. Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
+                else:
+                    result = "Google Drive no esta conectado. Conecta en Configuracion."
+            else:
+                result = "Google Drive no esta configurado."
+            
+            tools_log.append({"tool": "google_drive", "args": {"text": text}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
 
