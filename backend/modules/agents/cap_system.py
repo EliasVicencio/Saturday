@@ -20,7 +20,7 @@ class SystemAgent(BaseAgent):
             "correo", "correos", "email", "enviar correo", "revisar correo",
             "salud", "pasos", "calorias", "calorías", "corazon", "corazón",
             "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy",
-            "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "descargar",
+            "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "buscar", "busca", "descargar",
         ]
         score = 0.0
         for kw in keywords:
