@@ -1,5 +1,5 @@
 """Blueprint para las 5 nuevas features: contexto, emails, productividad, rutinas, salud."""
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, redirect
 import logging
 
 logger = logging.getLogger("saturday.features")
