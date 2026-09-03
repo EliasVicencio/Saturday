@@ -131,8 +131,11 @@ Datos de salud:
                             result = "No hay archivos en tu Drive."
                     
                     # Search files
-                    elif any(kw in text_lower for kw in ["buscar", "search", "encontrar"]):
-                        query = text.replace("buscar", "").replace("search", "").replace("encontrar", "").strip()
+                    elif any(kw in text_lower for kw in ["buscar", "busca", "search", "encontrar", "encuentra", "localizar"]):
+                        query = text.lower()
+                        for stop in ["buscar", "busca", "search", "encontrar", "encuentra", "localizar", "en drive", "en mi drive", "la carpeta", "el archivo", "el documento"]:
+                            query = query.replace(stop, "")
+                        query = query.strip()
                         if query:
                             files = core.google_drive.search_files(query)
                             if files:
