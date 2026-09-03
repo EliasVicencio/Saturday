@@ -253,3 +253,87 @@ def gmail_summary():
         return jsonify(summary)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ============ Google Drive Endpoints ============
+@features_bp.route("/api/google-drive/auth-url", methods=["GET"])
+def google_drive_auth_url():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    url = _core.google_drive.get_auth_url()
+    return jsonify({"auth_url": url})
+
+@features_bp.route("/api/google-drive/callback", methods=["GET"])
+def google_drive_callback():
+    code = request.args.get("code")
+    if not code:
+        return redirect("https://saturday.viewdns.net?google_drive=error")
+    
+    if _core and hasattr(_core, 'google_drive') and _core.google_drive:
+        success = _core.google_drive.exchange_code(code)
+        if success:
+            return redirect("https://saturday.viewdns.net?google_drive=success")
+    
+    return redirect("https://saturday.viewdns.net?google_drive=error")
+
+@features_bp.route("/api/google-drive/status", methods=["GET"])
+def google_drive_status():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"connected": False})
+    return jsonify({"connected": _core.google_drive.is_connected()})
+
+@features_bp.route("/api/google-drive/files", methods=["GET"])
+def google_drive_files():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    
+    folder_id = request.args.get("folder_id")
+    query = request.args.get("query")
+    max_results = int(request.args.get("max_results", 20))
+    
+    files = _core.google_drive.list_files(folder_id=folder_id, query=query, max_results=max_results)
+    return jsonify({"files": files, "count": len(files)})
+
+@features_bp.route("/api/google-drive/search", methods=["GET"])
+def google_drive_search():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    
+    query = request.args.get("q", "")
+    if not query:
+        return jsonify({"error": "Query requerido"}), 400
+    
+    files = _core.google_drive.search_files(query)
+    return jsonify({"files": files, "count": len(files)})
+
+@features_bp.route("/api/google-drive/file/<file_id>", methods=["GET"])
+def google_drive_file(file_id):
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    
+    content = _core.google_drive.get_file_content(file_id)
+    return jsonify({"content": content})
+
+@features_bp.route("/api/google-drive/create", methods=["POST"])
+def google_drive_create():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    
+    data = request.get_json() or {}
+    name = data.get("name")
+    content = data.get("content", "")
+    folder_id = data.get("folder_id")
+    
+    if not name:
+        return jsonify({"error": "Nombre requerido"}), 400
+    
+    result = _core.google_drive.create_file(name, content, folder_id)
+    return jsonify({"success": result is not None, "file": result})
+
+@features_bp.route("/api/google-drive/storage", methods=["GET"])
+def google_drive_storage():
+    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+        return jsonify({"error": "Google Drive no disponible"}), 500
+    
+    info = _core.google_drive.get_storage_info()
+    return jsonify(info)
