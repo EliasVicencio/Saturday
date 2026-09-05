@@ -653,6 +653,10 @@ class SaturdayCore:
             "guardar_boveda": self.guardar_en_boveda,
             "buscar_boveda": self.buscar_en_boveda,
             "estado_boveda": self.estado_boveda,
+            
+            "buscar_drive": self.buscar_en_drive,
+            "listar_drive": self.listar_drive,
+            "estado_drive": self.estado_drive,
         }
         
         for name, func in actions.items():
@@ -1349,6 +1353,27 @@ o NOTICIAS:
             return "o Resumen de noticias enviado por WhatsApp"
         else:
             return self.news.format_news(articles)
+        
+    def buscar_en_drive(self, text: str = None, query: str = None, **kwargs) -> str:
+        if not self.google_drive:
+            return "Google Drive no disponible"
+        q = query or text or ""
+        for palabra in ["busca", "buscar", "encuentra", "encontrar"]:
+            q = q.replace(palabra, "", 1).strip()
+        if not q:
+            return "¿Qué quieres buscar en Google Drive?"
+        ...
+        results = self.google_drive.search_files(q)
+        if not results:
+            return f"No encontré nada con '{q}' en Google Drive."
+        lines = [f"Encontré {len(results)} archivo(s) para '{q}':"]
+        for r in results[:5]:
+            lines.append(f"- {r['name']} ({r.get('webViewLink', 'sin link')})")
+        return "\n".join(lines)
 
+    def estado_drive(self, **kwargs) -> str:
+        if not self.google_drive:
+            return "Google Drive no disponible"
+        return self.google_drive.get_status()
 
 
