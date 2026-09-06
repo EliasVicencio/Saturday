@@ -20,7 +20,7 @@ class SystemAgent(BaseAgent):
             "correo", "correos", "email", "enviar correo", "revisar correo",
             "salud", "pasos", "calorias", "calorías", "corazon", "corazón",
             "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy",
-            "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "descargar",
+            "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "buscar", "busca", "descargar",
         ]
         score = 0.0
         for kw in keywords:
@@ -58,29 +58,27 @@ class SystemAgent(BaseAgent):
         if any(kw in text_lower for kw in ["salud", "pasos", "calorias", "calorías", "corazon", "corazón", "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy"]):
             core = self.core
             result = "No hay datos de salud disponibles."
-            
+
             if core and hasattr(core, "health") and core.health:
                 try:
-                    # Obtener datos de hoy (auto-sync)
                     today_data = core.health.get_today()
-                    
+
                     if not today_data.get("data"):
                         if today_data.get("connected"):
                             result = "Google Fit esta conectado pero no hay datos de actividad hoy. Es normal si aun no has caminado."
                         else:
                             result = "Google Fit no esta conectado. Conecta en Configuracion para ver tus datos de salud."
                     else:
-                        # Analisis con LLM
                         data = today_data["data"]
                         analysis = today_data.get("analysis", {})
-                        
+
                         health_context = f"""Datos de salud de Elias para hoy:
 - Pasos: {data.get('steps', 0)} / {analysis.get('steps', {}).get('goal', 10000)} ({analysis.get('steps', {}).get('pct', 0)}%)
 - Calorias: {data.get('calories', 0)} / {analysis.get('calories', {}).get('goal', 2000)} ({analysis.get('calories', {}).get('pct', 0)}%)
 - Distancia: {data.get('distance_km', 0)} km / {analysis.get('distance_km', {}).get('goal', 8)} km ({analysis.get('distance_km', {}).get('pct', 0)}%)
 - Ritmo cardiaco promedio: {data.get('heart_rate_avg', 'N/A')} bpm
 """
-                        
+
                         prompt = f"""Eres Saturday, el asistente personal de Elias. Analiza estos datos de salud y responde de forma natural y conversacional, como un entrenador personal.
 
 REGLAS:
@@ -93,21 +91,20 @@ REGLAS:
 
 Datos de salud:
 {health_context}"""
-                        
+
                         if core.gemini:
                             result = core.gemini.chat(prompt)
                         else:
-                            # Fallback sin LLM
                             steps = data.get('steps', 0)
                             calories = data.get('calories', 0)
                             distance = data.get('distance_km', 0)
                             result = f"Paso: {steps} | Calorias: {calories} | Distancia: {distance} km"
-                        
+
                 except Exception as ex:
                     result = f"Error obteniendo datos de salud: {str(ex)}"
             else:
                 result = "El seguimiento de salud no esta configurado."
-            
+
             tools_log.append({"tool": "health", "args": {"text": text}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
@@ -116,7 +113,7 @@ Datos de salud:
         if any(kw in text_lower for kw in ["drive", "nube", "archivos", "guardar archivo", "buscar archivo", "descargar"]):
             core = self.core
             result = "Google Drive no esta conectado."
-            
+
             if core and hasattr(core, "google_drive") and core.google_drive:
                 if core.google_drive.is_connected():
                     # List files
@@ -129,10 +126,18 @@ Datos de salud:
                             result = "\n".join(lines)
                         else:
                             result = "No hay archivos en tu Drive."
-                    
+
                     # Search files
-                    elif any(kw in text_lower for kw in ["buscar", "search", "encontrar"]):
-                        query = text.replace("buscar", "").replace("search", "").replace("encontrar", "").strip()
+                    elif any(kw in text_lower for kw in ["buscar", "busca", "search", "encontrar", "encuentra", "localizar"]):
+                        query = text.lower()
+                        for stop in [
+                            "buscar", "busca", "search", "encontrar", "encuentra", "localizar",
+                            "en la nube", "en mi nube", "en nube", "en drive", "en mi drive",
+                            "en google drive", "la carpeta", "el archivo", "el documento",
+                            "por favor", "porfa",
+                        ]:
+                            query = query.replace(stop, "")
+                        query = query.strip()
                         if query:
                             files = core.google_drive.search_files(query)
                             if files:
@@ -144,7 +149,7 @@ Datos de salud:
                                 result = f"No encontre archivos con '{query}'."
                         else:
                             result = "¿Que archivo quieres buscar?"
-                    
+
                     # Storage info
                     elif any(kw in text_lower for kw in ["espacio", "storage", "cuanto tengo", "cuanto espacio"]):
                         info = core.google_drive.get_storage_info()
@@ -152,7 +157,7 @@ Datos de salud:
                             result = f"Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
                         else:
                             result = "No pude obtener info de espacio."
-                    
+
                     # Create file
                     elif any(kw in text_lower for kw in ["crear", "guardar", "save", "crear archivo"]):
                         content = text.replace("crear", "").replace("guardar", "").replace("save", "").replace("crear archivo", "").strip()
@@ -165,15 +170,36 @@ Datos de salud:
                                 result = "No pude crear el archivo."
                         else:
                             result = "¿Que contenido quieres guardar?"
-                    
+
                     else:
-                        info = core.google_drive.get_storage_info()
-                        result = f"Google Drive conectado. Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
+                        # Default: intentar buscar con todo el texto como query
+                        query = text.lower()
+                        for stop in [
+                            "buscar", "busca", "search", "encontrar", "encuentra", "localizar",
+                            "drive", "nube", "en la nube", "en mi nube", "en nube",
+                            "en drive", "en mi drive", "en google drive",
+                            "la carpeta", "el archivo", "el documento",
+                            "por favor", "porfa",
+                        ]:
+                            query = query.replace(stop, "")
+                        query = query.strip()
+                        if query and len(query) > 2:
+                            files = core.google_drive.search_files(query)
+                            if files:
+                                lines = [f"Resultados para '{query}' ({len(files)}):"]
+                                for f in files[:5]:
+                                    lines.append(f"  - {f.get('name', 'Sin nombre')}")
+                                result = "\n".join(lines)
+                            else:
+                                result = f"No encontre archivos con '{query}'."
+                        else:
+                            info = core.google_drive.get_storage_info()
+                            result = f"Google Drive conectado. Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
                 else:
                     result = "Google Drive no esta conectado. Conecta en Configuracion."
             else:
                 result = "Google Drive no esta configurado."
-            
+
             tools_log.append({"tool": "google_drive", "args": {"text": text}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)
@@ -182,8 +208,7 @@ Datos de salud:
         if any(kw in text_lower for kw in ["correo", "correos", "email", "gmail"]):
             core = self.core
             result = "No hay correos disponibles."
-            
-            # Resumen inteligente con LLM
+
             if any(kw in text_lower for kw in ["resumen", "analizar", "analiza", "revisar", "revise", "leer", "que hay", "actualizaciones"]):
                 if core and hasattr(core, "email_summary") and core.email_summary:
                     try:
@@ -196,15 +221,13 @@ Datos de salud:
                         result = f"Error al resumir correos: {str(ex)}"
                 else:
                     result = "El resumen de correos no esta configurado."
-            
-            # Enviar correo
+
             elif any(kw in text_lower for kw in ["enviar", "manda", "envia", "escribe"]):
                 if core and hasattr(core, "email") and core.email and core.email._is_configured():
                     result = core.email.send_email_from_text(text)
                 else:
                     result = "El envio de correos no esta configurado."
-            
-            # Gmail no leidos (raw)
+
             elif any(kw in text_lower for kw in ["no leidos", "sin leer", "nuevos", "raw", "bruto"]):
                 if core and hasattr(core, "gmail") and core.gmail and core.gmail.is_connected():
                     emails = core.gmail.get_recent_emails(max_results=10)
@@ -217,8 +240,7 @@ Datos de salud:
                         result = "No hay correos no leidos."
                 else:
                     result = "Gmail no esta conectado. Conecta en Configuracion."
-            
-            # Default: resumen inteligente
+
             else:
                 if core and hasattr(core, "email_summary") and core.email_summary:
                     try:
@@ -237,7 +259,7 @@ Datos de salud:
                         result = "No hay correos recientes."
                 else:
                     result = "Gmail no esta conectado."
-            
+
             tools_log.append({"tool": "email", "args": {"text": text}})
             duration = (time.time() - start) * 1000
             return AgentResult(response=result, agent=self.name, tools_called=tools_log, duration_ms=duration)

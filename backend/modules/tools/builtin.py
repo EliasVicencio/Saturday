@@ -47,10 +47,26 @@ def _search_youtube(core=None, query="", **kw):
     except Exception as e:
         return f"Error buscando en YouTube: {e}"
 
+def _search_drive(core=None, query="", **kw):
+    if not core or not core.google_drive:
+        return "Google Drive no disponible"
+    results = core.google_drive.search_files(query)
+    if not results:
+        return f"No encontré nada con '{query}' en Google Drive."
+    lines = [f"Encontré {len(results)} archivo(s):"]
+    for r in results[:5]:
+        lines.append(f"- {r['name']} ({r.get('webViewLink','sin link')})")
+    return "\n".join(lines)
+
+def _drive_status(core=None, **kw):
+    return core.google_drive.get_status() if core and core.google_drive else "Drive no disponible"
+
 ALL_TOOLS = [
     ToolDef("get_weather", "Obtiene el clima actual de una ciudad", {"type": "object", "properties": {"city": {"type": "string"}}, "required": []}, handler=_get_weather, capability="knowledge"),
     ToolDef("get_time", "Obtiene la hora y fecha actual", {"type": "object", "properties": {}}, handler=_get_time, capability="system"),
     ToolDef("get_tasks", "Lista tareas pendientes del usuario en Notion", {"type": "object", "properties": {}}, handler=_get_tasks, capability="knowledge"),
+    ToolDef("search_drive", "Busca en Google Drive", {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}, handler=_search_drive, capability="knowledge"),
+    ToolDef("drive_status", "Muestra el estado de Google Drive", {"type": "object", "properties": {}}, handler=_drive_status, capability="knowledge"),
     ToolDef("create_task", "Crea una nueva tarea en Notion", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}, handler=_create_task, capability="knowledge"),
     ToolDef("get_news", "Obtiene noticias actuales", {"type": "object", "properties": {"category": {"type": "string"}}}, handler=_get_news, capability="knowledge"),
     ToolDef("get_events", "Obtiene eventos del calendario de hoy", {"type": "object", "properties": {}}, handler=_get_events, capability="knowledge"),
