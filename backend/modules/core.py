@@ -1371,6 +1371,20 @@ o NOTICIAS:
             lines.append(f"- {r['name']} ({r.get('webViewLink', 'sin link')})")
         return "\n".join(lines)
 
+    def listar_drive(self, **kwargs) -> str:
+        """Lista archivos recientes en Google Drive."""
+        if not self.google_drive:
+            return "Google Drive no disponible"
+        if not self.google_drive.is_connected():
+            return "Google Drive no esta conectado. Conecta en Configuracion."
+        files = self.google_drive.list_files(max_results=10)
+        if not files:
+            return "No hay archivos en tu Drive."
+        lines = [f"Archivos en tu Drive ({len(files)}):"]
+        for f in files[:10]:
+            lines.append(f"  - {f.get('name', 'Sin nombre')}")
+        return "\n".join(lines)
+
     def estado_drive(self, **kwargs) -> str:
         if not self.google_drive:
             return "Google Drive no disponible"
