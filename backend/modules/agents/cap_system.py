@@ -151,7 +151,7 @@ Datos de salud:
                             result = "¿Que archivo quieres buscar?"
 
                     # Storage info
-                    elif any(kw in text_lower for kw in ["espacio", "storage", "cuanto tengo", "cuanto espacio"]):
+                    elif any(kw in text_lower for kw in ["espacio", "storage", "cuanto tengo", "cuanto espacio", "estado", "conectado", "conexion", "conexión"]):
                         info = core.google_drive.get_storage_info()
                         if info:
                             result = f"Espacio: {info.get('used_gb', 0)} GB / {info.get('limit_gb', 0)} GB"
