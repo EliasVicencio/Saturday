@@ -267,7 +267,6 @@ def google_drive_auth_url():
 def google_drive_callback():
     code = request.args.get("code")
     if not code:
-<<<<<<< HEAD
         return redirect("https://saturday.viewdns.net?google_drive=error")
     
     if _core and hasattr(_core, 'google_drive') and _core.google_drive:
@@ -276,16 +275,6 @@ def google_drive_callback():
             return redirect("https://saturday.viewdns.net?google_drive=success")
     
     return redirect("https://saturday.viewdns.net?google_drive=error")
-=======
-        return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
-
-    if _core and hasattr(_core, 'google_drive') and _core.google_drive:
-        success = _core.google_drive.exchange_code(code)
-        if success:
-            return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=success"</script></body></html>'
-
-    return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
->>>>>>> 9f5e2a38a2ac208a0f9ffcde7125d70568c43ad6
 
 @features_bp.route("/api/google-drive/status", methods=["GET"])
 def google_drive_status():
