@@ -236,7 +236,7 @@ class GoogleDriveManager:
     
     def get_storage_info(self) -> Dict[str, Any]:
         try:
-            result = self._api_request('GET', 'https://www.googleapis.com/drive/v3/about?fields=user(displayName,storageQuota)')
+            result = self._api_request('GET', 'https://www.googleapis.com/drive/v3/about?fields=user(displayName),storageQuota')
             if result:
                 quota = result.get('storageQuota', {})
                 return {
