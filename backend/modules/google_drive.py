@@ -136,12 +136,8 @@ class GoogleDriveManager:
             if folder_id:
                 params['q'] = f"'{folder_id}' in parents and trashed=false"
             elif query:
-<<<<<<< HEAD
-                params['q'] = f"name contains '{query}' and trashed=false"
-=======
                 safe_query = query.replace("'", "\\'")
                 params['q'] = f"name contains '{safe_query}' and trashed=false"
->>>>>>> 9f5e2a38a2ac208a0f9ffcde7125d70568c43ad6
             else:
                 params['q'] = "trashed=false"
             
@@ -153,14 +149,9 @@ class GoogleDriveManager:
     
     def search_files(self, query: str, max_results: int = 10) -> List[Dict]:
         try:
-<<<<<<< HEAD
-            params = {
-                'q': f"name contains '{query}' and trashed=false",
-=======
             safe_query = query.replace("'", "\\'")
             params = {
                 'q': f"name contains '{safe_query}' and trashed=false",
->>>>>>> 9f5e2a38a2ac208a0f9ffcde7125d70568c43ad6
                 'pageSize': max_results,
                 'fields': 'files(id, name, mimeType, size, modifiedTime, webViewLink)'
             }
