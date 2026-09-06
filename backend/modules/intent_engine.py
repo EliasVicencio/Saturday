@@ -279,6 +279,16 @@ def build_default_engine() -> IntentEngine:
             "status", "estatus", "cómo estás", "cómo andas", "todo bien",
             "estado general", "chequeo general", "health check",
         ]),
+        
+        IntentDefinition(
+            name="buscar_drive",
+            phrases=["en la nube", "en drive", "en google drive", "en mi drive", "del drive", "de la nube"],
+            param_mode="text",
+        ),
+        IntentDefinition(
+            name="estado_drive",
+            phrases=["estado de drive", "estado de google drive", "cuanto espacio tengo en drive"],
+        ),
     ])
 
     return engine
