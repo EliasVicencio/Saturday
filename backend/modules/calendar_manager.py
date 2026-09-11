@@ -7,6 +7,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+import logging
+logger = logging.getLogger("saturday.calendar")
 
 class CalendarManager:
     SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -31,7 +33,7 @@ class CalendarManager:
                 creds.refresh(Request())
             else:
                 if not os.path.exists(self.credentials_path):
-                    print("No se encuentra credentials.json")
+                    logger.info("No se encuentra credentials.json")
                     return
                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, self.SCOPES)
                 creds = flow.run_local_server(port=0)
@@ -40,7 +42,7 @@ class CalendarManager:
                 token.write(creds.to_json())
         
         self.service = build('calendar', 'v3', credentials=creds)
-        print("Google Calendar autenticado")
+        logger.info("Google Calendar autenticado")
     
     def get_events(self, max_results: int = 10) -> List[Dict]:
         if not self.service:
@@ -56,7 +58,7 @@ class CalendarManager:
             ).execute()
             return events_result.get('items', [])
         except Exception as e:
-            print(f"Error obteniendo eventos: {e}")
+            logger.info(f"Error obteniendo eventos: {e}")
             return []
     
     def get_events_formatted(self) -> str:

@@ -3,6 +3,8 @@ import os
 from typing import Optional
 
 import httpx
+import logging
+logger = logging.getLogger("saturday.groq")
 
 SYSTEM_PROMPT = """Sos Saturday, el asistente personal del usuario. Respondi en espanol neutro (tuteo).
 
@@ -26,9 +28,9 @@ class GeminiChat:
         self._base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
         self._conversation_histories = {}
         if not self._api_key:
-            print("[GroqChat] WARNING - GROQ_API_KEY no configurada")
+            logger.info("[GroqChat] WARNING - GROQ_API_KEY no configurada")
         else:
-            print(f"[GroqChat] OK - modelo '{self._model}'")
+            logger.info(f"[GroqChat] OK - modelo '{self._model}'")
 
     def _get_history(self, chat_id):
         if chat_id not in self._conversation_histories:
@@ -73,7 +75,7 @@ class GeminiChat:
 
             return answer
         except Exception as e:
-            print(f"[GroqChat] ERROR: {e}")
+            logger.info(f"[GroqChat] ERROR: {e}")
             return None
 
     def clear_history(self, chat_id):

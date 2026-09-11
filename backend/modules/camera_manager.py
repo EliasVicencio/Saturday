@@ -4,6 +4,8 @@ import time
 import base64
 from datetime import datetime
 from typing import Optional
+import logging
+logger = logging.getLogger("saturday.camera")
 
 class CameraManager:
     def __init__(self):
@@ -16,10 +18,10 @@ class CameraManager:
             import cv2
             self._cv2 = cv2
             self.is_available = True
-            print("[Camera] OK - OpenCV disponible")
+            logger.info("[Camera] OK - OpenCV disponible")
         except ImportError:
             self.is_available = False
-            print("[Camera] WARN - OpenCV no disponible, modo sin camara")
+            logger.info("[Camera] WARN - OpenCV no disponible, modo sin camara")
 
     def capture(self, save: bool = False) -> Optional[str]:
         if not self.is_available or not self._cv2:
@@ -43,7 +45,7 @@ class CameraManager:
                 self.last_capture["saved_to"] = path
             return img_b64
         except Exception as e:
-            print(f"[Camera] ERROR: {e}")
+            logger.info(f"[Camera] ERROR: {e}")
             return self._placeholder()
 
     def capture_to_file(self) -> Optional[str]:

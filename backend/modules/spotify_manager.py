@@ -3,6 +3,8 @@ import os
 import webbrowser
 from typing import Optional
 import urllib.parse
+import logging
+logger = logging.getLogger("saturday.spotify")
 
 try:
     import spotipy
@@ -10,7 +12,7 @@ try:
     SPOTIPY_AVAILABLE = True
 except ImportError:
     SPOTIPY_AVAILABLE = False
-    print(" spotipy no instalado. Instalar con: pip install spotipy")
+    logger.info(" spotipy no instalado. Instalar con: pip install spotipy")
 
 class SpotifyManager:
     """Gestor de Spotify para Saturday"""
@@ -27,11 +29,11 @@ class SpotifyManager:
     def _authenticate(self):
         """Autentica con Spotify"""
         if not SPOTIPY_AVAILABLE:
-            print(" Spotipy no disponible")
+            logger.info(" Spotipy no disponible")
             return
         
         if not self.client_id or not self.client_secret:
-            print(" SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET no configurados")
+            logger.info(" SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET no configurados")
             return
         
         try:
@@ -42,9 +44,9 @@ class SpotifyManager:
                 scope=self.scope,
                 cache_path="credentials/spotify_token.pickle"
             ))
-            print(" Spotify autenticado correctamente")
+            logger.info(" Spotify autenticado correctamente")
         except Exception as e:
-            print(f" Error autenticando Spotify: {e}")
+            logger.info(f" Error autenticando Spotify: {e}")
     
     def is_authenticated(self) -> bool:
         """Verifica si está autenticado"""
@@ -69,7 +71,7 @@ class SpotifyManager:
                 return " No hay dispositivo activo. Abriendo Spotify Web. Inicia sesión y reproduce algo para activar un dispositivo."
             
             device_id = devices['devices'][0]['id']
-            print(f" Dispositivo activo: {devices['devices'][0].get('name', 'Desconocido')}")
+            logger.info(f" Dispositivo activo: {devices['devices'][0].get('name', 'Desconocido')}")
             
             # Si hay query, buscar y reproducir
             if query and query.strip():
@@ -79,7 +81,7 @@ class SpotifyManager:
                     clean_query = clean_query.replace(word, "").strip()
                 
                 if clean_query:
-                    print(f" Buscando: {clean_query}")
+                    logger.info(f" Buscando: {clean_query}")
                     results = self.sp.search(q=clean_query, type='track', limit=3)
                     if results['tracks']['items']:
                         track = results['tracks']['items'][0]

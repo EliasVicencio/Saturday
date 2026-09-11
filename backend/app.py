@@ -32,10 +32,35 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", API_KEY + "-session")
 SESSION_TTL = 3600
 
 # Init auth module
-from api.auth import auth_bp, init_auth, require_api_key
-
+from api.auth import auth_bp, init_auth, require_api_key, check_auth
 init_auth(API_KEY, SESSION_SECRET, SESSION_TTL)
 app.register_blueprint(auth_bp)
+
+# Rutas que deben quedar públicas a propósito:
+# - /api/health, /api/status: monitoreo externo (no exponen datos personales)
+# - /api/auth/session: para poder pedir una sesión hay que dejar pasar la request
+# - callbacks OAuth: Google redirige el navegador del usuario directo a estas URLs,
+#   sin poder mandar el header X-API-Key, así que no se pueden proteger igual.
+#   Cada callback valida su propio "state"/código de un solo uso internamente.
+_PUBLIC_API_PATHS = {
+    "/api/health",
+    "/api/status",
+    "/api/auth/session",
+    "/api/health/google-fit/callback",
+    "/api/gmail/callback",
+    "/api/google-drive/callback",
+}
+
+@app.before_request
+def _global_api_auth_guard():
+    path = request.path
+    if not path.startswith("/api/"):
+        return  # frontend estático u otras rutas no-API
+    if path in _PUBLIC_API_PATHS:
+        return
+    if not check_auth():
+        logger.warning("Acceso no autorizado a %s desde %s", path, request.remote_addr)
+        return jsonify({"error": "Unauthorized"}), 401
 
 # Init Saturday Core
 logger.info("=" * 50)
@@ -170,6 +195,43 @@ def audit_stats():
     stats = AuditLogger().stats()
     return jsonify({"stats": stats})
 
+@app.route("/api/autonomy", methods=["GET"])
+def autonomy_status():
+    """Estado actual de la autonomía: kill switch, niveles por acción y consumo del tope diario."""
+    if not saturday.autonomy:
+        return jsonify({"error": "AutonomyManager no disponible"}), 503
+    return jsonify(saturday.autonomy.status())
+
+@app.route("/api/autonomy/pause", methods=["POST"])
+def autonomy_pause():
+    """Kill switch: detiene TODA acción autónoma de inmediato, sin tocar el scheduler ni reiniciar el servicio."""
+    if not saturday.autonomy:
+        return jsonify({"error": "AutonomyManager no disponible"}), 503
+    saturday.autonomy.pause()
+    return jsonify({"status": "paused"})
+
+@app.route("/api/autonomy/resume", methods=["POST"])
+def autonomy_resume():
+    if not saturday.autonomy:
+        return jsonify({"error": "AutonomyManager no disponible"}), 503
+    saturday.autonomy.resume()
+    return jsonify({"status": "resumed"})
+
+@app.route("/api/autonomy/level", methods=["POST"])
+def autonomy_set_level():
+    """Body: {"action": "email_check", "level": "auto" | "ask" | "never"}"""
+    if not saturday.autonomy:
+        return jsonify({"error": "AutonomyManager no disponible"}), 503
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "")
+    level = data.get("level", "")
+    if not action:
+        return jsonify({"error": "action es requerido"}), 400
+    try:
+        saturday.autonomy.set_level(action, level)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"status": "updated", "action": action, "level": level})
 
 @app.route("/api/permissions", methods=["GET"])
 @require_api_key

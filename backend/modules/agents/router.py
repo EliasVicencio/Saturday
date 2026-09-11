@@ -138,7 +138,14 @@ class AgentRouter:
             timestamp=time.time(),
         ))
 
-        # 5. Publicar evento
+        # 5. Registrar interaccion para aprendizaje de rutinas (no bloqueante)
+        if self.core and getattr(self.core, "routines", None):
+            try:
+                self.core.routines.record_interaction(result.agent)
+            except Exception:
+                pass  # el aprendizaje de rutinas nunca debe romper una respuesta
+
+        # 6. Publicar evento
         if self.core and self.core.event_bus:
             self.core.event_bus.publish("agent.executed", {
                 "agent": result.agent,
@@ -158,6 +165,87 @@ class AgentRouter:
             "route_score": best_score,
             "alternatives": [(a.name, s) for s, a in scores[1:3]],
         }
+
+    def execute_autonomous(self, capability: str, tool: str, args: Dict[str, Any] = None,
+                            reason: str = "", risk: str = "low") -> Dict[str, Any]:
+        """
+        Punto de entrada único para acciones que Saturday inicia POR SÍ MISMO
+        (scheduler, rutinas aprendidas, sugerencias proactivas) — sin un mensaje
+        de texto del usuario de por medio.
+
+        A diferencia de `route()`, aquí no hay NLP de por medio: el llamador ya
+        sabe exactamente qué capability/tool quiere ejecutar. Pero pasa por las
+        MISMAS reglas de permisos, confirmación y auditoría que cualquier acción
+        pedida por chat, para que nada autónomo se salte el control del usuario.
+        """
+        args = args or {}
+        start = time.time()
+        checkpoint_id = str(uuid.uuid4())[:12]
+
+        # 1. Permisos: ¿esta capability puede ejecutar este tipo de permiso?
+        perm = self._infer_permission(tool)
+        if self.core and self.core.permissions:
+            if not self.core.permissions.can(capability, perm):
+                self._log_autonomous(checkpoint_id, capability, tool, args,
+                                      "denegado por permisos", False, start)
+                return {"executed": False, "reason": "permission_denied",
+                        "capability": capability, "tool": tool}
+
+            # 2. ¿Requiere confirmación tuya antes de ejecutarse?
+            if self.core.permissions.needs_confirmation(capability, perm) or risk == "high":
+                conf = self.confirm_manager.request_confirmation(
+                    action=tool, agent=capability,
+                    data={"args": args, "reason": reason, "autonomous": True},
+                )
+                self._log_autonomous(checkpoint_id, capability, tool, args,
+                                      f"esperando confirmación: {conf.id if conf else '?'}",
+                                      True, start)
+                return {"executed": False, "reason": "pending_confirmation",
+                        "confirmation_id": conf.id if conf else None,
+                        "capability": capability, "tool": tool}
+
+        # 3. Ejecutar y dejar rastro (checkpoint + audit), igual que una acción manual
+        try:
+            result = self.core._execute_tool(tool, args) if self.core else None
+            success = True
+        except Exception as e:
+            result = f"Error ejecutando {tool}: {e}"
+            success = False
+
+        duration_ms = (time.time() - start) * 1000
+        self.checkpoints.save(Checkpoint(
+            id=checkpoint_id, session_id="autonomous",
+            user_message=f"[AUTÓNOMO] {reason or tool}", agent=capability,
+            tools_called=[{"tool": tool, "args": args}],
+            response=str(result)[:2000],
+            duration_ms=duration_ms, success=success,
+            error=None if success else str(result), timestamp=time.time(),
+        ))
+        if self.core and self.core.audit:
+            self.core.audit.log("autonomous_action", agent=capability, action=reason,
+                                 tool=tool, args=args, result=str(result),
+                                 duration_ms=duration_ms, success=success)
+        if self.core and self.core.event_bus:
+            self.core.event_bus.publish("agent.autonomous", {
+                "capability": capability, "tool": tool, "success": success,
+            }, source="scheduler")
+
+        return {"executed": True, "success": success, "result": result,
+                "capability": capability, "tool": tool, "checkpoint_id": checkpoint_id}
+
+    def _infer_permission(self, tool: str) -> str:
+        """Mapeo simple tool -> tipo de permiso. Ajustar si se agregan tools nuevas."""
+        destructive_hints = ("delete", "borrar", "eliminar", "send", "enviar")
+        if any(h in tool.lower() for h in destructive_hints):
+            return "memory_delete" if "delete" in tool.lower() or "borrar" in tool.lower() else "system_command"
+        return "memory_write"
+
+    def _log_autonomous(self, checkpoint_id, capability, tool, args, msg, success, start):
+        duration_ms = (time.time() - start) * 1000
+        if self.core and self.core.audit:
+            self.core.audit.log("autonomous_action", agent=capability, action=msg,
+                                 tool=tool, args=args, result=msg,
+                                 duration_ms=duration_ms, success=success)
 
     def get_checkpoints(self, session_id: str = "", limit: int = 20) -> List[Dict]:
         return self.checkpoints.recent(session_id, limit)

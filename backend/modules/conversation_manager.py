@@ -9,6 +9,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field, asdict
+import logging
+logger = logging.getLogger("saturday.conversation")
 
 
 @dataclass
@@ -92,7 +94,7 @@ class ConversationManager:
                         ctx.messages.append(Message(**msg_data))
                     self._conversations[chat_id] = ctx
         except Exception as e:
-            print(f" Error cargando conversaciones: {e}")
+            logger.info(f" Error cargando conversaciones: {e}")
     
     def _save(self):
         """Guarda conversaciones en disco"""
@@ -113,7 +115,7 @@ class ConversationManager:
             with open(self.SAVE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f" Error guardando conversaciones: {e}")
+            logger.info(f" Error guardando conversaciones: {e}")
     
     def get_context(self, chat_id: int) -> ConversationContext:
         """Obtiene o crea el contexto de un chat"""

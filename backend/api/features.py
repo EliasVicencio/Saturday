@@ -1,6 +1,6 @@
 """Blueprint para las 5 nuevas features: contexto, emails, productividad, rutinas, salud."""
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, redirect
 from api.auth import require_api_key
 import logging
 
@@ -315,17 +315,14 @@ def google_drive_auth_url():
 def google_drive_callback():
     code = request.args.get("code")
     if not code:
-        return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
+        return redirect("https://saturday.viewdns.net?google_drive=error")
 
-    if _core and hasattr(_core, "google_drive") and _core.google_drive:
+    if _core and hasattr(_core, 'google_drive') and _core.google_drive:
         success = _core.google_drive.exchange_code(code)
         if success:
-            return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=success"</script></body></html>'
+            return redirect("https://saturday.viewdns.net?google_drive=success")
 
-    return (
-        '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
-    )
-
+    return redirect("https://saturday.viewdns.net?google_drive=error")
 
 @features_bp.route("/api/google-drive/status", methods=["GET"])
 @require_api_key

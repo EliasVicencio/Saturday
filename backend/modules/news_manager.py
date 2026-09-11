@@ -3,6 +3,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from modules.http_utils import get_with_retry
+import logging
+logger = logging.getLogger("saturday.news")
 
 class NewsManager:
     """Gestor de noticias para Saturday usando NewsData.io"""
@@ -15,10 +17,10 @@ class NewsManager:
         self.category = os.getenv("NEWSDATA_CATEGORY", "top")
         
         if not self.api_key:
-            print(" NEWSDATA_API_KEY no configurada.")
-            print("   Regístrate en: https://newsdata.io/")
+            logger.info(" NEWSDATA_API_KEY no configurada.")
+            logger.info("   Regístrate en: https://newsdata.io/")
         else:
-            print(" NewsManager inicializado (NewsData.io)")
+            logger.info(" NewsManager inicializado (NewsData.io)")
     
     def is_available(self) -> bool:
         """Verifica si la API está configurada"""
@@ -50,7 +52,7 @@ class NewsManager:
             elif self.category:
                 params['category'] = self.category
             
-            print(f"Solicitando noticias a NewsData.io...")
+            logger.info(f"Solicitando noticias a NewsData.io...")
             
             response = get_with_retry(url, params=params, timeout=10)
             if not response:
@@ -60,10 +62,10 @@ class NewsManager:
             if data.get('status') == 'success':
                 articles = data.get('results', [])
                 if not articles:
-                    print(f"No hay articulos. Respuesta: {data.get('message', 'Sin resultados')}")
+                    logger.info(f"No hay articulos. Respuesta: {data.get('message', 'Sin resultados')}")
                     # Intentar sin pais
                     if 'country' in params:
-                        print("Intentando sin filtro de pais...")
+                        logger.info("Intentando sin filtro de pais...")
                         del params['country']
                         response = get_with_retry(url, params=params, timeout=10)
                         if response:
@@ -89,11 +91,11 @@ class NewsManager:
                     })
                 return formatted
             else:
-                print(f" Error en NewsData.io: {data.get('message', 'Error desconocido')}")
+                logger.info(f" Error en NewsData.io: {data.get('message', 'Error desconocido')}")
                 return []
                 
         except Exception as e:
-            print(f" Error obteniendo noticias: {e}")
+            logger.info(f" Error obteniendo noticias: {e}")
             return []
     
     def search_news(self, query: str, limit: int = 5) -> List[Dict]:
@@ -111,7 +113,7 @@ class NewsManager:
                 'removeduplicate': 1
             }
             
-            print(f"Buscando: {query}")
+            logger.info(f"Buscando: {query}")
             response = get_with_retry(url, params=params, timeout=10)
             if not response:
                 return []
@@ -133,11 +135,11 @@ class NewsManager:
                     })
                 return formatted
             else:
-                print(f" Error en búsqueda: {data.get('message', 'Error desconocido')}")
+                logger.info(f" Error en búsqueda: {data.get('message', 'Error desconocido')}")
                 return []
                 
         except Exception as e:
-            print(f" Error buscando noticias: {e}")
+            logger.info(f" Error buscando noticias: {e}")
             return []
     
     def get_news_by_category(self, category: str, limit: int = 5) -> List[Dict]:

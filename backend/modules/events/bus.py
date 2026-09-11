@@ -3,6 +3,8 @@ import time
 from typing import Callable, Dict, List, Any
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict
+import logging
+logger = logging.getLogger("saturday.events")
 
 @dataclass
 class Event:
@@ -33,12 +35,12 @@ class EventBus:
             try:
                 cb(event)
             except Exception as e:
-                print(f"[EventBus] Error: {e}")
+                logger.info(f"[EventBus] Error: {e}")
         for cb in self._subscribers.get("*", []):
             try:
                 cb(event)
             except Exception as e:
-                print(f"[EventBus] Error wildcard: {e}")
+                logger.info(f"[EventBus] Error wildcard: {e}")
 
     def recent(self, event_name: str = "", limit: int = 20) -> List[Event]:
         events = self._history

@@ -15,6 +15,13 @@ const api = axios.create({
   },
 });
 
+if (!API_KEY) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[Saturday] VITE_SATURDAY_API_KEY no está configurada. El backend rechazará la mayoría de los requests.'
+  );
+}
+
 // ===== INTERFACES BASICAS =====
 
 export interface WeatherResponse {

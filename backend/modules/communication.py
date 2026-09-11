@@ -3,6 +3,8 @@ import os
 import urllib.parse
 from typing import Dict, Any, Optional
 from modules.http_utils import get_with_retry
+import logging
+logger = logging.getLogger("saturday.communication")
 
 class CommunicationManager:
     """Gestor de comunicaciones para Saturday (WhatsApp + Notificaciones)"""
@@ -13,8 +15,8 @@ class CommunicationManager:
         self.whatsapp_api_key = os.getenv("WHATSAPP_API_KEY")
         self.whatsapp_enabled = bool(self.whatsapp_number and self.whatsapp_api_key)
         
-        print(" CommunicationManager inicializado")
-        print(f"   WhatsApp: {' Activado' if self.whatsapp_enabled else ' No configurado'}")
+        logger.info(" CommunicationManager inicializado")
+        logger.info(f"   WhatsApp: {' Activado' if self.whatsapp_enabled else ' No configurado'}")
     
     # ================================================================
     # WHATSAPP (CallMeBot)
@@ -40,11 +42,11 @@ class CommunicationManager:
             encoded_message = urllib.parse.quote_plus(message)
             url = f"https://api.callmebot.com/whatsapp.php?phone={target_phone}&apikey={self.whatsapp_api_key}&text={encoded_message}"
             
-            print(f"Enviando WhatsApp a {target_phone}: {message}")
+            logger.info(f"Enviando WhatsApp a {target_phone}: {message}")
             response = get_with_retry(url, timeout=30)
             
             if response and response.status_code == 200:
-                print(f" WhatsApp enviado")
+                logger.info(f" WhatsApp enviado")
                 return {'success': True, 'message': 'WhatsApp enviado'}
             else:
                 return {'success': False, 'error': f'Error {response.status_code}: {response.text}'}
@@ -71,11 +73,11 @@ class CommunicationManager:
             encoded_message = urllib.parse.quote_plus(message)
             url = f"https://api.callmebot.com/whatsapp.php?phone={target_phone}&apikey={self.whatsapp_api_key}&text={encoded_message}&voice=es-ES-Standard-A"
             
-            print(f"Enviando WhatsApp con voz a {target_phone}: {message}")
+            logger.info(f"Enviando WhatsApp con voz a {target_phone}: {message}")
             response = get_with_retry(url, timeout=30)
             
             if response and response.status_code == 200:
-                print(f" WhatsApp con voz enviado")
+                logger.info(f" WhatsApp con voz enviado")
                 return {'success': True, 'message': 'WhatsApp con voz enviado'}
             else:
                 return {'success': False, 'error': f'Error {response.status_code}: {response.text}'}

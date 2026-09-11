@@ -42,15 +42,24 @@ def _is_valid_session(token):
     except Exception:
         return False
 
+def check_auth() -> bool:
+    """Valida la request actual (header X-API-Key o sesion). No escribe respuesta."""
+    if not _api_key:
+        logger.warning("API key no configurada - rechazando request")
+        return False
+    key = request.headers.get("X-API-Key", "")
+    if not key:
+        return False
+    if hmac.compare_digest(key, _api_key):
+        return True
+    return _is_valid_session(key)
+
+
 def require_api_key(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not _api_key:
-            logger.warning("API key no configurada - rechazando request")
-            return jsonify({"error": "Servidor mal configurado"}), 503
-        key = request.headers.get("X-API-Key", "")
-        if hmac.compare_digest(key, _api_key) or _is_valid_session(key):
+        if check_auth():
             return f(*args, **kwargs)
         logger.warning("API key invalida desde %s path=%s", request.remote_addr, request.path)
         return jsonify({"error": "Unauthorized"}), 401

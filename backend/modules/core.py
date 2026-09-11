@@ -475,6 +475,15 @@ class SaturdayCore:
             except Exception as e:
                 logger.info(f"[WARN] Error inicializando PermissionManager: {e}")
 
+        # Inicializar Autonomy Manager (kill switch + niveles de autonomía)
+        self.autonomy = None
+        try:
+            from modules.autonomy import AutonomyManager
+            self.autonomy = AutonomyManager()
+            logger.info("[OK] AutonomyManager inicializado (paused=%s)", self.autonomy.paused)
+        except Exception as e:
+            logger.info(f"[WARN] Error inicializando AutonomyManager: {e}")
+
         # --- Feature Modules ---
         self.proactive = None
         if PROACTIVE_AVAILABLE:
@@ -937,7 +946,10 @@ class SaturdayCore:
             # Programar tareas autonomas (correos, noticias, organizacion)
             self.scheduler.schedule_autonomous_tasks()
             logger.info(" Tareas autonomas programadas")
-            
+
+            # Auto-programar recordatorios segun patrones aprendidos por RoutineLearner
+            self.scheduler.schedule_from_routines()
+
         except Exception as e:
             logger.info(f" Error configurando tareas autonomas: {e}")
     

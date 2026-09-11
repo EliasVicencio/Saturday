@@ -3,6 +3,8 @@ import os
 import base64
 from typing import Optional
 import httpx
+import logging
+logger = logging.getLogger("saturday.vision")
 
 class VisionDescriber:
     def __init__(self):
@@ -11,9 +13,9 @@ class VisionDescriber:
         self._base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
         self._available = bool(self._api_key)
         if self._available:
-            print(f"[Vision] OK - modelo: {self._model}")
+            logger.info(f"[Vision] OK - modelo: {self._model}")
         else:
-            print("[Vision] WARNING - GROQ_API_KEY no configurada")
+            logger.info("[Vision] WARNING - GROQ_API_KEY no configurada")
 
     @property
     def is_available(self) -> bool:
@@ -47,7 +49,7 @@ class VisionDescriber:
                 result = resp.json()
                 return result["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            print(f"[Vision] ERROR: {e}")
+            logger.info(f"[Vision] ERROR: {e}")
             return None
 
     def describe_bytes(self, image_bytes: bytes, question: str = "Que hay en esta imagen?") -> Optional[str]:
@@ -74,5 +76,5 @@ class VisionDescriber:
                 result = resp.json()
                 return result["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            print(f"[Vision] ERROR: {e}")
+            logger.info(f"[Vision] ERROR: {e}")
             return None

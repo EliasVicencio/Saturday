@@ -3,6 +3,8 @@ import os
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 from modules.http_utils import get_with_retry
+import logging
+logger = logging.getLogger("saturday.daily_summary")
 
 class DailySummary:
     """Genera y envia resumenes diarios desde Saturday"""
@@ -227,6 +229,6 @@ class DailySummary:
                 result['vault_path'] = output_path
                 result['vault_wiki_path'] = wiki_path
             except Exception as e:
-                print(f" No se pudo guardar el resumen en la boveda: {e}")
+                logger.info(f" No se pudo guardar el resumen en la boveda: {e}")
 
         return result

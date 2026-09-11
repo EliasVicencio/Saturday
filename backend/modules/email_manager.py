@@ -7,6 +7,8 @@ from email.mime.text import MIMEText
 from email.header import decode_header
 from typing import Dict, Any, List
 import re
+import logging
+logger = logging.getLogger("saturday.email")
 
 
 class EmailManager:
@@ -23,9 +25,9 @@ class EmailManager:
         self.imap_port = int(os.getenv("SATURDAY_IMAP_PORT", "993"))
         
         if self.email and self.password:
-            print(f"  Email: configurado ({self.email})")
+            logger.info(f"  Email: configurado ({self.email})")
         else:
-            print("  Email: sin configurar")
+            logger.info("  Email: sin configurar")
     
     def _is_configured(self) -> bool:
         return bool(self.email and self.password)
@@ -100,7 +102,7 @@ class EmailManager:
             return emails
         
         except Exception as e:
-            print(f"Error leyendo correos: {e}")
+            logger.info(f"Error leyendo correos: {e}")
             return []
         finally:
             if mail:

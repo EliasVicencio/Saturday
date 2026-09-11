@@ -2,6 +2,8 @@
 import os
 from typing import List, Dict, Optional
 from modules.http_utils import post_with_retry, patch_with_retry
+import logging
+logger = logging.getLogger("saturday.notion")
 
 class NotionManager:
     """Gestor de tareas con Notion - Versión MVP"""
@@ -24,11 +26,11 @@ class NotionManager:
                 json={"page_size": 1}
             )
             if response.status_code == 200:
-                print(" Notion conectado correctamente")
+                logger.info(" Notion conectado correctamente")
             else:
-                print(f" Error conectando a Notion: {response.status_code}")
+                logger.info(f" Error conectando a Notion: {response.status_code}")
         except Exception as e:
-            print(f" Error conectando a Notion: {e}")
+            logger.info(f" Error conectando a Notion: {e}")
     
     # ============ OBTENER TAREAS ============
     
@@ -63,7 +65,7 @@ class NotionManager:
             return tasks
             
         except Exception as e:
-            print(f" Error obteniendo tareas: {e}")
+            logger.info(f" Error obteniendo tareas: {e}")
             return []
     
     def _parse_task(self, page: Dict) -> Optional[Dict]:
@@ -93,7 +95,7 @@ class NotionManager:
             
             return task
         except Exception as e:
-            print(f" Error parseando tarea: {e}")
+            logger.info(f" Error parseando tarea: {e}")
             return None
     
     # ============ COMANDOS DE TAREAS ============
