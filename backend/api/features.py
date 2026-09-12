@@ -1,19 +1,24 @@
 """Blueprint para las 5 nuevas features: contexto, emails, productividad, rutinas, salud."""
+
 from flask import Blueprint, request, jsonify
+from api.auth import require_api_key
 import logging
 
 logger = logging.getLogger("saturday.features")
-features_bp = Blueprint('features', __name__)
+features_bp = Blueprint("features", __name__)
 _core = None
+
 
 def init_features(saturday):
     global _core
     _core = saturday
 
+
 # --- Proactive Context ---
 @features_bp.route("/api/proactive/context", methods=["GET"])
+@require_api_key
 def get_proactive_context():
-    if not _core or not hasattr(_core, 'proactive') or not _core.proactive:
+    if not _core or not hasattr(_core, "proactive") or not _core.proactive:
         return jsonify({"error": "Contexto proactivo no disponible"}), 503
     try:
         context = _core.proactive.get_context()
@@ -22,9 +27,11 @@ def get_proactive_context():
         logger.error(f"Error contexto proactivo: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/proactive/suggestions", methods=["GET"])
+@require_api_key
 def get_proactive_suggestions():
-    if not _core or not hasattr(_core, 'proactive') or not _core.proactive:
+    if not _core or not hasattr(_core, "proactive") or not _core.proactive:
         return jsonify({"suggestions": []})
     try:
         suggestions = _core.proactive.get_suggestions()
@@ -32,10 +39,12 @@ def get_proactive_suggestions():
     except Exception as e:
         return jsonify({"suggestions": [], "error": str(e)})
 
+
 # --- Email Summary ---
 @features_bp.route("/api/emails/summary", methods=["GET"])
+@require_api_key
 def get_email_summary():
-    if not _core or not hasattr(_core, 'email_summary') or not _core.email_summary:
+    if not _core or not hasattr(_core, "email_summary") or not _core.email_summary:
         return jsonify({"error": "Resumen de correos no disponible"}), 503
     try:
         summary = _core.email_summary.get_summary()
@@ -44,10 +53,12 @@ def get_email_summary():
         logger.error(f"Error resumen emails: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # --- Productivity ---
 @features_bp.route("/api/productivity/daily", methods=["GET"])
+@require_api_key
 def get_productivity_daily():
-    if not _core or not hasattr(_core, 'productivity') or not _core.productivity:
+    if not _core or not hasattr(_core, "productivity") or not _core.productivity:
         return jsonify({"error": "Productividad no disponible"}), 503
     try:
         report = _core.productivity.get_daily_report()
@@ -56,9 +67,11 @@ def get_productivity_daily():
         logger.error(f"Error productividad: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/productivity/weekly", methods=["GET"])
+@require_api_key
 def get_productivity_weekly():
-    if not _core or not hasattr(_core, 'productivity') or not _core.productivity:
+    if not _core or not hasattr(_core, "productivity") or not _core.productivity:
         return jsonify({"error": "Productividad no disponible"}), 503
     try:
         report = _core.productivity.get_weekly_report()
@@ -67,10 +80,12 @@ def get_productivity_weekly():
         logger.error(f"Error productividad semanal: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # --- Routines ---
 @features_bp.route("/api/routines", methods=["GET"])
+@require_api_key
 def get_routines():
-    if not _core or not hasattr(_core, 'routines') or not _core.routines:
+    if not _core or not hasattr(_core, "routines") or not _core.routines:
         return jsonify({"error": "Aprendizaje de rutinas no disponible"}), 503
     try:
         routines = _core.routines.get_routines()
@@ -79,10 +94,12 @@ def get_routines():
         logger.error(f"Error rutinas: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # --- Health ---
 @features_bp.route("/api/health/today", methods=["GET"])
+@require_api_key
 def get_health_today():
-    if not _core or not hasattr(_core, 'health') or not _core.health:
+    if not _core or not hasattr(_core, "health") or not _core.health:
         return jsonify({"error": "Salud no disponible"}), 503
     try:
         today = _core.health.get_today()
@@ -91,9 +108,11 @@ def get_health_today():
         logger.error(f"Error salud hoy: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/weekly", methods=["GET"])
+@require_api_key
 def get_health_weekly():
-    if not _core or not hasattr(_core, 'health') or not _core.health:
+    if not _core or not hasattr(_core, "health") or not _core.health:
         return jsonify({"error": "Salud no disponible"}), 503
     try:
         weekly = _core.health.get_weekly()
@@ -102,9 +121,11 @@ def get_health_weekly():
         logger.error(f"Error salud semanal: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/log", methods=["POST"])
+@require_api_key
 def log_health():
-    if not _core or not hasattr(_core, 'health') or not _core.health:
+    if not _core or not hasattr(_core, "health") or not _core.health:
         return jsonify({"error": "Salud no disponible"}), 503
     try:
         data = request.get_json(silent=True) or {}
@@ -119,9 +140,11 @@ def log_health():
         logger.error(f"Error registrando salud: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/goal", methods=["POST"])
+@require_api_key
 def set_health_goal():
-    if not _core or not hasattr(_core, 'health') or not _core.health:
+    if not _core or not hasattr(_core, "health") or not _core.health:
         return jsonify({"error": "Salud no disponible"}), 503
     try:
         data = request.get_json(silent=True) or {}
@@ -134,24 +157,33 @@ def set_health_goal():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 # --- Google Fit ---
 GOOGLE_FIT_REDIRECT = "https://saturday.viewdns.net/api/health/google-fit/callback"
 
+
 @features_bp.route("/api/health/google-fit/auth-url", methods=["GET"])
+@require_api_key
 def google_fit_auth_url():
-    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+    if not _core or not hasattr(_core, "google_fit") or not _core.google_fit:
         return jsonify({"error": "Google Fit no disponible"}), 503
     try:
         url = _core.google_fit.get_auth_url(redirect_uri=GOOGLE_FIT_REDIRECT)
         if url:
-            return jsonify({"auth_url": url, "instructions": "Abre esta URL en tu navegador, autoriza, y copia el codigo que te den. Luego envia el codigo via POST a /api/health/google-fit/callback con {code: tu_codigo}"})
+            return jsonify(
+                {
+                    "auth_url": url,
+                    "instructions": "Abre esta URL en tu navegador, autoriza, y copia el codigo que te den. Luego envia el codigo via POST a /api/health/google-fit/callback con {code: tu_codigo}",
+                }
+            )
         return jsonify({"error": "Credenciales no configuradas"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/google-fit/callback", methods=["GET", "POST"])
 def google_fit_callback():
-    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+    if not _core or not hasattr(_core, "google_fit") or not _core.google_fit:
         return jsonify({"error": "Google Fit no disponible"}), 503
     try:
         code = request.args.get("code", "") if request.method == "GET" else ""
@@ -169,9 +201,11 @@ def google_fit_callback():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/google-fit/data", methods=["GET"])
+@require_api_key
 def google_fit_data():
-    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+    if not _core or not hasattr(_core, "google_fit") or not _core.google_fit:
         return jsonify({"error": "Google Fit no disponible"}), 503
     try:
         data = _core.google_fit.get_today_data()
@@ -179,21 +213,26 @@ def google_fit_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/health/google-fit/status", methods=["GET"])
+@require_api_key
 def google_fit_status():
-    if not _core or not hasattr(_core, 'google_fit') or not _core.google_fit:
+    if not _core or not hasattr(_core, "google_fit") or not _core.google_fit:
         return jsonify({"connected": False, "error": "Google Fit no disponible"})
     try:
         return jsonify({"connected": _core.google_fit.is_connected()})
     except Exception as e:
         return jsonify({"connected": False, "error": str(e)})
 
+
 # --- Gmail ---
 GMAIL_REDIRECT = "https://saturday.viewdns.net/api/gmail/callback"
 
+
 @features_bp.route("/api/gmail/auth-url", methods=["GET"])
+@require_api_key
 def gmail_auth_url():
-    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+    if not _core or not hasattr(_core, "gmail") or not _core.gmail:
         return jsonify({"error": "Gmail no disponible"}), 503
     try:
         url = _core.gmail.get_auth_url(redirect_uri=GMAIL_REDIRECT)
@@ -203,9 +242,10 @@ def gmail_auth_url():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/gmail/callback", methods=["GET", "POST"])
 def gmail_callback():
-    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+    if not _core or not hasattr(_core, "gmail") or not _core.gmail:
         return jsonify({"error": "Gmail no disponible"}), 503
     try:
         code = request.args.get("code", "") if request.method == "GET" else ""
@@ -223,18 +263,22 @@ def gmail_callback():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/gmail/status", methods=["GET"])
+@require_api_key
 def gmail_status():
-    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+    if not _core or not hasattr(_core, "gmail") or not _core.gmail:
         return jsonify({"connected": False, "error": "Gmail no disponible"})
     try:
         return jsonify({"connected": _core.gmail.is_connected()})
     except Exception as e:
         return jsonify({"connected": False, "error": str(e)})
 
+
 @features_bp.route("/api/gmail/emails", methods=["GET"])
+@require_api_key
 def gmail_emails():
-    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+    if not _core or not hasattr(_core, "gmail") or not _core.gmail:
         return jsonify({"error": "Gmail no disponible"}), 503
     try:
         query = request.args.get("q", "")
@@ -244,9 +288,11 @@ def gmail_emails():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @features_bp.route("/api/gmail/summary", methods=["GET"])
+@require_api_key
 def gmail_summary():
-    if not _core or not hasattr(_core, 'gmail') or not _core.gmail:
+    if not _core or not hasattr(_core, "gmail") or not _core.gmail:
         return jsonify({"error": "Gmail no disponible"}), 503
     try:
         summary = _core.gmail.get_summary()
@@ -257,83 +303,99 @@ def gmail_summary():
 
 # ============ Google Drive Endpoints ============
 @features_bp.route("/api/google-drive/auth-url", methods=["GET"])
+@require_api_key
 def google_drive_auth_url():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
     url = _core.google_drive.get_auth_url()
     return jsonify({"auth_url": url})
+
 
 @features_bp.route("/api/google-drive/callback", methods=["GET"])
 def google_drive_callback():
     code = request.args.get("code")
     if not code:
-        return redirect("https://saturday.viewdns.net?google_drive=error")
-    
-    if _core and hasattr(_core, 'google_drive') and _core.google_drive:
+        return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
+
+    if _core and hasattr(_core, "google_drive") and _core.google_drive:
         success = _core.google_drive.exchange_code(code)
         if success:
-            return redirect("https://saturday.viewdns.net?google_drive=success")
-    
-    return redirect("https://saturday.viewdns.net?google_drive=error")
+            return '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=success"</script></body></html>'
+
+    return (
+        '<html><body><script>window.location="https://saturday.viewdns.net?google_drive=error"</script></body></html>'
+    )
+
 
 @features_bp.route("/api/google-drive/status", methods=["GET"])
+@require_api_key
 def google_drive_status():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"connected": False})
     return jsonify({"connected": _core.google_drive.is_connected()})
 
+
 @features_bp.route("/api/google-drive/files", methods=["GET"])
+@require_api_key
 def google_drive_files():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
-    
+
     folder_id = request.args.get("folder_id")
     query = request.args.get("query")
     max_results = int(request.args.get("max_results", 20))
-    
+
     files = _core.google_drive.list_files(folder_id=folder_id, query=query, max_results=max_results)
     return jsonify({"files": files, "count": len(files)})
 
+
 @features_bp.route("/api/google-drive/search", methods=["GET"])
+@require_api_key
 def google_drive_search():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
-    
+
     query = request.args.get("q", "")
     if not query:
         return jsonify({"error": "Query requerido"}), 400
-    
+
     files = _core.google_drive.search_files(query)
     return jsonify({"files": files, "count": len(files)})
 
+
 @features_bp.route("/api/google-drive/file/<file_id>", methods=["GET"])
+@require_api_key
 def google_drive_file(file_id):
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
-    
+
     content = _core.google_drive.get_file_content(file_id)
     return jsonify({"content": content})
 
+
 @features_bp.route("/api/google-drive/create", methods=["POST"])
+@require_api_key
 def google_drive_create():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
-    
+
     data = request.get_json() or {}
     name = data.get("name")
     content = data.get("content", "")
     folder_id = data.get("folder_id")
-    
+
     if not name:
         return jsonify({"error": "Nombre requerido"}), 400
-    
+
     result = _core.google_drive.create_file(name, content, folder_id)
     return jsonify({"success": result is not None, "file": result})
 
+
 @features_bp.route("/api/google-drive/storage", methods=["GET"])
+@require_api_key
 def google_drive_storage():
-    if not _core or not hasattr(_core, 'google_drive') or not _core.google_drive:
+    if not _core or not hasattr(_core, "google_drive") or not _core.google_drive:
         return jsonify({"error": "Google Drive no disponible"}), 500
-    
+
     info = _core.google_drive.get_storage_info()
     return jsonify(info)

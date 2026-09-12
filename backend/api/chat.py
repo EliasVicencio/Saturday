@@ -1,29 +1,34 @@
 ﻿# api/chat.py - Chat & Conversation Blueprint
 from flask import Blueprint, request, jsonify
+from api.auth import require_api_key
 import logging
 
-logger = logging.getLogger('saturday.chat')
+logger = logging.getLogger("saturday.chat")
 
-chat_bp = Blueprint('chat', __name__)
+chat_bp = Blueprint("chat", __name__)
 
 _saturday = None
 _sessions = {}
+
 
 def init_chat(saturday, sessions):
     global _saturday, _sessions
     _saturday = saturday
     _sessions = sessions
 
-@chat_bp.route('/api/chat', methods=['POST'])
+
+@chat_bp.route("/api/chat", methods=["POST"])
+@require_api_key
 def chat():
     from modules.input_validator import validate_message
+
     data = request.get_json(silent=True) or {}
-    text = data.get('message', data.get('text', '')).strip()
-    session_id = data.get('session_id', 'default')
+    text = data.get("message", data.get("text", "")).strip()
+    session_id = data.get("session_id", "default")
 
     valid, error = validate_message(text)
     if not valid:
-        return jsonify({'error': error}), 400
+        return jsonify({"error": error}), 400
 
     result = _saturday.process_via_router(text, session_id=session_id)
 
@@ -40,7 +45,8 @@ def chat():
 
     return jsonify(result)
 
-@chat_bp.route('/api/greeting', methods=['GET'])
+
+@chat_bp.route("/api/greeting", methods=["GET"])
 def greeting():
     if not _saturday:
         return jsonify({"response": "Hola! Soy Saturday."}), 200
@@ -60,7 +66,9 @@ def greeting():
 
     return jsonify(response_data)
 
-@chat_bp.route('/api/conversation/<session_id>', methods=['GET'])
+
+@chat_bp.route("/api/conversation/<session_id>", methods=["GET"])
+@require_api_key
 def get_conversation(session_id):
     msgs = _sessions.get(session_id, [])
-    return jsonify({'session_id': session_id, 'messages': msgs})
+    return jsonify({"session_id": session_id, "messages": msgs})

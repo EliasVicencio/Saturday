@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
 logger = logging.getLogger("saturday")
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +32,8 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", API_KEY + "-session")
 SESSION_TTL = 3600
 
 # Init auth module
-from api.auth import auth_bp, init_auth
+from api.auth import auth_bp, init_auth, require_api_key
+
 init_auth(API_KEY, SESSION_SECRET, SESSION_TTL)
 app.register_blueprint(auth_bp)
 
@@ -77,6 +80,7 @@ app.register_blueprint(features_bp)
 # Welcome message
 _greeting_message = {"text": None, "ready": False}
 
+
 def build_welcome_message(core):
     try:
         hora = datetime.now().hour
@@ -89,6 +93,7 @@ def build_welcome_message(core):
         clima_info = ""
         try:
             from modules.http_utils import get_with_retry
+
             api_key = os.getenv("WEATHER_API_KEY")
             city = os.getenv("SATURDAY_CITY", "Santiago")
             if api_key:
@@ -107,59 +112,79 @@ def build_welcome_message(core):
     except Exception as e:
         logger.error("Error preparando saludo: %s", e)
 
+
 saludo_thread = threading.Thread(target=build_welcome_message, args=(saturday,), daemon=True)
 saludo_thread.start()
+
 
 @app.route("/api/greeting", methods=["GET"])
 def greeting():
     return jsonify({"ready": _greeting_message["ready"], "text": _greeting_message["text"]})
+
 
 @app.route("/api/status", methods=["GET"])
 def status():
     scheduler_running = False
     if saturday.scheduler:
         scheduler_running = saturday.scheduler.is_running
-    return jsonify({
-        "status": "online",
-        "version": "3.2.0",
-        "modules": {
-            "notion": saturday.notion is not None,
-            "calendar": saturday.calendar is not None,
-            "email": saturday.email is not None,
-            "voice": saturday.voice is not None,
-            "data": saturday.data is not None,
-            "telegram": saturday.telegram is not None,
-            "communication": saturday.communication is not None,
-            "scheduler": scheduler_running,
-        },
-    })
+    return jsonify(
+        {
+            "status": "online",
+            "version": "3.2.0",
+            "modules": {
+                "notion": saturday.notion is not None,
+                "calendar": saturday.calendar is not None,
+                "email": saturday.email is not None,
+                "voice": saturday.voice is not None,
+                "data": saturday.data is not None,
+                "telegram": saturday.telegram is not None,
+                "communication": saturday.communication is not None,
+                "scheduler": scheduler_running,
+            },
+        }
+    )
+
 
 @app.route("/api/config", methods=["GET"])
+@require_api_key
 def config_get():
     from modules.config import config
+
     return jsonify({"config": config.to_dict()})
 
+
 @app.route("/api/audit", methods=["GET"])
+@require_api_key
 def audit_log():
     from modules.security.audit import AuditLogger
+
     logs = AuditLogger().recent(limit=50)
     return jsonify({"logs": logs})
 
+
 @app.route("/api/audit/stats", methods=["GET"])
+@require_api_key
 def audit_stats():
     from modules.security.audit import AuditLogger
+
     stats = AuditLogger().stats()
     return jsonify({"stats": stats})
 
+
 @app.route("/api/permissions", methods=["GET"])
+@require_api_key
 def permissions_list():
     from modules.security.permissions import PermissionManager
+
     perms = PermissionManager().list_all()
     return jsonify({"permissions": {k: list(v) for k, v in perms.items()}})
 
+
 @app.route("/api/permissions", methods=["POST"])
+@require_api_key
 def permissions_set():
     from modules.security.permissions import PermissionManager
+
     data = request.get_json(silent=True) or {}
     resource = data.get("resource", "")
     level = data.get("level", "private")
@@ -170,24 +195,33 @@ def permissions_set():
         pm.grant(resource, "access")
     return jsonify({"status": "updated"})
 
+
 # Privacy routes moved to api/vision.py blueprint
 
+
 @app.route("/api/agents", methods=["GET"])
+@require_api_key
 def agents_list():
     agents = saturday.agent_router.list_agents() if saturday.agent_router else []
     return jsonify({"agents": agents})
 
+
 @app.route("/api/agents/stats", methods=["GET"])
+@require_api_key
 def agents_stats():
     stats = saturday.agent_router.get_stats() if saturday.agent_router else {}
     return jsonify({"stats": stats})
 
+
 @app.route("/api/agents/checkpoints", methods=["GET"])
+@require_api_key
 def agents_checkpoints():
     checkpoints = saturday.agent_router.get_checkpoints() if saturday.agent_router else []
     return jsonify({"checkpoints": checkpoints})
 
+
 @app.route("/api/agents/confirm", methods=["POST"])
+@require_api_key
 def agents_confirm():
     data = request.get_json(silent=True) or {}
     checkpoint_id = data.get("checkpoint_id")
@@ -195,14 +229,19 @@ def agents_confirm():
     saturday.agent_router.confirm_checkpoint(checkpoint_id, approved)
     return jsonify({"status": "confirmed"})
 
+
 @app.route("/api/agents/pending", methods=["GET"])
+@require_api_key
 def agents_pending():
     pending = saturday.agent_router.get_pending() if saturday.agent_router else []
     return jsonify({"pending": pending})
 
+
 @app.route("/api/agents/route", methods=["POST"])
+@require_api_key
 def agents_route():
     from modules.input_validator import validate_message
+
     data = request.get_json(silent=True) or {}
     text = data.get("text", "").strip()
     valid, error = validate_message(text)
@@ -211,12 +250,16 @@ def agents_route():
     result = saturday.process_via_router(text)
     return jsonify(result)
 
+
 @app.route("/api/events/log", methods=["GET"])
+@require_api_key
 def events_list():
     events = saturday.event_bus.recent(limit=20) if saturday.event_bus else []
     return jsonify({"events": [e.to_dict() for e in events]})
 
+
 @app.route("/api/events", methods=["POST"])
+@require_api_key
 def events_publish():
     data = request.get_json(silent=True) or {}
     event_name = data.get("name", "")
@@ -226,36 +269,46 @@ def events_publish():
     saturday.event_bus.publish(event_name, event_data, source="api")
     return jsonify({"published": True, "event": event_name})
 
+
 @app.route("/api/system", methods=["GET"])
+@require_api_key
 def system_stats():
     import psutil
+
     cpu = psutil.cpu_percent(interval=0.5)
     ram = psutil.virtual_memory().percent
     disk = psutil.disk_usage("/").percent
     uptime = time.time() - _start_time
-    return jsonify({
-        "cpu_percent": cpu,
-        "ram_percent": ram,
-        "disk_percent": disk,
-        "uptime_seconds": int(uptime),
-    })
+    return jsonify(
+        {
+            "cpu_percent": cpu,
+            "ram_percent": ram,
+            "disk_percent": disk,
+            "uptime_seconds": int(uptime),
+        }
+    )
+
 
 @app.route("/api/health", methods=["GET"])
 def health():
     import psutil
-    return jsonify({
-        "status": "ok",
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
-        "ram_percent": psutil.virtual_memory().percent,
-        "uptime_seconds": int(time.time() - _start_time),
-        "version": "3.2.0",
-        "modules": {
-            "calendar": saturday.calendar is not None,
-            "conversation": saturday.conversation is not None,
-            "notion": saturday.notion is not None,
-            "voice": saturday.voice is not None,
-        },
-    })
+
+    return jsonify(
+        {
+            "status": "ok",
+            "cpu_percent": psutil.cpu_percent(interval=0.1),
+            "ram_percent": psutil.virtual_memory().percent,
+            "uptime_seconds": int(time.time() - _start_time),
+            "version": "3.2.0",
+            "modules": {
+                "calendar": saturday.calendar is not None,
+                "conversation": saturday.conversation is not None,
+                "notion": saturday.notion is not None,
+                "voice": saturday.voice is not None,
+            },
+        }
+    )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
