@@ -32,14 +32,15 @@ def chat():
 
     result = _saturday.process_via_router(text, session_id=session_id)
 
-    # Enrich with proactive context
+    # Enrich with proactive context. El registro de RoutineLearner ya lo hace
+    # AgentRouter.route() de forma centralizada para todos los canales (web,
+    # Telegram, etc.) - no se repite aca para no contar cada mensaje 2 veces.
     try:
+        agent_name = result.get("agent", "unknown")
         if _saturday.proactive:
-            _saturday.proactive.record_interaction(result.get("intent", "unknown"), result.get("response", ""))
-        if _saturday.routines:
-            _saturday.routines.record_interaction(result.get("intent", "unknown"))
+            _saturday.proactive.record_interaction(agent_name, result.get("response", ""))
         if _saturday.productivity:
-            _saturday.productivity.record_interaction(result.get("intent", "unknown"))
+            _saturday.productivity.record_interaction(agent_name)
     except Exception:
         pass
 

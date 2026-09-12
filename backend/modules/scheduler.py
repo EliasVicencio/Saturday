@@ -121,7 +121,8 @@ class Scheduler:
             return
         try:
             emails = self.core.email.get_unread_emails_formatted()
-            if emails and "No hay correos" not in emails:
+            has_new = emails and "No tienes correos" not in emails and "No hay correos" not in emails
+            if has_new:
                 if self.core.vault:
                     self.core.vault.save_raw(
                         f"Correos no leídos ({datetime.now().strftime('%H:%M')}):\n{emails}",

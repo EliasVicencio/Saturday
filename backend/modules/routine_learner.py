@@ -30,6 +30,11 @@ class RoutineLearner:
             logger.error(f"Error guardando patrones: {e}")
 
     def record_interaction(self, intent: str):
+        if not intent or intent == "unknown":
+            # Un intent vacio o "unknown" no aporta nada util al aprendizaje
+            # de rutinas, y si se guarda puede terminar ganando como "patron
+            # mas frecuente" por pura acumulacion de errores silenciosos.
+            return
         patterns = self._load_patterns()
         now = datetime.now()
         patterns["interactions"].append({
