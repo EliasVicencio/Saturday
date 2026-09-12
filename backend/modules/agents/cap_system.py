@@ -1,6 +1,6 @@
 # agents/cap_system.py - Agente de sistema: comandos SO, archivos, procesos, correo
 import time
-from .base import BaseAgent, AgentResult
+from .base import BaseAgent, AgentResult, keyword_score
 
 
 class SystemAgent(BaseAgent):
@@ -11,7 +11,7 @@ class SystemAgent(BaseAgent):
 
     def can_handle(self, text: str) -> float:
         text_lower = text.lower()
-        keywords = [
+        keywords = {kw: 0.85 for kw in [
             "hora", "fecha", "hora exacta", "que hora es", "que fecha es",
             "sistema", "cpu", "ram", "disco", "procesos", "servidor",
             "reiniciar", "apagar", "actualizar", "instalar",
@@ -21,13 +21,8 @@ class SystemAgent(BaseAgent):
             "salud", "pasos", "calorias", "calorías", "corazon", "corazón",
             "ritmo cardiaco", "ejercicio", "distancia", "como estoy", "cómo estoy",
             "drive", "nube", "archivos", "guardar archivo", "buscar archivo", "buscar", "busca", "descargar",
-        ]
-        score = 0.0
-        for kw in keywords:
-            if kw in text_lower:
-                score = max(score, 0.85)
-                break
-        return score
+        ]}
+        return keyword_score(text_lower, keywords)
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = time.time()

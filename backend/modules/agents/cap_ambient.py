@@ -1,6 +1,6 @@
 # agents/cap_ambient.py - Agente ambiental: vision, camaras, sensores, presencia
 import time
-from .base import BaseAgent, AgentResult
+from .base import BaseAgent, AgentResult, keyword_score
 
 
 class AmbientAgent(BaseAgent):
@@ -19,11 +19,7 @@ class AmbientAgent(BaseAgent):
             "microfono": 0.8, "ubicacion": 0.8, "camara del celular": 0.9,
             "dispositivo": 0.6,
         }
-        score = 0.0
-        for kw, s in keywords.items():
-            if kw in text_lower:
-                score = max(score, s)
-        return score
+        return keyword_score(text_lower, keywords)
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = time.time()
@@ -62,7 +58,8 @@ class AmbientAgent(BaseAgent):
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
         # Vision / Camara
-        if any(kw in text_lower for kw in ["camara", "camaras", "ver", "mirar", "que hay", "que ves", "describe", "vision", "imagen", "foto", "captura"]):
+        vision_keywords = {kw: 1.0 for kw in ["camara", "camaras", "ver", "mirar", "que hay", "que ves", "describe", "vision", "imagen", "foto", "captura"]}
+        if keyword_score(text_lower, vision_keywords) > 0:
             question = "Que hay en la imagen?"
             if "?" in text:
                 question = text.split("?")[0].strip()

@@ -1,8 +1,28 @@
 # agents/base.py - Clase base para todos los agentes de Saturday
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Callable
+
+
+def keyword_score(text_lower: str, keywords: Dict[str, float]) -> float:
+    """Puntúa un texto contra un diccionario {palabra_clave: score}, usando
+    límites de palabra (\\b) en vez de un simple 'in'. Sin esto, keywords
+    cortas como 'ver' matchean como substring dentro de 'verde', 'servicio',
+    'converlo', etc. y disparan el agente equivocado con cualquier mensaje
+    que las contenga de casualidad."""
+    score = 0.0
+    for kw, s in keywords.items():
+        # Las keywords con espacio (frases) no tienen este problema de
+        # substring falso, se buscan igual que antes.
+        if " " in kw:
+            if kw in text_lower:
+                score = max(score, s)
+            continue
+        if re.search(r"\b" + re.escape(kw) + r"\b", text_lower):
+            score = max(score, s)
+    return score
 
 
 @dataclass

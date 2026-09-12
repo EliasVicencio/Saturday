@@ -1,6 +1,6 @@
 # agents/cap_knowledge.py - Agente de conocimiento: weather, news, crypto, vault, youtube
 import time
-from .base import BaseAgent, AgentResult
+from .base import BaseAgent, AgentResult, keyword_score
 
 
 class KnowledgeAgent(BaseAgent):
@@ -19,11 +19,7 @@ class KnowledgeAgent(BaseAgent):
             "youtube": 0.95, "video": 0.7, "tutorial": 0.6,
             "tareas": 0.85, "tarea": 0.85, "calendario": 0.8, "evento": 0.7,
         }
-        score = 0.0
-        for kw, s in keywords.items():
-            if kw in text_lower:
-                score = max(score, s)
-        return score
+        return keyword_score(text_lower, keywords)
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = time.time()

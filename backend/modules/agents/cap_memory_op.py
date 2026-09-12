@@ -1,6 +1,6 @@
 # agents/cap_memory_op.py - Agente de operaciones de memoria: CRUD de recuerdos
 import time
-from .base import BaseAgent, AgentResult
+from .base import BaseAgent, AgentResult, keyword_score
 
 
 class MemoryOpAgent(BaseAgent):
@@ -19,11 +19,7 @@ class MemoryOpAgent(BaseAgent):
             "mis preferencias": 0.9, "gustos": 0.8,
             "memoria": 0.85, "recuerdos": 0.9,
         }
-        score = 0.0
-        for kw, s in keywords.items():
-            if kw in text_lower:
-                score = max(score, s)
-        return score
+        return keyword_score(text_lower, keywords)
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = time.time()

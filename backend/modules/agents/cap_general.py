@@ -1,6 +1,6 @@
 # agents/cap_general.py - Agente general: chat, preguntas, reflexiones
 import time
-from .base import BaseAgent, AgentResult
+from .base import BaseAgent, AgentResult, keyword_score
 
 
 class GeneralAgent(BaseAgent):
@@ -11,15 +11,13 @@ class GeneralAgent(BaseAgent):
     def can_handle(self, text: str) -> float:
         text_lower = text.lower().strip()
         # Si no matchea otra capability, este es el default
-        keywords = [
-            "que es", "como funciona", "explica", "opinion", "pensar",
-            "ayuda", "hola", "buenos dias", "buenas tardes", "gracias",
-            "que opinas", "que piensas", "conversa", "habla",
-        ]
-        for kw in keywords:
-            if kw in text_lower:
-                return 0.9
-        return 0.3  # Bajo score porque es el fallback
+        keywords = {
+            "que es": 0.9, "como funciona": 0.9, "explica": 0.9, "opinion": 0.9, "pensar": 0.9,
+            "ayuda": 0.9, "hola": 0.9, "buenos dias": 0.9, "buenas tardes": 0.9, "gracias": 0.9,
+            "que opinas": 0.9, "que piensas": 0.9, "conversa": 0.9, "habla": 0.9,
+        }
+        score = keyword_score(text_lower, keywords)
+        return score if score > 0 else 0.3  # Bajo score porque es el fallback
 
     def process(self, text: str, chat_id: int = None, context: dict = None) -> AgentResult:
         start = time.time()
