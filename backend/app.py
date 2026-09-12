@@ -247,6 +247,15 @@ def autonomy_trigger(action):
         "morning_briefing": saturday.scheduler.send_morning_briefing,
         "data_organize": saturday.scheduler.organize_data_autonomously,
     }
+    if action == "routine_suggestion":
+        data = request.get_json(silent=True) or {}
+        intent = data.get("intent", "revisar tu agenda")
+        try:
+            saturday.scheduler._suggest_from_routine(intent)
+            return jsonify({"status": "ejecutado", "action": action, "intent": intent})
+        except Exception as e:
+            logger.error("Error disparando sugerencia de rutina manual: %s", e)
+            return jsonify({"error": str(e)}), 500
     fn = actions.get(action)
     if not fn:
         return jsonify({"error": f"Acción desconocida. Opciones: {list(actions.keys())}"}), 400
