@@ -4,11 +4,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const API_BASE_URL = API_URL;
 
+const API_KEY = import.meta.env.VITE_SATURDAY_API_KEY || '';
+
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    ...(API_KEY ? { 'X-API-Key': API_KEY } : {}),
   },
 });
 
