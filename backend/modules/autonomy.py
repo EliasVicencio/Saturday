@@ -26,7 +26,7 @@ DEFAULT_LEVELS = {
     "news_check": "auto",
     "data_organize": "auto",
     "daily_summary": "ask",
-    "proactive_notify": "ask",
+    "proactive_notify": "auto",
     "calendar_read": "auto",
     "send_message": "ask",
     "memory_delete": "never",
@@ -37,6 +37,13 @@ DEFAULT_LEVELS = {
 # Tope de acciones autónomas por día, como red de seguridad contra loops
 # o comportamiento inesperado, independiente del nivel configurado.
 MAX_AUTONOMOUS_ACTIONS_PER_DAY = 50
+
+# Algunas acciones "salen hacia afuera" (te mandan un mensaje) y necesitan un
+# tope más chico que el general, para que activar 'auto' no te sature de
+# notificaciones aunque el nivel general lo permita.
+ACTION_DAILY_CAPS = {
+    "proactive_notify": 8,
+}
 
 
 class AutonomyManager:
@@ -55,6 +62,7 @@ class AutonomyManager:
                     data.setdefault("paused", False)
                     data.setdefault("levels", dict(DEFAULT_LEVELS))
                     data.setdefault("action_count", {"date": "", "count": 0})
+                    data.setdefault("action_counts", {})
                     return data
         except Exception as e:
             logger.error("Error cargando estado de autonomía: %s", e)
@@ -95,19 +103,36 @@ class AutonomyManager:
             self._save()
         logger.info("Nivel de autonomía de '%s' cambiado a '%s'", action, level)
 
-    def _under_daily_cap(self) -> bool:
+    def _under_daily_cap(self, action: str) -> bool:
         today = date.today().isoformat()
-        counter = self._state.get("action_count", {"date": "", "count": 0})
+        counters = self._state.setdefault("action_counts", {})
+        counter = counters.get(action, {"date": "", "count": 0})
         if counter.get("date") != today:
             counter = {"date": today, "count": 0}
-        if counter["count"] >= MAX_AUTONOMOUS_ACTIONS_PER_DAY:
+
+        # Cap global (todas las acciones autónomas combinadas)
+        total = self._state.get("action_count", {"date": "", "count": 0})
+        if total.get("date") != today:
+            total = {"date": today, "count": 0}
+        if total["count"] >= MAX_AUTONOMOUS_ACTIONS_PER_DAY:
             logger.warning(
-                "Tope diario de %d acciones autónomas alcanzado, se frena hasta mañana",
+                "Tope diario global de %d acciones autónomas alcanzado, se frena hasta mañana",
                 MAX_AUTONOMOUS_ACTIONS_PER_DAY,
             )
             return False
+
+        # Cap específico de la acción, si tiene uno definido (ej. notificaciones)
+        specific_cap = ACTION_DAILY_CAPS.get(action)
+        if specific_cap is not None and counter["count"] >= specific_cap:
+            logger.info(
+                "Tope diario de '%s' (%d) alcanzado, se frena hasta mañana", action, specific_cap
+            )
+            return False
+
+        total["count"] += 1
         counter["count"] += 1
-        self._state["action_count"] = counter
+        self._state["action_count"] = total
+        counters[action] = counter
         self._save()
         return True
 
@@ -117,15 +142,22 @@ class AutonomyManager:
             return False
         if self.get_level(action) != "auto":
             return False
-        return self._under_daily_cap()
+        return self._under_daily_cap(action)
 
     def status(self) -> dict:
         today = date.today().isoformat()
         counter = self._state.get("action_count", {"date": "", "count": 0})
         used_today = counter["count"] if counter.get("date") == today else 0
+        per_action_today = {
+            action: c["count"]
+            for action, c in self._state.get("action_counts", {}).items()
+            if c.get("date") == today
+        }
         return {
             "paused": self.paused,
             "levels": dict(self._state.get("levels", DEFAULT_LEVELS)),
             "actions_today": used_today,
             "daily_cap": MAX_AUTONOMOUS_ACTIONS_PER_DAY,
+            "per_action_today": per_action_today,
+            "per_action_caps": dict(ACTION_DAILY_CAPS),
         }

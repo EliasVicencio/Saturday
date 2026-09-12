@@ -56,3 +56,17 @@ class MemoryRetriever:
 
     def get_user_preferences(self, chat_id):
         return self._store.search(mem_type="preference", chat_id=chat_id, limit=20)
+
+    def format_routine_context(self, routines: dict) -> str:
+        """Convierte lo que aprendió RoutineLearner en una línea de contexto,
+        para que el LLM sepa qué suele hacer el usuario a esta hora sin que
+        se lo tengan que repetir cada vez."""
+        if not routines or routines.get("status") != "active":
+            return ""
+        from datetime import datetime
+        hour = str(datetime.now().hour)
+        items = routines.get("hourly_routines", {}).get(hour, [])
+        top = items[0] if items else None
+        if not top or top.get("frequency", 0) < 3:
+            return ""
+        return f"[RUTINA] A esta hora el usuario suele pedir: '{top['intent']}'. Si viene al caso, podés ofrecerlo."

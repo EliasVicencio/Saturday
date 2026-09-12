@@ -3,6 +3,7 @@ import schedule
 import time
 import threading
 import logging
+import hashlib
 from datetime import datetime
 from typing import Callable, Optional
 
@@ -24,6 +25,7 @@ class Scheduler:
         self.jobs = []
         self.is_running = False
         self.thread = None
+        self._last_email_digest: Optional[str] = None
         logger.info("Scheduler inicializado")
 
     def start(self):
@@ -104,7 +106,13 @@ class Scheduler:
 
     def check_emails_autonomously(self):
         """Revisa correos y guarda resumen en la bóveda. Es de solo lectura
-        (no responde ni borra nada), por eso puede correr en modo 'auto'."""
+        (no responde ni borra nada), por eso puede correr en modo 'auto'.
+
+        Si encuentra correos nuevos (distintos a la última revisión), avisa
+        por WhatsApp (punto 4: que se note cuando actuó solo) y, si detecta
+        palabras clave de urgencia, encadena automáticamente una consulta de
+        calendario a través del router para sugerir agendar algo (punto 5:
+        encadenar pasos en vez de un solo tiro por mensaje)."""
         if not self._allowed("email_check"):
             return
         logger.info("Revisando correos automáticamente (%s)", datetime.now())
@@ -120,10 +128,47 @@ class Scheduler:
                         source="autonomo"
                     )
                 logger.info("Correos revisados y guardados")
+
+                digest = hashlib.sha256(emails.encode("utf-8", "ignore")).hexdigest()
+                if digest != self._last_email_digest:
+                    self._last_email_digest = digest
+                    self._notify_new_emails(emails)
             else:
                 logger.info("No hay correos nuevos")
         except Exception as e:
             logger.error("Error revisando correos: %s", e)
+
+    _URGENT_KEYWORDS = ("urgente", "reunión", "reunion", "factura", "pago", "vence", "hoy", "mañana", "manana")
+
+    def _notify_new_emails(self, emails_text: str):
+        """Avisa que hay correos nuevos, y si suenan urgentes, encadena una
+        revisión de calendario a través del AgentRouter (no ejecuta nada
+        destructivo, solo consulta y sugiere)."""
+        preview = emails_text.strip().splitlines()[:3]
+        preview_text = " / ".join(l.strip() for l in preview if l.strip())[:200]
+        looks_urgent = any(kw in emails_text.lower() for kw in self._URGENT_KEYWORDS)
+
+        if self._allowed("proactive_notify") and self.core.communication:
+            try:
+                msg = f"Te llegaron correos nuevos: {preview_text}"
+                if looks_urgent:
+                    msg += "\nAlgo ahí suena a que puede tener fecha/urgencia, reviso tu agenda."
+                self.core.communication.send_whatsapp_message(msg)
+            except Exception as e:
+                logger.error("Error notificando correos nuevos: %s", e)
+
+        if looks_urgent:
+            # Paso encadenado: le pedimos al router que mire la agenda,
+            # exactamente como si el usuario hubiera escrito el mensaje.
+            result = self._route(
+                "Revisa mi agenda de hoy y de mañana y dime si hay algo que se cruce con un correo urgente que acabo de recibir",
+                session_id="autonomous-email-chain",
+            )
+            if result and self._allowed("proactive_notify") and self.core.communication:
+                try:
+                    self.core.communication.send_whatsapp_message(result.get("response", ""))
+                except Exception as e:
+                    logger.error("Error enviando resultado del chain de agenda: %s", e)
 
     def collect_news_autonomously(self):
         """Recolecta noticias del día y guarda en la bóveda (solo lectura)."""

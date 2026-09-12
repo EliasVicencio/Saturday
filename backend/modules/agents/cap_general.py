@@ -29,9 +29,20 @@ class GeneralAgent(BaseAgent):
         if self.core and self.core.memory_retriever:
             memory_context = self.core.memory_retriever.before_respond(text, chat_id)
 
+        # Inyectar contexto de rutina (qué suele pedir el usuario a esta hora)
+        routine_context = ""
+        if self.core and self.core.memory_retriever and getattr(self.core, "routines", None):
+            try:
+                routine_context = self.core.memory_retriever.format_routine_context(
+                    self.core.routines.get_routines()
+                )
+            except Exception:
+                routine_context = ""
+
         full_context = text
-        if memory_context:
-            full_context = memory_context + "\n\nMensaje del usuario: " + text
+        extra = "\n\n".join(c for c in (memory_context, routine_context) if c)
+        if extra:
+            full_context = extra + "\n\nMensaje del usuario: " + text
 
         # Extraer y guardar recuerdos
         if self.core and self.core.memory_summarizer:
