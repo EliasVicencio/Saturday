@@ -280,4 +280,4 @@ Thumbs.db
 *.pid
 *.pid.lock
 *.seed
-*.pid.lock
+*.pid.lockfrontend/dist/
