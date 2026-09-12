@@ -10,6 +10,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/fitness.body.read",
     "https://www.googleapis.com/auth/fitness.heart_rate.read",
     "https://www.googleapis.com/auth/fitness.sleep.read",
+    "https://www.googleapis.com/auth/fitness.location.read",
 ]
 
 class GoogleFitManager:
@@ -144,60 +145,69 @@ class GoogleFitManager:
             return resp.json()
         return None
     
+    def _aggregate(self, token: str, data_types: list, start_ms: int, end_ms: int) -> Optional[Dict]:
+        """Pide un solo tipo de dato agregado por vez, para que si a uno le
+        falta permiso (403) no tire abajo a los demás que sí funcionan."""
+        import requests as req
+        body = {
+            "aggregateBy": [{"dataTypeName": dt} for dt in data_types],
+            "bucketByTime": {"durationMillis": 86400000},
+            "startTimeMillis": start_ms,
+            "endTimeMillis": end_ms,
+        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        resp = req.post(
+            "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
+            headers=headers,
+            json=body,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning(
+            "Google Fit rechazó la consulta de %s: %s %s",
+            data_types, resp.status_code, resp.text[:300],
+        )
+        return None
+
     def get_today_data(self) -> Dict[str, Any]:
         token = self._get_access_token()
         if not token:
             return {"connected": False, "error": "No conectado con Google Fit"}
-        
+
         try:
             now = datetime.now()
             start_ms = int(now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
             end_ms = int(now.timestamp() * 1000)
-            
+
             result = {"connected": True, "date": now.strftime("%Y-%m-%d")}
-            
-            # Aggregate data
-            body = {
-                "aggregateBy": [
-                    {"dataTypeName": "com.google.step_count.delta"},
-                    {"dataTypeName": "com.google.calories.expended"},
-                    {"dataTypeName": "com.google.distance.delta"},
-                ],
-                "bucketByTime": {"durationMillis": 86400000},
-                "startTimeMillis": start_ms,
-                "endTimeMillis": end_ms,
+            errors = []
+
+            # Se piden por separado (no todo junto) para que un 403 en un
+            # tipo de dato (ej. falta de scope) no tumbe a los demás.
+            data_type_map = {
+                "com.google.step_count.delta": "steps",
+                "com.google.calories.expended": "calories",
+                "com.google.distance.delta": "distance_km",
             }
-            
-            resp_data = self._api_get(
-                "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
-                params={"alt": "json"}
-            )
-            
-            # Use POST for aggregate
-            import requests as req
-            token = self._get_access_token()
-            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-            agg_resp = req.post(
-                "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
-                headers=headers,
-                json=body
-            )
-            
-            if agg_resp.status_code == 200:
-                data = agg_resp.json()
+            for dtype, result_key in data_type_map.items():
+                data = self._aggregate(token, [dtype], start_ms, end_ms)
+                if data is None:
+                    errors.append(dtype)
+                    continue
                 for bucket in data.get("bucket", []):
                     for ds in bucket.get("dataset", []):
-                        dt = ds.get("dataSourceId", "")
                         for pt in ds.get("point", []):
                             for val in pt.get("value", []):
-                                if "step_count" in dt:
+                                if result_key == "steps":
                                     result["steps"] = val.get("intVal", 0)
-                                elif "calories" in dt:
+                                elif result_key == "calories":
                                     result["calories"] = round(val.get("fpVal", 0))
-                                elif "distance" in dt:
+                                elif result_key == "distance_km":
                                     result["distance_km"] = round(val.get("fpVal", 0) / 1000, 2)
-            
+
             # Heart rate
+            headers = {"Authorization": f"Bearer {token}"}
+            import requests as req
             hr_resp = req.get(
                 f"https://www.googleapis.com/fitness/v1/users/me/dataSources/com.google.heart_rate.bpm/datasets/{start_ms}-{end_ms}",
                 headers=headers
@@ -209,18 +219,30 @@ class GoogleFitManager:
                     for val in pt.get("value", []):
                         hr_values.append(val.get("fpVal", 0))
                 result["heart_rate_avg"] = round(sum(hr_values) / len(hr_values)) if hr_values else None
-            
+            else:
+                errors.append("heart_rate")
+                logger.warning("Google Fit heart_rate falló: %s %s", hr_resp.status_code, hr_resp.text[:300])
+
             result.setdefault("steps", 0)
             result.setdefault("calories", 0)
             result.setdefault("distance_km", 0)
             result.setdefault("heart_rate_avg", None)
-            
+
+            if errors:
+                # No ocultamos el dato: si algo falló, se lo mostramos al
+                # usuario en vez de disfrazarlo de "0 en todo, sin novedad".
+                result["partial_errors"] = errors
+                result["hint"] = (
+                    "Algunos datos no se pudieron leer, probablemente falta permiso. "
+                    "Desvincula y vuelve a vincular Google Fit para otorgar los scopes actualizados."
+                )
+
             # Cache
             with open(os.path.join(self.data_dir, 'google_fit_cache.json'), 'w') as f:
                 json.dump(result, f, indent=2)
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error getting Google Fit data: {e}")
             return {"connected": True, "error": str(e)}
