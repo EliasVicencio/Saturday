@@ -64,7 +64,7 @@ class MemoryOpAgent(BaseAgent):
                 if parts:
                     response = "\n\n".join(parts)
                 else:
-                    response = "Aún no tengo recuerdos guardados sobre vos."
+                    response = "Aún no tengo recuerdos guardados sobre ti."
                 duration = (time.time() - start) * 1000
                 return AgentResult(response=response, agent=self.name, duration_ms=duration)
 
@@ -79,9 +79,9 @@ class MemoryOpAgent(BaseAgent):
                         agent=self.name, duration_ms=duration,
                     )
                 return AgentResult(
-                    response="No detecté datos específicos para guardar. Podés ser más explícito?",
+                    response="No detecté datos específicos para guardar. ¿Puedes ser más explícito?",
                     agent=self.name, duration_ms=duration,
                 )
 
         duration = (time.time() - start) * 1000
-        return AgentResult(response="No entendí qué querés hacer con la memoria.", agent=self.name, duration_ms=duration)
+        return AgentResult(response="No entendí qué quieres hacer con la memoria.", agent=self.name, duration_ms=duration)

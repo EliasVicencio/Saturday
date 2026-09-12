@@ -273,7 +273,7 @@ Datos de salud:
         # Default
         duration = (time.time() - start) * 1000
         return AgentResult(
-            response="No pude determinar que accion de sistema necesitas. Podes ser mas especifico?",
+            response="No pude determinar qué acción de sistema necesitas. ¿Puedes ser más específico?",
             agent=self.name,
             duration_ms=duration,
         )

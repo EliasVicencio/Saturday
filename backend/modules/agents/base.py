@@ -103,7 +103,7 @@ class BaseAgent:
 
     def get_system_prompt(self) -> str:
         """Prompt del sistema para este agente. Override en subclases."""
-        return f"Sos {self.name}. {self.description}"
+        return f"Eres {self.name}. {self.description}"
 
     def get_tool_log(self) -> List[Dict]:
         return list(self._tool_log)
