@@ -233,6 +233,30 @@ def autonomy_set_level():
         return jsonify({"error": str(e)}), 400
     return jsonify({"status": "updated", "action": action, "level": level})
 
+@app.route("/api/autonomy/trigger/<action>", methods=["POST"])
+def autonomy_trigger(action):
+    """Dispara a mano una tarea autónoma del scheduler, para poder probarla
+    sin esperar al horario programado. Respeta los mismos permisos/kill
+    switch que la versión automática - si algo está en 'ask' o 'never',
+    o el kill switch está activo, esto tampoco la va a ejecutar."""
+    if not saturday.scheduler:
+        return jsonify({"error": "Scheduler no disponible"}), 503
+    actions = {
+        "email_check": saturday.scheduler.check_emails_autonomously,
+        "news_check": saturday.scheduler.collect_news_autonomously,
+        "morning_briefing": saturday.scheduler.send_morning_briefing,
+        "data_organize": saturday.scheduler.organize_data_autonomously,
+    }
+    fn = actions.get(action)
+    if not fn:
+        return jsonify({"error": f"Acción desconocida. Opciones: {list(actions.keys())}"}), 400
+    try:
+        fn()
+        return jsonify({"status": "ejecutado", "action": action})
+    except Exception as e:
+        logger.error("Error disparando acción manual '%s': %s", action, e)
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/permissions", methods=["GET"])
 @require_api_key
 def permissions_list():
