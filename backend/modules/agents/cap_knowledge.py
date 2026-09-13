@@ -17,7 +17,9 @@ class KnowledgeAgent(BaseAgent):
             "buscar": 0.6, "busca": 0.6, "encuentra": 0.5,
             "bodega": 0.9, "boveda": 0.9, "nota": 0.7, "notas": 0.7,
             "youtube": 0.95, "video": 0.7, "tutorial": 0.6,
-            "tareas": 0.85, "tarea": 0.85, "calendario": 0.8, "evento": 0.7,
+            "tareas": 0.85, "tarea": 0.85, "calendario": 0.8, "evento": 0.7, "eventos": 0.7,
+            "recordatorio": 0.85, "recordatorios": 0.85, "recuerdame": 0.8, "agenda": 0.8,
+            "pendiente": 0.6, "pendientes": 0.6,
         }
         return keyword_score(text_lower, keywords)
 
@@ -77,8 +79,9 @@ class KnowledgeAgent(BaseAgent):
             duration = (time.time() - start) * 1000
             return AgentResult(response=str(result), agent=self.name, tools_called=tools_log, duration_ms=duration)
 
-        # Tareas / Calendario
-        if any(kw in text_lower for kw in ["tareas", "tarea", "calendario", "evento", "eventos"]):
+        # Tareas / Calendario / Recordatorios
+        calendar_kw = {kw: 1.0 for kw in ["tareas", "tarea", "calendario", "evento", "eventos", "recordatorio", "recordatorios", "recuerdame", "agenda", "pendiente", "pendientes"]}
+        if keyword_score(text_lower, calendar_kw) > 0:
             result = self.call_tool("get_events")
             tools_log.append({"tool": "get_events", "args": {}})
             duration = (time.time() - start) * 1000
