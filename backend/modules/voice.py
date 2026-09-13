@@ -215,7 +215,7 @@ class VoiceManager:
         
         try:
             logger.info(f" Enviando a Google TTS: {self.voice_name}")
-            response = requests.post(url, headers=headers, json=payload, timeout=15)
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
             
             if response.status_code != 200:
                 logger.info(f" Error en Google TTS: {response.status_code}")

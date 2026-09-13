@@ -26,8 +26,19 @@ def speak():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    if len(text) > 300:
-        text = text[:297] + "..."
+    # Google Cloud TTS soporta hasta ~5000 caracteres por pedido. El limite
+    # anterior (300) cortaba a mitad de frase cualquier respuesta con opinion
+    # o explicacion un poco mas larga. Si aun asi hay que cortar (mensajes
+    # extremadamente largos), se corta en el ultimo punto/salto de linea
+    # antes del limite, no a mitad de palabra.
+    MAX_TTS_CHARS = 4500
+    if len(text) > MAX_TTS_CHARS:
+        cutoff = text.rfind(".", 0, MAX_TTS_CHARS)
+        if cutoff == -1 or cutoff < MAX_TTS_CHARS * 0.5:
+            cutoff = MAX_TTS_CHARS
+        else:
+            cutoff += 1
+        text = text[:cutoff].strip()
 
     audio_data = _saturday.voice._synthesize_google_tts(text)
     if audio_data:
